@@ -1,0 +1,211 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Contact Message #{{ message.id }} - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-envelope"></i> Contact Message #{{ message.id }}
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('admin.contact_messages') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Messages
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <!-- Original Message -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-user"></i> Customer Message
+                                        <span class="badge bg-info ms-2">{{ message.subject_type|title }}</span>
+                                        {% if not message.is_read %}
+                                            <span class="badge bg-warning ms-1">Unread</span>
+                                        {% endif %}
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-sm-3"><strong>Name:</strong></div>
+                                        <div class="col-sm-9">{{ message.name }}</div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-3"><strong>Email:</strong></div>
+                                        <div class="col-sm-9">
+                                            <a href="mailto:{{ message.email }}">{{ message.email }}</a>
+                                        </div>
+                                    </div>
+                                    {% if message.phone %}
+                                    <div class="row mb-3">
+                                        <div class="col-sm-3"><strong>Phone:</strong></div>
+                                        <div class="col-sm-9">{{ message.phone }}</div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="row mb-3">
+                                        <div class="col-sm-3"><strong>Date:</strong></div>
+                                        <div class="col-sm-9">{{ message.created_at.strftime('%d/%m/%Y at %H:%M') }}</div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-3"><strong>Subject:</strong></div>
+                                        <div class="col-sm-9">{{ message.subject_type|replace('_', ' ')|title }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-sm-3"><strong>Message:</strong></div>
+                                        <div class="col-sm-9">
+                                            <div class="border p-3 bg-light rounded">
+                                                {{ message.message|nl2br|safe }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Admin Reply Section -->
+                            {% if message.admin_reply %}
+                            <div class="card mb-4">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-reply"></i> Admin Reply
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-sm-3"><strong>Replied by:</strong></div>
+                                        <div class="col-sm-9">
+                                            {% if message.admin_user %}
+                                                {{ message.admin_user.username }}
+                                            {% else %}
+                                                Unknown Admin
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-3"><strong>Reply Date:</strong></div>
+                                        <div class="col-sm-9">{{ message.replied_at.strftime('%d/%m/%Y at %H:%M') }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-sm-3"><strong>Reply:</strong></div>
+                                        <div class="col-sm-9">
+                                            <div class="border p-3 bg-light rounded">
+                                                {{ message.admin_reply|nl2br }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Reply Form -->
+                            {% if not message.admin_reply %}
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-reply"></i> Send Reply
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="POST" action="{{ url_for('admin.reply_contact_message', message_id=message.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <div class="mb-3">
+                                            <label for="reply_text" class="form-label">Reply Message</label>
+                                            <textarea class="form-control" id="reply_text" name="reply" rows="6"
+                                                      placeholder="Write your reply to {{ message.name }}..." required></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="send_email" name="send_email" checked>
+                                                <label class="form-check-label" for="send_email">
+                                                    Send email notification to customer
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-paper-plane"></i> Send Reply
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle"></i> This message has already been replied to.
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <!-- Quick Actions -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Quick Actions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <a href="mailto:{{ message.email }}?subject=Re: {{ message.subject_type|title }} - BhojanXpress"
+                                           class="btn btn-outline-primary">
+                                            <i class="fas fa-envelope"></i> Email Customer
+                                        </a>
+                                        {% if message.phone %}
+                                        <a href="tel:{{ message.phone }}" class="btn btn-outline-success">
+                                            <i class="fas fa-phone"></i> Call Customer
+                                        </a>
+                                        {% endif %}
+                                        <form method="POST" action="{{ url_for('admin.delete_contact_message', message_id=message.id) }}"
+                                              onsubmit="return confirm('Are you sure you want to delete this message?')">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-outline-danger w-100">
+                                                <i class="fas fa-trash"></i> Delete Message
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Message Stats -->
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h5 class="card-title">Message Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td><strong>Status:</strong></td>
+                                            <td>
+                                                {% if message.admin_reply %}
+                                                    <span class="badge bg-success">Replied</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">Pending</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Read Status:</strong></td>
+                                            <td>
+                                                {% if message.is_read %}
+                                                    <span class="badge bg-info">Read</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">Unread</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Category:</strong></td>
+                                            <td><span class="badge bg-secondary">{{ message.subject_type|title }}</span></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

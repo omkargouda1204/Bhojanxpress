@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Shopping Cart - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-4"><i class="fas fa-shopping-cart"></i> Your Cart</h2>
+    
+    {% if cart_items %}
+    <div class="row">
+        <!-- Cart Items -->
+        <div class="col-lg-8">
+            {% for item in cart_items %}
+            <div class="card mb-3">
+                <div class="row g-0">
+                    <div class="col-md-3">
+                        {% if item.food_item.image_url %}
+                        <img src="{{ item.food_item.image_url }}" class="img-fluid rounded-start h-100" 
+                             alt="{{ item.food_item.name }}" style="object-fit: cover;">
+                        {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center h-100 rounded-start">
+                            <i class="fas fa-image text-muted fa-2x"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-9">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">{{ item.food_item.name }}</h5>
+                                    <p class="card-text text-muted">{{ item.food_item.description[:100] if item.food_item.description else '' }}</p>
+                                    <p class="card-text">
+                                        <span class="text-success fw-bold">₹{{ "%.2f"|format(item.food_item.price) }}</span>
+                                        <span class="badge bg-secondary ms-2">{{ item.food_item.category.replace('_', ' ').title() if item.food_item.category else 'General' }}</span>
+                                    </p>
+                                </div>
+                                <div class="text-end">
+                                    <form method="POST" action="{{ url_for('user.update_cart', cart_id=item.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <div class="input-group mb-2" style="width: 120px;">
+                                            <input type="number" name="quantity" class="form-control text-center" 
+                                                   value="{{ item.quantity }}" min="1" max="10" onchange="this.form.submit()">
+                                        </div>
+                                    </form>
+                                    <p class="fw-bold">₹{{ "%.2f"|format(item.food_item.price * item.quantity) }}</p>
+                                    <form method="POST" action="{{ url_for('user.update_cart', cart_id=item.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="quantity" value="0">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="fas fa-trash"></i> Remove
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Order Summary -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-receipt"></i> Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Coupon Application -->
+                    <div class="mb-3">
+                        <label class="form-label">Apply Coupon</label>
+                        <div class="input-group">
+                            <input type="text" id="couponCode" class="form-control" placeholder="Enter coupon code">
+                            <button class="btn btn-outline-primary" type="button" onclick="applyCoupon()">Apply</button>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm mt-2" type="button" id="removeCouponBtn" onclick="removeCoupon()" style="display: none;">Remove Coupon</button>
+                        <div id="couponMessage" class="mt-2"></div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Summary Details -->
+                    <div class="d-flex justify-content-between">
+                        <span>Subtotal ({{ cart_summary.item_count }} items):</span>
+                        <span>₹{{ "%.2f"|format(cart_summary.subtotal) }}</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between text-success">
+                        <span>Special Discount ({{ cart_summary.discount_rate }}%):</span>
+                        <span>-₹{{ "%.2f"|format(cart_summary.discount_amount) }}</span>
+                    </div>
+                    
+                    <div id="couponDiscount" class="d-flex justify-content-between text-info" style="display: none !important;">
+                        <span>Coupon Discount:</span>
+                        <span id="couponAmount">₹0.00</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <span>GST ({{ cart_summary.gst_rate }}%):</span>
+                        <span>₹{{ "%.2f"|format(cart_summary.gst_amount) }}</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <span>Delivery Charges:</span>
+                        <span>
+                            {% if cart_summary.delivery_charge == 0 %}
+                                <span class="text-success">FREE</span>
+                            {% else %}
+                                ₹{{ "%.2f"|format(cart_summary.delivery_charge) }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    {% if cart_summary.subtotal < 200 %}
+                    <small class="text-muted">Add ₹{{ "%.2f"|format(200 - cart_summary.subtotal) }} more for free delivery!</small>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between fw-bold h5">
+                        <span>Total:</span>
+                        <span id="totalAmount">₹{{ "%.2f"|format(cart_summary.total_amount) }}</span>
+                    </div>
+                    
+                    <a href="{{ url_for('user.checkout') }}" class="btn btn-success w-100 mt-3">
+                        <i class="fas fa-credit-card"></i> Proceed to Checkout
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Estimated Delivery -->
+            <div class="card mt-3">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock text-primary fa-2x mb-2"></i>
+                    <h6>Estimated Delivery Time</h6>
+                    <p class="text-muted mb-0">30-45 minutes</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Empty Cart -->
+    <div class="text-center">
+        <i class="fas fa-shopping-cart text-muted" style="font-size: 4rem;"></i>
+        <h3 class="mt-3">Your cart is empty</h3>
+        <p class="text-muted">Add some delicious items from our menu!</p>
+        <a href="{{ url_for('user.menu') }}" class="btn btn-primary btn-lg">
+            <i class="fas fa-utensils"></i> Browse Menu
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+let appliedCoupon = null;
+let originalTotal = {{ cart_summary.total_amount if cart_summary else 0 }};
+
+function applyCoupon() {
+    const couponCode = document.getElementById('couponCode').value.trim();
+    const messageDiv = document.getElementById('couponMessage');
+
+    if (!couponCode) {
+        showMessage('Please enter a coupon code', 'danger');
+        return;
+    }
+
+    // Show loading
+    showMessage('Applying coupon...', 'info');
+
+    fetch('{{ url_for("user.apply_coupon") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+        },
+        body: `coupon_code=${encodeURIComponent(couponCode)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            appliedCoupon = data;
+            showMessage(data.message, 'success');
+            updateOrderSummary(data.discount);
+            document.getElementById('removeCouponBtn').style.display = 'inline-block';
+            document.getElementById('couponCode').disabled = true;
+        } else {
+            showMessage(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error applying coupon', 'danger');
+    });
+}
+
+function removeCoupon() {
+    fetch('{{ url_for("user.remove_coupon") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            appliedCoupon = null;
+            showMessage(data.message, 'success');
+            updateOrderSummary(0);
+            document.getElementById('removeCouponBtn').style.display = 'none';
+            document.getElementById('couponCode').disabled = false;
+            document.getElementById('couponCode').value = '';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error removing coupon', 'danger');
+    });
+}
+
+function updateOrderSummary(couponDiscount) {
+    const couponDiscountDiv = document.getElementById('couponDiscount');
+    const couponAmountSpan = document.getElementById('couponAmount');
+    const totalAmountSpan = document.getElementById('totalAmount');
+
+    if (couponDiscount > 0) {
+        couponDiscountDiv.style.display = 'flex';
+        couponAmountSpan.textContent = `-₹${couponDiscount.toFixed(2)}`;
+        const newTotal = originalTotal - couponDiscount;
+        totalAmountSpan.textContent = `₹${newTotal.toFixed(2)}`;
+    } else {
+        couponDiscountDiv.style.display = 'none';
+        totalAmountSpan.textContent = `₹${originalTotal.toFixed(2)}`;
+    }
+}
+
+function showMessage(message, type) {
+    const messageDiv = document.getElementById('couponMessage');
+    messageDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+}
+</script>
+{% endblock %}

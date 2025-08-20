@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - BhojanXpress</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        body {
+          background: linear-gradient(135deg, #FF8C00 0%, #FF5722 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Segoe UI', sans-serif;
+          padding: 20px 0;
+        }
+        .register-card {
+          background: #fff;
+          border-radius: 20px;
+          padding: 3rem;
+          box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+          width: 100%;
+          max-width: 650px;
+          animation: fadeInUp 1.2s;
+        }
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(50px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .register-card h2 {
+          font-weight: bold;
+          margin-bottom: 0.8rem;
+          color: #FF5722;
+          font-size: 2.2rem;
+        }
+        .register-card p {
+          color: #6c757d;
+          font-size: 1rem;
+        }
+        .form-control {
+          border-radius: 12px;
+          padding: 1rem;
+          border: 2px solid #f0f0f0;
+          transition: all 0.4s ease;
+          font-size: 1.1rem;
+        }
+        .form-control:focus {
+          border-color: #FF8C00;
+          box-shadow: 0 0 0 0.25rem rgba(255, 140, 0, 0.25);
+          transform: scale(1.02);
+        }
+        .input-group {
+          transition: all 0.3s ease;
+        }
+        .input-group:hover {
+          transform: translateX(5px);
+        }
+        .btn-primary {
+          border-radius: 12px;
+          padding: 1rem;
+          background: linear-gradient(135deg, #FF8C00, #FF5722);
+          border: none;
+          transition: all 0.4s ease;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          font-size: 1.1rem;
+        }
+        .btn-primary:hover {
+          background: linear-gradient(135deg, #FF5722, #FF8C00);
+          box-shadow: 0 8px 20px rgba(255, 87, 34, 0.4);
+          transform: translateY(-5px);
+        }
+        .text-link {
+          color: #FF5722;
+          font-weight: 600;
+          text-decoration: none;
+          transition: all 0.3s;
+          font-size: 1.05rem;
+        }
+        .text-link:hover {
+          text-decoration: underline;
+          color: #FF8C00;
+          transform: scale(1.05);
+          display: inline-block;
+        }
+        .brand-icon {
+          color: #FF5722;
+          font-size: 3rem;
+          margin-bottom: 0.7rem;
+          animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+        .alert-error {
+          background-color: #ffebee;
+          color: #c62828;
+          border-color: #ffcdd2;
+          border-radius: 12px;
+          animation: shake 0.5s;
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .alert-success {
+          background-color: #e8f5e9;
+          color: #2e7d32;
+          border-color: #c8e6c9;
+          border-radius: 12px;
+          animation: bounceIn 0.7s;
+        }
+        @keyframes bounceIn {
+          0% { transform: scale(0.8); opacity: 0; }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .input-group-text {
+          background-color: #fff5f0;
+          border-color: #f0f0f0;
+          color: #FF5722;
+          border-top-left-radius: 12px;
+          border-bottom-left-radius: 12px;
+          transition: all 0.3s;
+        }
+        .input-group:hover .input-group-text {
+          background-color: #ffe0d1;
+        }
+        .food-icon {
+          animation: float 3s ease-in-out infinite;
+          position: absolute;
+          font-size: 1.5rem;
+          opacity: 0.6;
+          color: #FF8C00;
+        }
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+          100% { transform: translateY(0px); }
+        }
+        .icon-1 { top: 10%; left: 10%; animation-delay: 0s; }
+        .icon-2 { top: 20%; right: 15%; animation-delay: 0.5s; }
+        .icon-3 { bottom: 15%; left: 15%; animation-delay: 1s; }
+        .icon-4 { bottom: 10%; right: 10%; animation-delay: 1.5s; }
+        .icon-5 { top: 40%; left: 20%; animation-delay: 2s; }
+        .row > div {
+          transition: all 0.3s ease;
+        }
+        .row > div:hover {
+          transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated food icons in background -->
+    <div class="food-icon icon-1"><i class="fas fa-pizza-slice"></i></div>
+    <div class="food-icon icon-2"><i class="fas fa-hamburger"></i></div>
+    <div class="food-icon icon-3"><i class="fas fa-ice-cream"></i></div>
+    <div class="food-icon icon-4"><i class="fas fa-coffee"></i></div>
+    <div class="food-icon icon-5"><i class="fas fa-drumstick-bite"></i></div>
+
+    <div class="register-card animate__animated animate__fadeIn">
+        <div class="text-center mb-4">
+            <div class="brand-icon"><i class="fas fa-utensils"></i></div>
+            <h2 class="animate__animated animate__fadeInDown">BhojanXpress</h2>
+            <p class="animate__animated animate__fadeIn animate__delay-1s">Create your account and start enjoying delicious meals!</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} animate__animated animate__fadeIn" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/auth/register">
+            {{ form.csrf_token if form }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row">
+                <div class="col-md-6 mb-3 animate__animated animate__fadeInLeft animate__delay-1s">
+                    <label for="username" class="form-label fw-bold">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Choose a username" required>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3 animate__animated animate__fadeInRight animate__delay-1s">
+                    <label for="email" class="form-label fw-bold">Email</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3 animate__animated animate__fadeInLeft animate__delay-2s">
+                    <label for="password" class="form-label fw-bold">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Minimum 6 characters" required>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3 animate__animated animate__fadeInRight animate__delay-2s">
+                    <label for="confirm_password" class="form-label fw-bold">Confirm Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-check-double"></i></span>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Repeat your password" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4 animate__animated animate__fadeInUp animate__delay-3s">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-user-plus me-2"></i>Create Account
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-4 text-center animate__animated animate__fadeIn animate__delay-3s">
+            <p>Already have an account?
+                <a href="/auth/login" class="text-link">Login here</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

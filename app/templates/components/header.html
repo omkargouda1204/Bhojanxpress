@@ -1,0 +1,171 @@
+<!--{% if request.endpoint == 'user.home' %}-->
+<!-- <div class="slider-wrapper">-->
+<!--        <div class="slider">-->
+<!--            <div class="slide-track">-->
+<!--                <div class="slide">-->
+<!--                    <img src="{{ url_for('static', filename='images/slide1.jpg') }}" alt="Slide 1">-->
+<!--                </div>-->
+<!--                <div class="slide">-->
+<!--                    <img src="{{ url_for('static', filename='images/hero-banner.jpg') }}" alt="Slide 2">-->
+<!--                </div>-->
+<!--                <div class="slide">-->
+<!--                    <img src="{{ url_for('static', filename='images/slider3.jpg') }}" alt="Slide 3">-->
+<!--                </div>-->
+<!--                <div class="slide">-->
+<!--                    <img src="{{ url_for('static', filename='images/slider4.jpg') }}" alt="Slide 4">-->
+<!--                </div>  -->
+<!--            </div>-->
+<!--        </div>-->
+<!--        <div class="slider-nav">-->
+<!--            <div class="dots"></div>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--    <style>-->
+<!--.slider-wrapper {-->
+<!--    position: relative;-->
+<!--    max-width: 1200px;-->
+<!--    margin: 0 auto;-->
+<!--    overflow: hidden;-->
+<!--}-->
+
+<!--.slide-track {-->
+<!--    width: 100%;-->
+<!--    flex-shrink: 0;-->
+<!--    object-fit: cover;-->
+<!--    aspect-ratio: 211/100; /* Increased height by changing aspect ratio */-->
+<!--}-->
+
+<!--.slider {-->
+<!--    position: relative;-->
+<!--    width: 100%;-->
+<!--}-->
+
+<!--.slide-track {-->
+<!--    display: flex;-->
+<!--    transition: transform 0.5s ease-in-out;-->
+<!--}-->
+
+<!--.slide {-->
+<!--    flex: 0 0 100%;-->
+<!--    width: 100%;-->
+<!--}-->
+
+<!--.slide img {-->
+<!--    width: 100%;-->
+<!--    height: 600px; /* Set a fixed height */-->
+<!--    object-fit: cover; /* This ensures the image covers the area without distortion */-->
+<!--}-->
+
+<!--.slider-nav {-->
+<!--    position: absolute;-->
+<!--    bottom: 20px;-->
+<!--    left: 50%;-->
+<!--    transform: translateX(-50%);-->
+<!--    display: flex;-->
+<!--    gap: 8px;-->
+<!--}-->
+
+<!--.dots {-->
+<!--    display: flex;-->
+<!--    gap: 8px;-->
+<!--}-->
+
+<!--.dot {-->
+<!--    width: 12px;-->
+<!--    height: 4px;-->
+<!--    background: rgba(0, 0, 0, 0.13);-->
+<!--    border-radius: 2px;-->
+<!--    cursor: pointer;-->
+<!--    transition: all 0.3s ease;-->
+<!--}-->
+
+<!--.dot.active {-->
+<!--    background: #000;-->
+<!--    width: 48px;-->
+<!--}-->
+<!--    </style>-->
+<!--    <script>-->
+<!--        document.addEventListener('DOMContentLoaded', () => {-->
+<!--    const slideTrack = document.querySelector('.slide-track');-->
+<!--    const slides = document.querySelectorAll('.slide');-->
+<!--    const dotsContainer = document.querySelector('.dots');-->
+<!--    -->
+<!--    let currentSlide = 0;-->
+<!--    const totalSlides = slides.length;-->
+<!--    -->
+<!--    // Create dots-->
+<!--    slides.forEach((_, index) => {-->
+<!--        const dot = document.createElement('div');-->
+<!--        dot.classList.add('dot');-->
+<!--        if (index === 0) dot.classList.add('active');-->
+<!--        dotsContainer.appendChild(dot);-->
+<!--    });-->
+
+<!--    const dots = document.querySelectorAll('.dot');-->
+
+<!--    // Update dots-->
+<!--    function updateDots() {-->
+<!--        dots.forEach((dot, index) => {-->
+<!--            dot.classList.toggle('active', index === currentSlide);-->
+<!--        });-->
+<!--    }-->
+
+<!--    // Move to specific slide-->
+<!--    function goToSlide(index) {-->
+<!--        currentSlide = index;-->
+<!--        slideTrack.style.transform = `translateX(-${currentSlide * 100}%)`;-->
+<!--        updateDots();-->
+<!--    }-->
+
+<!--    // Auto slide function-->
+<!--    function autoSlide() {-->
+<!--        currentSlide = (currentSlide + 1) % totalSlides;-->
+<!--        goToSlide(currentSlide);-->
+<!--    }-->
+
+<!--    // Set auto slide interval-->
+<!--    let slideInterval = setInterval(autoSlide, 3000); // Changes slide every 3 seconds-->
+
+<!--    // Pause on hover-->
+<!--    slideTrack.addEventListener('mouseenter', () => {-->
+<!--        clearInterval(slideInterval);-->
+<!--    });-->
+
+<!--    // Resume on mouse leave-->
+<!--    slideTrack.addEventListener('mouseleave', () => {-->
+<!--        slideInterval = setInterval(autoSlide, 3000);-->
+<!--    });-->
+
+<!--    // Click on dots to navigate-->
+<!--    dots.forEach((dot, index) => {-->
+<!--        dot.addEventListener('click', () => {-->
+<!--            goToSlide(index);-->
+<!--            clearInterval(slideInterval);-->
+<!--            slideInterval = setInterval(autoSlide, 3000);-->
+<!--        });-->
+<!--    });-->
+
+<!--    // Touch support for mobile devices-->
+<!--    let touchStartX = 0;-->
+<!--    let touchEndX = 0;-->
+
+<!--    slideTrack.addEventListener('touchstart', (e) => {-->
+<!--        touchStartX = e.touches[0].clientX;-->
+<!--        clearInterval(slideInterval);-->
+<!--    });-->
+
+<!--    slideTrack.addEventListener('touchend', (e) => {-->
+<!--        touchEndX = e.changedTouches[0].clientX;-->
+<!--        -->
+<!--        if (touchStartX - touchEndX > 50) {-->
+<!--            currentSlide = (currentSlide + 1) % totalSlides;-->
+<!--        } else if (touchEndX - touchStartX > 50) {-->
+<!--            currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;-->
+<!--        }-->
+<!--        -->
+<!--        goToSlide(currentSlide);-->
+<!--        slideInterval = setInterval(autoSlide, 3000);-->
+<!--    });-->
+<!--});-->
+<!--    </script>-->
+<!--{% endif %}-->

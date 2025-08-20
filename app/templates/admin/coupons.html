@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Coupons - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-ticket-alt text-primary"></i> Coupon Management
+                </h1>
+                <div>
+                    <a href="{{ url_for('admin.add_coupon') }}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Add New Coupon
+                    </a>
+                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> All Coupons</h5>
+                </div>
+                <div class="card-body">
+                    {% if coupons %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Description</th>
+                                    <th>Type</th>
+                                    <th>Value</th>
+                                    <th>Min Order</th>
+                                    <th>Usage</th>
+                                    <th>Status</th>
+                                    <th>Valid Until</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for coupon in coupons %}
+                                <tr>
+                                    <td><strong>{{ coupon.code }}</strong></td>
+                                    <td>{{ coupon.description or 'No description' }}</td>
+                                    <td>{{ coupon.discount_type.title() }}</td>
+                                    <td>
+                                        {% if coupon.discount_type == 'percentage' %}
+                                            {{ coupon.discount_value }}%
+                                        {% else %}
+                                            ₹{{ coupon.discount_value }}
+                                        {% endif %}
+                                    </td>
+                                    <td>₹{{ coupon.min_order_amount }}</td>
+                                    <td>{{ coupon.used_count }}/{{ coupon.usage_limit or '∞' }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if coupon.is_active else 'danger' }}">
+                                            {{ 'Active' if coupon.is_active else 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ coupon.valid_until.strftime('%d %b %Y') }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <!-- Edit Button -->
+                                            <a href="{{ url_for('admin.edit_coupon', coupon_id=coupon.id) }}"
+                                               class="btn btn-sm btn-warning"
+                                               title="Edit Coupon">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+
+                                            <!-- Toggle Active/Inactive -->
+                                            <form method="POST" action="{{ url_for('admin.toggle_coupon', coupon_id=coupon.id) }}"
+                                                  style="display: inline;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-{{ 'secondary' if coupon.is_active else 'success' }}"
+                                                        title="{{ 'Deactivate' if coupon.is_active else 'Activate' }} Coupon">
+                                                    <i class="fas fa-{{ 'pause' if coupon.is_active else 'play' }}"></i>
+                                                </button>
+                                            </form>
+
+                                            <!-- Delete Button with Confirmation -->
+                                            <button type="button"
+                                                    class="btn btn-sm btn-danger"
+                                                    onclick="confirmDelete('{{ coupon.id }}', '{{ coupon.code }}')"
+                                                    title="Delete Coupon">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-ticket-alt fa-3x mb-3"></i>
+                        <p>No coupons found</p>
+                        <a href="{{ url_for('admin.add_coupon') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add First Coupon
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.table-hover tbody tr:hover {
+    background-color: rgba(0,0,0,.075);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(couponId, couponCode) {
+    if (confirm("Are you sure you want to delete coupon " + couponCode + "?")) {
+        // Create a hidden form and submit it as POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/delete_coupon/' + couponId;
+
+        // Add CSRF token
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrf_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+
+        // Add to document and submit
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Orders - Admin{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-5">
+                    <i class="fas fa-clock text-warning"></i> Pending Orders
+                </h1>
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-tachometer-alt"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    {% if orders %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Items</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td>#{{ order.id }}</td>
+                                    <td>{{ order.user.username }}</td>
+                                    <td>{{ order.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
+                                    <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+                                    <td>{{ order.order_items|length }} items</td>
+                                    <td>
+                                        <a href="{{ url_for('admin.order_details', order_id=order.id) }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <button class="btn btn-sm btn-success update-status" 
+                                                data-order-id="{{ order.id }}" 
+                                                data-status="processing">
+                                            <i class="fas fa-check"></i> Process
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No pending orders found.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update order status buttons
+        const updateButtons = document.querySelectorAll('.update-status');
+        updateButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const orderId = this.dataset.orderId;
+                const status = this.dataset.status;
+                
+                // Send AJAX request to update status
+                fetch(`/admin/update_order_status/${orderId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({ status: status })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        // Remove the row from the table
+                        this.closest('tr').remove();
+                        
+                        // Show success message
+                        alert('Order status updated successfully!');
+                        
+                        // If no more orders, show the "no orders" message
+                        if(document.querySelectorAll('tbody tr').length === 0) {
+                            document.querySelector('.table-responsive').innerHTML = `
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> No pending orders found.
+                                </div>
+                            `;
+                        }
+                    } else {
+                        alert('Error updating order status: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while updating the order status.');
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

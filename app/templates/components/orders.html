@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Your Orders - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 text-center mb-4">
+                <i class="fas fa-list-alt"></i> Your Orders
+            </h1>
+            
+            {% if orders.items %}
+            <div class="row">
+                {% for order in orders.items %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Order #{{ order.id }}</h5>
+                            <span class="badge badge-status-{{ order.status }} badge-lg">
+                                {{ order.status.title() }}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <small class="text-muted">Order Date</small>
+                                    <div>{{ order.order_date.strftime('%d %b %Y, %I:%M %p') }}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Total Amount</small>
+                                    <div class="h5 text-success mb-0">₹{{ "%.2f"|format(order.total_amount) }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">Items ({{ order.order_items|length }})</small>
+                                <div>
+                                    {% for item in order.order_items[:3] %}
+                                    <span class="badge bg-light text-dark me-1">{{ item.food_item.name }} ({{ item.quantity }})</span>
+                                    {% endfor %}
+                                    {% if order.order_items|length > 3 %}
+                                    <span class="text-muted">+{{ order.order_items|length - 3 }} more</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if order.estimated_delivery and order.status in ['pending', 'confirmed', 'preparing'] %}
+                            <div class="mb-3">
+                                <small class="text-muted">Estimated Delivery</small>
+                                <div>{{ order.estimated_delivery.strftime('%d %b %Y, %I:%M %p') }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('user.order_details', order_id=order.id) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye"></i> View Details
+                                </a>
+                                {% if order.status in ['pending', 'confirmed', 'preparing'] %}
+                                <a href="{{ url_for('user.track_order', order_id=order.id) }}" class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-map-marker-alt"></i> Track Order
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if orders.pages > 1 %}
+            <nav aria-label="Orders pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if orders.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('user.orders', page=orders.prev_num) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in orders.iter_pages() %}
+                    {% if page_num %}
+                    {% if page_num != orders.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('user.orders', page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                    {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    {% if orders.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('user.orders', page=orders.next_num) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            
+            {% else %}
+            <!-- No Orders -->
+            <div class="text-center">
+                <i class="fas fa-clipboard-list text-muted" style="font-size: 4rem;"></i>
+                <h3 class="mt-3">No orders yet</h3>
+                <p class="text-muted">Start by ordering some delicious food!</p>
+                <a href="{{ url_for('user.menu') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-utensils"></i> Browse Menu
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.badge-status-pending { background-color: #ffc107; }
+.badge-status-confirmed { background-color: #17a2b8; }
+.badge-status-preparing { background-color: #fd7e14; }
+.badge-status-delivered { background-color: #28a745; }
+.badge-status-cancelled { background-color: #dc3545; }
+.badge-lg { font-size: 0.875rem; padding: 0.5rem 0.75rem; }
+</style>
+{% endblock %}

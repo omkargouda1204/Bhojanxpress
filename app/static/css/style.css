@@ -1,0 +1,736 @@
+/* BhojanXpress Custom Styles */
+
+/* Root Variables */
+:root {
+    --primary-color: #fd7e14;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #0dcaf0;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+    --font-family: 'Inter', sans-serif;
+}
+
+/* Base Styles */
+body {
+    font-family: var(--font-family);
+    line-height: 1.6;
+    color: var(--dark-color);
+}
+
+/* Navigation Styles */
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.nav-link {
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: var(--warning-color) !important;
+}
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(135deg, var(--primary-color), #e8540d);
+    min-height: 500px;
+}
+
+.hero-section h1 {
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Cards */
+.card {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+.card-img-top {
+    height: 200px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.card:hover .card-img-top {
+    transform: scale(1.05);
+}
+
+/* Buttons */
+.btn {
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #e8540d;
+    border-color: #e8540d;
+    transform: translateY(-1px);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Food Item Cards */
+.food-item-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.food-item-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+}
+
+.price-tag {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* Cart Styles */
+.cart-item {
+    border-bottom: 1px solid #eee;
+    padding: 15px 0;
+}
+
+.cart-item:last-child {
+    border-bottom: none;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quantity-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.quantity-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Order Status */
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-confirmed {
+    background-color: #cff4fc;
+    color: #055160;
+}
+
+.status-preparing {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.status-out-for-delivery {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-delivered {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-cancelled {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* Forms */
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(253, 126, 20, 0.25);
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+footer a {
+    transition: color 0.3s ease;
+}
+
+footer a:hover {
+    color: var(--primary-color) !important;
+}
+
+/* Admin Styles */
+.admin-sidebar {
+    min-height: calc(100vh - 56px);
+    background-color: #f8f9fa;
+}
+
+.admin-nav-link {
+    color: var(--dark-color);
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+}
+
+.admin-nav-link:hover,
+.admin-nav-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    text-decoration: none;
+}
+
+.stats-card {
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Search and Filter */
+.search-filters {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+/* Loading Animation */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Category Icons Enhanced Styling */
+.round-categories-section {
+    background: #ffffff;
+    padding: 30px 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-top: -30px;
+    position: relative;
+    z-index: 10;
+    border-radius: 15px;
+}
+
+.category-scroll-container {
+    overflow-x: auto;
+    padding: 20px 0;
+}
+
+.category-items-wrapper {
+    min-width: max-content;
+}
+
+.category-item {
+    min-width: 120px;
+}
+
+.category-card {
+    width: 100px;
+    height: 100px;
+    border-radius: 50% !important;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e8540d 100%);
+    transition: all 0.3s ease;
+    margin: 0 auto;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    border: 3px solid #ffffff !important;
+}
+
+.category-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.category-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.category-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.category-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+    color: white;
+    font-size: 24px;
+}
+
+.category-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    padding: 8px 4px;
+    text-align: center;
+}
+
+.category-name {
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: bold;
+    margin: 0;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+
+/* Why Choose BhojanXpress Section */
+.why-choose-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 60px 0;
+}
+
+.feature-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 30px 20px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.feature-icon {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: #ffd700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.feature-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: white;
+}
+
+.feature-description {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-section {
+        text-align: center;
+        padding: 3rem 0;
+    }
+    
+    .hero-section h1 {
+        font-size: 2rem;
+    }
+    
+    .card-img-top {
+        height: 150px;
+    }
+    
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-section h1 {
+        font-size: 1.75rem;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+}
+
+/* Utility Classes */
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.border-primary {
+    border-color: var(--primary-color) !important;
+}
+
+.shadow-sm {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.rounded-lg {
+    border-radius: 12px !important;
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.scale-on-hover {
+    transition: transform 0.3s ease;
+}
+
+.scale-on-hover:hover {
+    transform: scale(1.05);
+}
+
+
+/* BhojanXpress Custom Styles */
+
+/* Root Variables */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+}
+
+/* Global Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Food Item Cards */
+.food-item-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.food-item-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.food-image {
+    height: 200px;
+    object-fit: cover;
+}
+
+.food-image-placeholder {
+    height: 200px;
+    background-color: #f8f9fa;
+}
+
+/* Cart Styles */
+.cart-item-image {
+    height: 80px;
+    width: 80px;
+    object-fit: cover;
+}
+
+.cart-item-placeholder {
+    height: 80px;
+    width: 80px;
+    background-color: #f8f9fa;
+}
+
+/* Quantity Controls */
+.quantity-btn {
+    width: 40px;
+}
+
+.quantity-input {
+    max-width: 80px;
+}
+
+/* Order Status Badges */
+.badge-status-pending {
+    background-color: var(--warning-color);
+    color: #000;
+}
+
+.badge-status-confirmed {
+    background-color: var(--info-color);
+}
+
+.badge-status-preparing {
+    background-color: #fd7e14;
+}
+
+.badge-status-delivered {
+    background-color: var(--success-color);
+}
+
+.badge-status-cancelled {
+    background-color: var(--danger-color);
+}
+
+.badge-lg {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(135deg, var(--primary-color), #0056b3);
+    min-height: 400px;
+}
+
+/* Feature Items */
+.feature-item {
+    padding: 2rem 1rem;
+    transition: transform 0.2s ease-in-out;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+}
+
+/* Admin Dashboard */
+.border-left-primary {
+    border-left: 0.25rem solid var(--primary-color) !important;
+}
+
+.border-left-success {
+    border-left: 0.25rem solid var(--success-color) !important;
+}
+
+.border-left-info {
+    border-left: 0.25rem solid var(--info-color) !important;
+}
+
+.border-left-warning {
+    border-left: 0.25rem solid var(--warning-color) !important;
+}
+
+.text-gray-800 {
+    color: #5a5c69 !important;
+}
+
+.text-gray-300 {
+    color: #dddfeb !important;
+}
+
+/* Admin Badges */
+.badge-pending {
+    background-color: var(--warning-color);
+    color: #000;
+}
+
+.badge-confirmed {
+    background-color: var(--info-color);
+}
+
+.badge-preparing {
+    background-color: #fd7e14;
+}
+
+.badge-delivered {
+    background-color: var(--success-color);
+}
+
+.badge-cancelled {
+    background-color: var(--danger-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-section {
+        min-height: 300px;
+        text-align: center;
+    }
+
+    .hero-section .display-4 {
+        font-size: 2rem;
+    }
+
+    .food-item-card {
+        margin-bottom: 1rem;
+    }
+
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+
+/* Custom Utility Classes */
+.btn-block {
+    width: 100%;
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.shadow {
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+}
+
+/* Loading Spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Print Styles */
+@media print {
+    .navbar,
+    .footer,
+    .btn,
+    .pagination {
+        display: none !important;
+    }
+
+    .container {
+        max-width: none !important;
+    }
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.slide-in {
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Focus States for Accessibility */
+.btn:focus,
+.form-control:focus,
+.form-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .card {
+        border: 2px solid #000;
+    }
+
+    .btn {
+        border: 2px solid;
+    }
+}

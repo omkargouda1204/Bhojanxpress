@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Menu - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 text-center mb-4">Our Menu</h1>
+            
+            <!-- Category Filter -->
+            <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
+                {% for category in categories %}
+                <a href="{{ url_for('user.menu', category=category) }}" 
+                   class="btn {% if current_category == category %}btn-primary{% else %}btn-outline-primary{% endif %} category-btn">
+                    {{ category.replace('_', ' ').title() }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Food Items -->
+    {% if food_items.items %}
+    <div class="row g-4">
+        {% for item in food_items.items %}
+        <div class="col-md-6 col-lg-4 col-xl-3">
+            <div class="card h-100 shadow-sm food-item-card rounded-3 border-0 transition-all">
+                <!-- Make the image clickable -->
+                <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="position-relative">
+                    {% if item.image_url %}
+                    <img src="{{ item.image_url }}" class="card-img-top food-image rounded-top-3" alt="{{ item.name }}" loading="lazy" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center food-image-placeholder rounded-top-3" style="height: 200px;">
+                        <i class="fas fa-utensils text-muted fa-2x"></i>
+                    </div>
+                    {% endif %}
+
+                    <!-- Status badge -->
+                    <span class="position-absolute top-0 end-0 m-2 badge {% if item.is_available %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                        {% if item.is_available %}Available{% else %}Sold Out{% endif %}
+                    </span>
+                </a>
+
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <!-- Make the title clickable -->
+                        <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="text-decoration-none text-dark">
+                            <h5 class="card-title mb-0 text-truncate">{{ item.name }}</h5>
+                        </a>
+                        <span class="badge bg-info"><i class="far fa-clock me-1"></i>{{ item.preparation_time }}min</span>
+                    </div>
+
+                    <p class="card-text text-muted small">{{ item.description[:80] }}{% if item.description|length > 80 %}...{% endif %}</p>
+
+                    <!-- Show ratings if available -->
+                    {% if item.ratings %}
+                    {% set avg_rating = (item.ratings|map(attribute='rating')|sum / item.ratings|length)|round(1) %}
+                    <div class="ratings mb-2">
+                        {% for i in range(5) %}
+                            {% if i < avg_rating|int %}
+                                <i class="fas fa-star text-warning"></i>
+                            {% elif (i < avg_rating|round(0, 'ceil')) and ((avg_rating - i) >= 0.5) %}
+                                <i class="fas fa-star-half-alt text-warning"></i>
+                            {% else %}
+                                <i class="far fa-star text-warning"></i>
+                            {% endif %}
+                        {% endfor %}
+                        <span class="text-muted small ms-1">({{ item.ratings|length }})</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="h5 text-success mb-0 fw-bold">₹{{ "%.2f"|format(item.price) }}</span>
+                            <span class="badge bg-secondary">{{ item.category.replace('_', ' ').title() if item.category else 'General' }}</span>
+                        </div>
+
+                        {% if current_user.is_authenticated %}
+                        <!-- Direct Add to Cart Button - Always enabled -->
+                        <button onclick="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price }})"
+                                class="btn {% if item.is_available %}btn-warning{% else %}btn-outline-secondary{% endif %} w-100">
+                            <i class="fas fa-shopping-cart"></i>
+                            {% if item.is_available %}Add to Cart{% else %}Add to Cart (Unavailable){% endif %}
+                        </button>
+                        {% else %}
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-sign-in-alt"></i> Login to Order
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if food_items.pages > 1 %}
+    <nav aria-label="Menu pagination" class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if food_items.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('user.menu', page=food_items.prev_num, category=current_category) }}">Previous</a>
+            </li>
+            {% endif %}
+
+            {% for page_num in food_items.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num != food_items.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('user.menu', page=page_num, category=current_category) }}">{{ page_num }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                    {% endif %}
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if food_items.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('user.menu', page=food_items.next_num, category=current_category) }}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            No food items available in this category.
+        </div>
+        <a href="{{ url_for('user.menu') }}" class="btn btn-primary">View All Items</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/menu.js') }}"></script>
+{% endblock %}

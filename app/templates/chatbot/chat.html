@@ -1,0 +1,659 @@
+{% extends "base.html" %}
+
+{% block title %}BhojanXpress - Chat Support{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --bot-bg: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --user-bg: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --shadow: 0 8px 25px rgba(0,0,0,0.1);
+        --border-radius: 20px;
+    }
+
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .chat-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+        animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .chat-header {
+        background: var(--primary-gradient);
+        color: white;
+        padding: 1.5rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .chat-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+        animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+        0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+        100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    }
+
+    .chat-header h2 {
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+
+    .chat-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+        position: relative;
+        z-index: 2;
+    }
+
+    .online-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background: #4CAF50;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+    }
+
+    .chat-messages {
+        height: 500px;
+        overflow-y: auto;
+        padding: 1rem;
+        background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+        scrollbar-width: thin;
+        scrollbar-color: #ccc transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 10px;
+    }
+
+    .message {
+        margin-bottom: 1rem;
+        animation: messageSlideIn 0.4s ease-out;
+        opacity: 0;
+        animation-fill-mode: forwards;
+    }
+
+    @keyframes messageSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .message.user {
+        text-align: right;
+    }
+
+    .message.bot {
+        text-align: left;
+    }
+
+    .message-bubble {
+        display: inline-block;
+        max-width: 70%;
+        padding: 12px 18px;
+        border-radius: 20px;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        position: relative;
+        word-wrap: break-word;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
+    }
+
+    .message-bubble:hover {
+        transform: scale(1.02);
+    }
+
+    .message.user .message-bubble {
+        background: var(--user-bg);
+        color: white;
+        border-bottom-right-radius: 5px;
+    }
+
+    .message.bot .message-bubble {
+        background: var(--bot-bg);
+        color: white;
+        border-bottom-left-radius: 5px;
+    }
+
+    .message-info {
+        font-size: 0.75rem;
+        color: #666;
+        margin-top: 4px;
+        opacity: 0.7;
+    }
+
+    .chat-input-container {
+        padding: 1rem;
+        background: white;
+        border-top: 1px solid #eee;
+        position: relative;
+    }
+
+    .input-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .chat-input {
+        flex: 1;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        padding: 12px 20px;
+        font-size: 1rem;
+        outline: none;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+    }
+
+    .chat-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
+    }
+
+    .send-btn {
+        background: var(--primary-gradient);
+        border: none;
+        color: white;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .send-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .send-btn:active {
+        transform: scale(0.95);
+    }
+
+    .typing-indicator {
+        display: none;
+        padding: 10px 20px;
+        margin-bottom: 1rem;
+        animation: messageSlideIn 0.4s ease-out;
+    }
+
+    .typing-indicator.show {
+        display: block;
+    }
+
+    .typing-dots {
+        display: inline-block;
+        background: var(--bot-bg);
+        padding: 12px 18px;
+        border-radius: 20px;
+        border-bottom-left-radius: 5px;
+    }
+
+    .typing-dots span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: white;
+        margin: 0 2px;
+        animation: typing 1.4s infinite;
+    }
+
+    .typing-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes typing {
+        0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.5;
+        }
+        30% {
+            transform: translateY(-10px);
+            opacity: 1;
+        }
+    }
+
+    .quick-actions {
+        padding: 0 1rem 1rem;
+        background: white;
+    }
+
+    .quick-actions h6 {
+        color: #666;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+        text-align: center;
+    }
+
+    .quick-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .quick-btn {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .quick-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .welcome-message {
+        text-align: center;
+        color: #666;
+        font-style: italic;
+        margin: 2rem 0;
+        animation: fadeIn 1s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .emoji-float {
+        position: absolute;
+        font-size: 1.5rem;
+        pointer-events: none;
+        animation: floatUp 2s ease-out forwards;
+    }
+
+    @keyframes floatUp {
+        from {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-50px) scale(1.5);
+        }
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+        .chat-container {
+            margin: 1rem;
+            height: calc(100vh - 2rem);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            height: auto;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+        }
+
+        .quick-buttons {
+            flex-direction: column;
+        }
+
+        .quick-btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>
+            <span class="online-indicator"></span>
+            🤖 BhojanXpress Assistant
+        </h2>
+        <p>Your friendly food delivery helper is online!</p>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <div class="welcome-message">
+            <h5>👋 Welcome to BhojanXpress Support!</h5>
+            <p>I'm here to help you with orders, menu, delivery, and more. Try asking me something!</p>
+        </div>
+
+        <!-- Initial bot message -->
+        <div class="message bot">
+            <div class="message-bubble">
+                🍽️ Hello! Welcome to BhojanXpress! I'm your food assistant. How can I make your day delicious? 😊
+            </div>
+            <div class="message-info">
+                Bot • <span id="initialTime"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="typing-indicator" id="typingIndicator">
+        <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <div class="quick-actions">
+        <h6>💡 Quick Actions</h6>
+        <div class="quick-buttons">
+            <button class="quick-btn" onclick="sendQuickMessage('menu')">🍴 View Menu</button>
+            <button class="quick-btn" onclick="sendQuickMessage('order status')">📦 Track Order</button>
+            <button class="quick-btn" onclick="sendQuickMessage('delivery time')">⚡ Delivery Time</button>
+            <button class="quick-btn" onclick="sendQuickMessage('offers')">🎉 Current Offers</button>
+            <button class="quick-btn" onclick="sendQuickMessage('payment')">💳 Payment Help</button>
+            <button class="quick-btn" onclick="sendQuickMessage('contact')">📞 Contact Support</button>
+        </div>
+    </div>
+
+    <div class="chat-input-container">
+        <div class="input-group">
+            <input type="text" class="chat-input" id="messageInput" placeholder="Type your message here..." maxlength="500">
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const typingIndicator = document.getElementById('typingIndicator');
+
+    // Set initial time
+    document.getElementById('initialTime').textContent = getCurrentTime();
+
+    // Enter key to send message
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Auto-resize input and focus
+    messageInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+
+    // Focus input on load
+    messageInput.focus();
+});
+
+function getCurrentTime() {
+    return new Date().toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addMessage(message, isUser = false) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+
+    const currentTime = getCurrentTime();
+
+    messageDiv.innerHTML = `
+        <div class="message-bubble">
+            ${formatMessage(message)}
+        </div>
+        <div class="message-info">
+            ${isUser ? 'You' : 'Bot'} • ${currentTime}
+        </div>
+    `;
+
+    chatMessages.appendChild(messageDiv);
+
+    // Trigger animation
+    setTimeout(() => {
+        messageDiv.style.animationDelay = '0s';
+    }, 50);
+
+    scrollToBottom();
+
+    // Add floating emoji effect for bot messages
+    if (!isUser && Math.random() > 0.7) {
+        addFloatingEmoji();
+    }
+}
+
+function formatMessage(message) {
+    // Convert **text** to bold
+    message = message.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Convert line breaks to HTML
+    message = message.replace(/\n/g, '<br>');
+
+    // Make emojis slightly larger
+    message = message.replace(/([\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}])/gu,
+        '<span style="font-size: 1.2em;">$1</span>');
+
+    return message;
+}
+
+function addFloatingEmoji() {
+    const emojis = ['🍕', '🍔', '🍜', '🍲', '🥘', '🍱', '🍛', '🍝', '🌮', '🥙'];
+    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+    const emojiElement = document.createElement('div');
+    emojiElement.className = 'emoji-float';
+    emojiElement.textContent = emoji;
+    emojiElement.style.left = Math.random() * 80 + 10 + '%';
+    emojiElement.style.bottom = '100px';
+
+    document.querySelector('.chat-container').appendChild(emojiElement);
+
+    setTimeout(() => {
+        emojiElement.remove();
+    }, 2000);
+}
+
+function showTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    typingIndicator.classList.add('show');
+    scrollToBottom();
+}
+
+function hideTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    typingIndicator.classList.remove('show');
+}
+
+function sendMessage() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+
+    if (!message) return;
+
+    // Add user message
+    addMessage(message, true);
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+
+    // Show typing indicator
+    showTypingIndicator();
+
+    // Simulate bot typing delay
+    const typingDelay = Math.random() * 1000 + 500; // 500-1500ms
+
+    setTimeout(() => {
+        // Send to backend
+        fetch('/chatbot/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: message
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideTypingIndicator();
+            addMessage(data.response, false);
+
+            // Add success vibration on mobile
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        })
+        .catch(error => {
+            hideTypingIndicator();
+            addMessage('🔧 Sorry, I\'m having some technical difficulties. Please try again!', false);
+            console.error('Error:', error);
+        });
+    }, typingDelay);
+
+    // Re-focus input
+    messageInput.focus();
+}
+
+function sendQuickMessage(message) {
+    const messageInput = document.getElementById('messageInput');
+    messageInput.value = message;
+    sendMessage();
+
+    // Add button click effect
+    event.target.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+        event.target.style.transform = 'scale(1)';
+    }, 150);
+}
+
+// Add some fun interactions
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('message-bubble')) {
+        // Double-click to copy message
+        if (e.detail === 2) {
+            navigator.clipboard.writeText(e.target.textContent);
+
+            // Show brief feedback
+            const original = e.target.style.background;
+            e.target.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+            setTimeout(() => {
+                e.target.style.background = original;
+            }, 300);
+        }
+    }
+});
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === '/') {
+        e.preventDefault();
+        document.getElementById('messageInput').focus();
+    }
+});
+
+// Fun Easter egg - Konami code
+let konamiCode = [];
+const konami = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]; // ↑↑↓↓←→←→BA
+
+document.addEventListener('keydown', function(e) {
+    konamiCode.push(e.keyCode);
+    if (konamiCode.length > konami.length) {
+        konamiCode.shift();
+    }
+
+    if (konamiCode.length === konami.length &&
+        konamiCode.every((code, index) => code === konami[index])) {
+        addMessage('🎉 Konami Code activated! You found our secret! Enjoy 10% off your next order with code: SECRET10', false);
+        konamiCode = [];
+    }
+});
+</script>
+{% endblock %}

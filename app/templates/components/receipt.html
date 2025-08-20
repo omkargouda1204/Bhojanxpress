@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Invoice #{{ order.id }} - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-12">
+            <div class="card shadow border-0 receipt-card">
+                <div class="card-header bg-primary text-white p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BhojanXpress" height="60" class="bg-white rounded p-1">
+                            <h2 class="mt-2 mb-0 fw-bold">RECEIPT</h2>
+                        </div>
+                        <div class="text-end">
+                            <h5 class="mb-1 fw-bold">ORDER #{{ order.id }}</h5>
+                            <div class="receipt-date">{{ order.created_at.strftime('%d %b, %Y %H:%M') }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- Status Banner -->
+                    <div class="status-banner mb-4 text-center p-2 rounded-pill
+                        {% if order.status == 'delivered' %}bg-success{%
+                        elif order.status == 'cancelled' %}bg-danger{%
+                        elif order.status == 'preparing' %}bg-warning{%
+                        else %}bg-info{% endif %} text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-{% if order.status == 'delivered' %}check-circle{%
+                            elif order.status == 'cancelled' %}times-circle{%
+                            elif order.status == 'preparing' %}utensils{%
+                            else %}clock{% endif %} me-2"></i>
+                            {{ order.status|upper }}
+                        </h5>
+                    </div>
+
+                    <!-- Customer Details -->
+                    <div class="row mb-4 customer-details">
+                        <div class="col-md-6">
+                            <div class="detail-box p-3 rounded">
+                                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-user me-2"></i>CUSTOMER DETAILS</h6>
+                                <p class="mb-1 fw-bold">{{ order.customer_name }}</p>
+                                <p class="mb-1"><i class="fas fa-phone me-1 text-muted"></i> {{ order.phone_number }}</p>
+                                <p class="mb-0"><i class="fas fa-map-marker-alt me-1 text-muted"></i> {{ order.delivery_address }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-box p-3 rounded">
+                                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-info-circle me-2"></i>ORDER INFO</h6>
+                                <p class="mb-1"><span class="fw-bold">Payment Method:</span> {{ order.payment_method|replace('_', ' ')|title }}</p>
+                                <p class="mb-1"><span class="fw-bold">Total Items:</span> {{ order.order_items|length }}</p>
+                                <p class="mb-0"><span class="fw-bold">Delivery Date:</span> {% if order.estimated_delivery %}{{ order.estimated_delivery.strftime('%d %b, %Y %H:%M') }}{% else %}--{% endif %}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Items -->
+                    <div class="table-responsive mb-4 order-items-container">
+                        <table class="table table-hover align-middle receipt-table">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Item</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Price</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if order.order_items and order.order_items|length > 0 %}
+                                    {% for item in order.order_items %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td class="fw-bold">{{ item.food_item.name if item.food_item else 'Item Deleted' }}</td>
+                                        <td class="text-center">{{ item.quantity }}</td>
+                                        <td class="text-end">₹{{ '%.2f'|format(item.price) }}</td>
+                                        <td class="text-end">₹{{ '%.2f'|format(item.price * item.quantity) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No items found for this order.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="row summary-section">
+                        <div class="col-md-6">
+                            {% if order.special_instructions %}
+                            <div class="special-instructions p-3 rounded mb-3">
+                                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-comment-alt me-2"></i>SPECIAL INSTRUCTIONS</h6>
+                                <p class="mb-0 fst-italic">{{ order.special_instructions }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if order.coupon_discount > 0 %}
+                            <div class="coupon-info p-3 rounded">
+                                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-tag me-2"></i>APPLIED COUPON</h6>
+                                <div class="coupon-badge">
+                                    <span>{{ order.applied_coupon_code }}</span>
+                                    <span class="discount-amount">-₹{{ '%.2f'|format(order.coupon_discount) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <div class="total-summary p-3 rounded">
+                                <table class="table table-borderless mb-0">
+                                    <tr>
+                                        <td>Subtotal:</td>
+                                        <td class="text-end">₹{{ '%.2f'|format(order.subtotal) }}</td>
+                                    </tr>
+                                    {% if order.discount_amount > 0 or order.coupon_discount > 0 %}
+                                    <tr class="text-success">
+                                        <td>Discount:</td>
+                                        <td class="text-end">-₹{{ '%.2f'|format(order.discount_amount + order.coupon_discount) }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <td>GST (5%):</td>
+                                        <td class="text-end">₹{{ '%.2f'|format(order.gst_amount) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Delivery:</td>
+                                        <td class="text-end">₹{{ '%.2f'|format(order.delivery_charge) }}</td>
+                                    </tr>
+                                    <tr class="fw-bold total-row">
+                                        <td>TOTAL:</td>
+                                        <td class="text-end">₹{{ '%.2f'|format(order.total_amount) }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="card-footer p-4 text-center">
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="window.print()">
+                            <i class="fas fa-print me-2"></i> Print Receipt
+                        </button>
+                        <a href="{{ url_for('user.my_orders') }}" class="btn btn-outline-secondary ms-2">
+                            <i class="fas fa-arrow-left me-2"></i> Back to Orders
+                        </a>
+                    </div>
+                    <div class="mt-3 thank-you">
+                        <p class="mb-1 fw-bold">Thank you for ordering with BhojanXpress!</p>
+                        <p class="mb-0 small text-muted">For any assistance, please contact our customer support.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .receipt-card {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+    }
+
+    .receipt-table th, .receipt-table td {
+        padding: 12px 15px;
+    }
+
+    .receipt-table tbody tr:hover {
+        background-color: rgba(0,123,255,0.05);
+    }
+
+    .detail-box, .special-instructions, .coupon-info, .total-summary {
+        background-color: #f8f9fa;
+        border-left: 4px solid #007bff;
+    }
+
+    .status-banner {
+        font-weight: bold;
+        letter-spacing: 1px;
+    }
+
+    .receipt-date {
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .total-row {
+        border-top: 2px solid #dee2e6;
+        color: #007bff;
+        font-size: 1.1rem;
+    }
+
+    .order-items-container {
+        max-height: 350px;
+        overflow-y: auto;
+    }
+
+    .coupon-badge {
+        display: inline-block;
+        background: #e9f7ef;
+        color: #28a745;
+        padding: 8px 15px;
+        border-radius: 30px;
+        font-weight: bold;
+    }
+
+    .discount-amount {
+        color: #dc3545;
+        margin-left: 10px;
+    }
+
+    .thank-you {
+        color: #007bff;
+    }
+
+    @media print {
+        .action-buttons {
+            display: none;
+        }
+
+        body {
+            background-color: white !important;
+        }
+
+        .card {
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+        }
+    }
+</style>
+{% endblock %}

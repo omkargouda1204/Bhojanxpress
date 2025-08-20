@@ -1,0 +1,20 @@
+<footer class="bg-dark text-light py-3 mt-5">
+    <div class="container-fluid">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="mb-0">
+                    <i class="fas fa-shield-alt text-primary"></i>
+                    <strong>BhojanXpress Admin Panel</strong>
+                </p>
+                <small class="text-muted">
+                    &copy; {{ moment().format('YYYY') }} BhojanXpress. Admin access only.
+                </small>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <small class="text-muted">
+                    Last login: {{ current_user.last_login.strftime('%d %b %Y, %I:%M %p') if current_user.last_login else 'First time' }}
+                </small>
+            </div>
+        </div>
+    </div>
+</footer>

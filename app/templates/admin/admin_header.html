@@ -1,0 +1,56 @@
+<!-- Admin Header with Breadcrumbs -->
+<div class="bg-light py-2 border-bottom">
+    <div class="container-fluid">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('admin.dashboard') }}">
+                        <i class="fas fa-tachometer-alt"></i> Admin
+                    </a>
+                </li>
+                
+                {% if 'dashboard' in request.endpoint %}
+                <li class="breadcrumb-item active">Dashboard</li>
+                
+                {% elif 'food' in request.endpoint %}
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('admin.food_items') }}">Food Management</a>
+                </li>
+                {% if 'add_food' in request.endpoint %}
+                <li class="breadcrumb-item active">Add Food Item</li>
+                {% elif 'edit_food' in request.endpoint %}
+                <li class="breadcrumb-item active">Edit Food Item</li>
+                {% else %}
+                <li class="breadcrumb-item active">All Food Items</li>
+                {% endif %}
+                
+                {% elif 'order' in request.endpoint %}
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('admin.orders') }}">Orders</a>
+                </li>
+                {% if 'order_details' in request.endpoint %}
+                <li class="breadcrumb-item active">Order Details</li>
+                {% else %}
+                <li class="breadcrumb-item active">Manage Orders</li>
+                {% endif %}
+                
+                {% elif 'user' in request.endpoint %}
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('admin.users') }}">Users</a>
+                </li>
+                {% if 'user_details' in request.endpoint %}
+                <li class="breadcrumb-item active">User Details</li>
+                {% else %}
+                <li class="breadcrumb-item active">All Users</li>
+                {% endif %}
+                
+                {% elif 'report' in request.endpoint %}
+                <li class="breadcrumb-item active">Reports</li>
+                
+                {% else %}
+                <li class="breadcrumb-item active">Admin Panel</li>
+                {% endif %}
+            </ol>
+        </nav>
+    </div>
+</div>

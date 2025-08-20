@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block title %}{{ food.name }} - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <!-- Breadcrumbs -->
+        <div class="col-12 mb-4">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('user.home') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('user.menu') }}">Menu</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('user.menu', category=food.category) }}">{{ food.category|capitalize }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ food.name }}</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Food Details Section -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <!-- Food Image -->
+                <div class="food-image-container">
+                    {% if food.image_url %}
+                    <img src="{{ food.image_url }}" alt="{{ food.name }}" class="card-img-top img-fluid" style="height: 350px; object-fit: cover;">
+                    {% elif food.image_data %}
+                    <img src="data:image/jpeg;base64,{{ food.image_data|b64encode }}" alt="{{ food.name }}" class="card-img-top img-fluid" style="height: 350px; object-fit: cover;">
+                    {% else %}
+                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 350px;">
+                        <i class="fas fa-utensils fa-3x text-secondary"></i>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Food Rating Stars (Below Image) -->
+                <div class="card-body text-center">
+                    <div class="rating-container mb-2">
+                        {% for i in range(5) %}
+                            {% if i < avg_rating|int %}
+                                <i class="fas fa-star text-warning"></i>
+                            {% elif (i < avg_rating|round(0, 'ceil')) and ((avg_rating - i) >= 0.5) %}
+                                <i class="fas fa-star-half-alt text-warning"></i>
+                            {% else %}
+                                <i class="far fa-star text-warning"></i>
+                            {% endif %}
+                        {% endfor %}
+                        <span class="rating-number ms-2 text-muted">
+                            {{ "%.1f"|format(avg_rating) }} ({{ ratings|length }} {% if ratings|length == 1 %}rating{% else %}ratings{% endif %})
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Food Information -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body d-flex flex-column h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h1 class="card-title display-6 fw-bold mb-0">{{ food.name }}</h1>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-utensils me-1"></i> {{ food.category|capitalize if food.category else 'General' }}
+                            </p>
+                        </div>
+                        <span class="badge {% if food.is_available %}bg-success{% else %}bg-danger{% endif %} fs-6 p-2">
+                            {% if food.is_available %}Available{% else %}Sold Out{% endif %}
+                        </span>
+                    </div>
+
+                    <h4 class="text-primary fw-bold mb-3">₹{{ "%.2f"|format(food.price) }}</h4>
+
+                    <div class="mb-4">
+                        <h5 class="fw-bold">Description</h5>
+                        <p class="card-text">{{ food.description }}</p>
+                    </div>
+
+                    {% if food.preparation_time %}
+                    <div class="mb-4">
+                        <h5 class="fw-bold">Preparation Time</h5>
+                        <p>
+                            <i class="fas fa-clock text-muted"></i>
+                            Approximately {{ food.preparation_time }} minutes
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Add to Cart Section -->
+                    <div class="mt-auto">
+                        {% if food.is_available %}
+                        <div class="d-flex align-items-center">
+                            <div class="quantity-selector me-3">
+                                <label for="quantity" class="form-label fw-bold">Quantity</label>
+                                <div class="input-group">
+                                    <button type="button" class="btn btn-outline-secondary" id="decrease-quantity">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <input type="number" class="form-control text-center" id="quantity" value="1" min="1" max="10">
+                                    <button type="button" class="btn btn-outline-secondary" id="increase-quantity">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <button id="add-to-cart-btn" class="btn btn-warning btn-lg px-4"
+                                        onclick="addToCart({{ food.id }}, '{{ food.name }}', {{ food.price }}, document.getElementById('quantity').value)">
+                                    <i class="fas fa-shopping-cart me-2"></i> Add to Cart
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <button class="btn btn-secondary btn-lg px-4" disabled>
+                            <i class="fas fa-shopping-cart me-2"></i> Currently Unavailable
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs for Reviews and Additional Info -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="foodDetailsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews" aria-selected="true">
+                        <i class="fas fa-star me-1"></i> Reviews ({{ ratings|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="nutrition-tab" data-bs-toggle="tab" data-bs-target="#nutrition" type="button" role="tab" aria-controls="nutrition" aria-selected="false">
+                        <i class="fas fa-chart-pie me-1"></i> Nutrition
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ingredients-tab" data-bs-toggle="tab" data-bs-target="#ingredients" type="button" role="tab" aria-controls="ingredients" aria-selected="false">
+                        <i class="fas fa-list me-1"></i> Ingredients
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content p-4 border border-top-0 rounded-bottom" id="foodDetailsTabsContent">
+                <!-- Reviews Tab -->
+                <div class="tab-pane fade show active" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
+                    <!-- Submit Review Form -->
+                    {% if current_user.is_authenticated %}
+                    <div class="card mb-4 border-0 bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">{% if user_rating %}Update Your Review{% else %}Write a Review{% endif %}</h5>
+                            <form method="POST" action="{{ url_for('user.food_detail', food_id=food.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="mb-3">
+                                    <label class="form-label">Your Rating</label>
+                                    <div class="rating-input">
+                                        {% for i in range(5, 0, -1) %}
+                                        <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}"
+                                               {% if user_rating and user_rating.rating == i %}checked{% endif %} required>
+                                        <label for="star{{ i }}"><i class="fas fa-star"></i></label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="comment" class="form-label">Your Review</label>
+                                    <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Share your experience with this dish...">{{ user_rating.comment if user_rating else '' }}</textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    {% if user_rating %}Update Review{% else %}Submit Review{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <a href="{{ url_for('auth.login', next=url_for('user.food_detail', food_id=food.id)) }}">Log in</a> to write a review for this item.
+                    </div>
+                    {% endif %}
+
+                    <!-- Rating Statistics -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="text-center py-4">
+                                <h1 class="display-1 fw-bold text-primary">{{ "%.1f"|format(avg_rating) }}</h1>
+                                <div class="rating-stars mb-2">
+                                    {% for i in range(5) %}
+                                        {% if i < avg_rating|int %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% elif (i < avg_rating|round(0, 'ceil')) and ((avg_rating - i) >= 0.5) %}
+                                            <i class="fas fa-star-half-alt text-warning"></i>
+                                        {% else %}
+                                            <i class="far fa-star text-warning"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <p class="text-muted">Based on {{ ratings|length }} {% if ratings|length == 1 %}review{% else %}reviews{% endif %}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="rating-distribution py-2">
+                                {% for i in range(5, 0, -1) %}
+                                {% set count = ratings|selectattr('rating', 'equalto', i)|list|length %}
+                                {% set percentage = (count / ratings|length * 100)|int if ratings|length > 0 else 0 %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="me-2" style="width: 60px;">{{ i }} stars</div>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" role="progressbar"
+                                             style="width: {{ percentage }}%;"
+                                             aria-valuenow="{{ percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <div class="ms-2" style="width: 40px;">{{ count }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Reviews List -->
+                    <div class="user-reviews">
+                        <h5 class="mb-3">Customer Reviews</h5>
+                        {% if ratings %}
+                            {% for rating in ratings %}
+                            <div class="card mb-3 border-0 bg-light">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                {% if rating.user and rating.user.username %}
+                                                    {{ rating.user.username }}
+                                                {% else %}
+                                                    User #{{ rating.user_id if rating.user_id else 'Anonymous' }}
+                                                {% endif %}
+                                            </h6>
+                                            <div class="rating-stars mb-1">
+                                                {% for i in range(5) %}
+                                                    <i class="{% if i < rating.rating %}fas{% else %}far{% endif %} fa-star text-warning"></i>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">{{ rating.created_at.strftime('%B %d, %Y') }}</small>
+                                    </div>
+                                    {% if rating.comment %}
+                                    <p class="mb-0 text-muted">{{ rating.comment }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-comments fa-3x mb-3"></i>
+                                <p>No reviews yet. Be the first to review this item!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Nutrition Tab -->
+                <div class="tab-pane fade" id="nutrition" role="tabpanel" aria-labelledby="nutrition-tab">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="mb-3">Nutritional Information</h5>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th>Calories</th>
+                                        <td>{{ food.calories if food.calories else 'Not available' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Protein</th>
+                                        <td>{{ food.protein }}g</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Carbohydrates</th>
+                                        <td>{{ food.carbs }}g</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Fat</th>
+                                        <td>{{ food.fat }}g</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Sugar</th>
+                                        <td>{{ food.sugar }}g</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p class="text-muted small">Values are approximate and may vary.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="mb-3">Dietary Information</h5>
+                            <div class="d-flex flex-wrap">
+                                {% set dietary_tags = [
+                                    {'name': 'Vegetarian', 'icon': 'leaf', 'value': food.is_vegetarian},
+                                    {'name': 'Vegan', 'icon': 'seedling', 'value': food.is_vegan},
+                                    {'name': 'Gluten Free', 'icon': 'bread-slice', 'value': food.is_gluten_free},
+                                    {'name': 'Contains Nuts', 'icon': 'asterisk', 'value': food.contains_nuts}
+                                ] %}
+
+                                {% for tag in dietary_tags %}
+                                    <div class="badge {{ 'bg-success' if tag.value else 'bg-secondary' }} p-2 m-1">
+                                        <i class="fas fa-{{ tag.icon }} me-1"></i> {{ tag.name }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ingredients Tab -->
+                <div class="tab-pane fade" id="ingredients" role="tabpanel" aria-labelledby="ingredients-tab">
+                    <h5 class="mb-3">Ingredients</h5>
+                    <p>{{ food.ingredients or 'Ingredients information not available.' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Similar Items Section -->
+    {% if similar_items %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="mb-4">You May Also Like</h3>
+            <div class="row g-4">
+                {% for item in similar_items %}
+                <div class="col-md-6 col-lg-3">
+                    <div class="card h-100 food-card border-0 shadow-sm rounded-4 overflow-hidden">
+                        <!-- Make the image clickable -->
+                        <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="position-relative">
+                            {% if item.image_url %}
+                            <img src="{{ item.image_url }}" alt="{{ item.name }}" class="card-img-top food-img" style="height: 180px; object-fit: cover;">
+                            {% elif item.image_path %}
+                            <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="card-img-top food-img" style="height: 180px; object-fit: cover;">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                                <i class="fas fa-utensils fa-2x text-secondary"></i>
+                            </div>
+                            {% endif %}
+
+                            <span class="badge rounded-pill position-absolute top-0 end-0 m-3 {% if item.is_available %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if item.is_available %}Available{% else %}Sold Out{% endif %}
+                            </span>
+                        </a>
+
+                        <div class="card-body d-flex flex-column">
+                            <!-- Make the title clickable -->
+                            <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="text-decoration-none text-dark">
+                                <h5 class="card-title mb-2">{{ item.name }}</h5>
+                            </a>
+                            <div class="d-flex justify-content-between align-items-center mt-auto">
+                                <span class="fw-bold text-primary">₹{{ "%.2f"|format(item.price) }}</span>
+                                <!-- Add Cart Button -->
+                                {% if item.is_available %}
+                                <button onclick="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price }})" class="btn btn-warning">
+                                    <i class="fas fa-shopping-cart"></i> Add
+                                </button>
+                                {% else %}
+                                <button class="btn btn-secondary" disabled>
+                                    <i class="fas fa-shopping-cart"></i> Sold Out
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Rating stars styling for display */
+    .rating-stars {
+        font-size: 1.2rem;
+    }
+
+    /* Rating stars styling for input */
+    .rating-input {
+        display: inline-flex;
+        flex-direction: row-reverse;
+        border-radius: 0.25rem;
+    }
+
+    .rating-input input {
+        display: none;
+    }
+
+    .rating-input label {
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: #ddd;
+        padding: 0 0.1rem;
+    }
+
+    .rating-input input:checked ~ label,
+    .rating-input label:hover,
+    .rating-input label:hover ~ label {
+        color: #ffc107;
+    }
+
+    .rating-input input:checked + label:hover,
+    .rating-input input:checked ~ label:hover,
+    .rating-input input:checked ~ label:hover ~ label,
+    .rating-input label:hover ~ input:checked ~ label {
+        color: #ffdb70;
+    }
+
+    /* Food card hover effects */
+    .food-card {
+        transition: all 0.3s ease;
+    }
+
+    .food-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+
+    .food-img {
+        transition: all 0.5s ease;
+    }
+
+    .food-card:hover .food-img {
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quantity selector functionality
+        const quantityInput = document.getElementById('quantity');
+        const decreaseBtn = document.getElementById('decrease-quantity');
+        const increaseBtn = document.getElementById('increase-quantity');
+
+        decreaseBtn.addEventListener('click', function() {
+            const currentValue = parseInt(quantityInput.value);
+            if (currentValue > 1) {
+                quantityInput.value = currentValue - 1;
+            }
+        });
+
+        increaseBtn.addEventListener('click', function() {
+            const currentValue = parseInt(quantityInput.value);
+            if (currentValue < 10) {
+                quantityInput.value = currentValue + 1;
+            }
+        });
+
+        // Ensure quantity is always between 1-10
+        quantityInput.addEventListener('change', function() {
+            let val = parseInt(this.value);
+            if (isNaN(val) || val < 1) {
+                this.value = 1;
+            } else if (val > 10) {
+                this.value = 10;
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,68 @@
+<footer class="bg-dark text-light py-5 mt-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4 col-md-6 mb-4">
+                <h5 class="mb-3">BhojanXpress</h5>
+                <p class="mb-3">Delicious food delivered fresh to your doorstep. Experience the best flavors from local restaurants.</p>
+                <div class="d-flex gap-3">
+                    <a href="#" class="text-light"><i class="bi bi-facebook fs-4"></i></a>
+                    <a href="#" class="text-light"><i class="bi bi-twitter fs-4"></i></a>
+                    <a href="#" class="text-light"><i class="bi bi-instagram fs-4"></i></a>
+                    <a href="#" class="text-light"><i class="bi bi-youtube fs-4"></i></a>
+                </div>
+            </div>
+            
+            <div class="col-lg-2 col-md-6 mb-4">
+                <h6 class="mb-3">Quick Links</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="{{ url_for('user.home') }}" class="text-light text-decoration-none">Home</a></li>
+                    <li class="mb-2"><a href="{{ url_for('user.menu') }}" class="text-light text-decoration-none">Menu</a></li>
+                    <li class="mb-2"><a href="{{ url_for('user.contact') }}" class="text-light text-decoration-none">Contact</a></li>
+                    {% if current_user.is_authenticated %}
+                        <li class="mb-2"><a href="{{ url_for('user.my_orders') }}" class="text-light text-decoration-none">My Orders</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h6 class="mb-3">Contact Info</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-geo-alt-fill me-2"></i>
+                        123 Food Street, Foodie City, FC 12345
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-telephone-fill me-2"></i>
+                        +1 (555) 123-4567
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-envelope-fill me-2"></i>
+                        info@bhojanxpress.com
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h6 class="mb-3">Delivery Hours</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2">Monday - Friday: 10:00 AM - 11:00 PM</li>
+                    <li class="mb-2">Saturday: 9:00 AM - 12:00 AM</li>
+                    <li class="mb-2">Sunday: 9:00 AM - 11:00 PM</li>
+                </ul>
+            </div>
+        </div>
+        
+        <hr class="my-4">
+        
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="mb-0">&copy; 2025 BhojanXpress. All rights reserved.</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <a href="#" class="text-light text-decoration-none me-3">Privacy Policy</a>
+                <a href="#" class="text-light text-decoration-none me-3">Terms of Service</a>
+                <a href="#" class="text-light text-decoration-none">FAQ</a>
+            </div>
+        </div>
+    </div>
+</footer>

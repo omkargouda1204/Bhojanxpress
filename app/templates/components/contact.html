@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Us - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-12 text-center mb-5">
+            <h1 class="display-4">Contact Us</h1>
+            <p class="lead text-muted">We'd love to hear from you! Get in touch with us.</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4><i class="fas fa-envelope text-primary"></i> Send us a Message</h4>
+                            <form class="mt-3" action="{{ url_for('user.send_contact_message') }}" method="POST" id="contactForm">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="name" name="name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="subject" class="form-label">Subject</label>
+                                    <select class="form-select" id="subject" name="subject" required>
+                                        <option value="">Choose a topic</option>
+                                        <option value="order">Order Issue</option>
+                                        <option value="delivery">Delivery Query</option>
+                                        <option value="feedback">Feedback</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="message" class="form-label">Message</label>
+                                    <textarea class="form-control" id="message" name="message" rows="4" required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary" id="sendMessageBtn">
+                                    <i class="fas fa-paper-plane"></i> Send Message
+                                </button>
+                                <div class="mt-3" id="formMessage" style="display: none;"></div>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h4><i class="fas fa-info-circle text-primary"></i> Contact Information</h4>
+                            
+                            <div class="contact-info mt-3">
+                                <div class="mb-4">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-map-marker-alt text-primary me-3"></i>
+                                        <strong>Address</strong>
+                                    </div>
+                                    <p class="ms-4 text-muted">
+                                        123 Food Street, Tasty District<br>
+                                        Foodie City, FC 560001<br>
+                                        India
+                                    </p>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-phone text-primary me-3"></i>
+                                        <strong>Phone</strong>
+                                    </div>
+                                    <p class="ms-4 text-muted">
+                                        <a href="tel:+919876543210" class="text-decoration-none">+91 98765 43210</a><br>
+                                        <small>24/7 Customer Support</small>
+                                    </p>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-envelope text-primary me-3"></i>
+                                        <strong>Email</strong>
+                                    </div>
+                                    <p class="ms-4 text-muted">
+                                        <a href="mailto:support@bhojanxpress.com" class="text-decoration-none">support@bhojanxpress.com</a><br>
+                                        <a href="mailto:orders@bhojanxpress.com" class="text-decoration-none">orders@bhojanxpress.com</a>
+                                    </p>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-clock text-primary me-3"></i>
+                                        <strong>Business Hours</strong>
+                                    </div>
+                                    <p class="ms-4 text-muted mb-1">
+                                        <strong>Monday - Sunday:</strong> 9:00 AM - 11:00 PM<br>
+                                        <small class="text-success">We're open now!</small>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Social Media -->
+                            <div class="mt-4">
+                                <h5>Follow Us</h5>
+                                <div class="d-flex gap-3">
+                                    <a href="#" class="btn btn-outline-primary btn-sm">
+                                        <i class="fab fa-facebook-f"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-outline-info btn-sm">
+                                        <i class="fab fa-twitter"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-outline-danger btn-sm">
+                                        <i class="fab fa-instagram"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-outline-success btn-sm">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- FAQ Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="text-center mb-4">Frequently Asked Questions</h3>
+            <div class="accordion" id="faqAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faq1">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1">
+                            How long does delivery take?
+                        </button>
+                    </h2>
+                    <div id="collapse1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Our standard delivery time is 30-45 minutes from the time you place your order. During peak hours, it might take a bit longer.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faq2">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2">
+                            What are your delivery charges?
+                        </button>
+                    </h2>
+                    <div id="collapse2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            We offer free delivery for all orders above ₹200. For orders below ₹200, a delivery charge of ₹30 applies.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faq3">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3">
+                            Can I cancel my order?
+                        </button>
+                    </h2>
+                    <div id="collapse3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Yes, you can cancel your order within 5 minutes of placing it. After that, cancellation may not be possible as we start preparing your food immediately.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

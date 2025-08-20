@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Food Item - Admin{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-5">
+                    <i class="fas fa-edit text-warning"></i> Edit Food Item
+                </h1>
+                <a href="{{ url_for('admin.food_items') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Food Items
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Editing: {{ food_item.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.edit_food', food_id=food_item.id) }}">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                {{ form.name.label(class="form-label") }}
+                                {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                                {% if form.name.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.name.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                {{ form.price.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    {{ form.price(class="form-control" + (" is-invalid" if form.price.errors else "")) }}
+                                </div>
+                                {% if form.price.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.price.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows="3") }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.description.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.category.label(class="form-label") }}
+                                {{ form.category(class="form-select" + (" is-invalid" if form.category.errors else "")) }}
+                                {% if form.category.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.category.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.preparation_time.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.preparation_time(class="form-control" + (" is-invalid" if form.preparation_time.errors else "")) }}
+                                    <span class="input-group-text">minutes</span>
+                                </div>
+                                {% if form.preparation_time.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.preparation_time.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.image_url.label(class="form-label") }}
+                            {{ form.image_url(class="form-control" + (" is-invalid" if form.image_url.errors else ""), placeholder="https://example.com/image.jpg") }}
+                            {% if form.image_url.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.image_url.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.is_available(class="form-check-input") }}
+                                {{ form.is_available.label(class="form-check-label") }}
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                            <form method="POST" action="{{ url_for('admin.delete_food', food_id=food_item.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this food item?')">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-trash"></i> Delete Item
+                                </button>
+                            </form>
+                            
+                            <div>
+                                <a href="{{ url_for('admin.food_items') }}" class="btn btn-secondary me-2">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Current Image Preview -->
+            {% if food_item.image_url %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Current Image</h6>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ food_item.image_url }}" alt="{{ food_item.name }}" class="img-fluid rounded" style="max-height: 200px;">
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

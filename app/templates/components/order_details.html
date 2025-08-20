@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.id }} Details - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-receipt"></i> Order #{{ order.id }}</h2>
+            <p class="text-muted">Placed on {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+        </div>
+        <a href="{{ url_for('user.my_orders') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Back to Orders
+        </a>
+    </div>
+    
+    <div class="row">
+        <!-- Order Items -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Order Items</h5>
+                </div>
+                <div class="card-body">
+                    {% for item in order.order_items %}
+                    <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-primary me-3">{{ item.quantity }}x</span>
+                            <div>
+                                <h6 class="mb-1">{{ item.food_item.name }}</h6>
+                                <small class="text-muted">{{ item.food_item.category if item.food_item.category else 'General' }}</small>
+                                <br><small class="text-muted">₹{{ "%.2f"|format(item.price) }} each</small>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <h6 class="mb-0">₹{{ "%.2f"|format(item.quantity * item.price) }}</h6>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Delivery Information -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-truck"></i> Delivery Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-user"></i> Customer Details</h6>
+                            <p class="mb-1"><strong>Name:</strong> {{ order.customer_name or (order.user.username if order.user else '') }}</p>
+                            <p class="mb-1"><strong>Phone:</strong> {{ order.phone_number or (order.user.phone if order.user else 'Not provided') }}</p>
+                            <p class="mb-1"><strong>Email:</strong> {{ order.user.email if order.user else 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-map-marker-alt"></i> Delivery Address</h6>
+                            <p class="mb-0">{{ order.delivery_address or 'No address provided' }}</p>
+                            {% if order.special_instructions %}
+                                <hr>
+                                <h6><i class="fas fa-sticky-note"></i> Special Instructions</h6>
+                                <p class="mb-0 text-muted">{{ order.special_instructions }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Order Summary and Status -->
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-receipt"></i> Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span>₹{{ "%.2f"|format(order.subtotal or 0) }}</span>
+                    </div>
+                    
+                    {% if order.discount_amount and order.discount_amount > 0 %}
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span>Discount:</span>
+                        <span>-₹{{ "%.2f"|format(order.discount_amount) }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.coupon_discount and order.coupon_discount > 0 %}
+                    <div class="d-flex justify-content-between mb-2 text-info">
+                        <span>Coupon Discount:</span>
+                        <span>-₹{{ "%.2f"|format(order.coupon_discount) }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>GST (5%):</span>
+                        <span>₹{{ "%.2f"|format(order.gst_amount or 0) }}</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Delivery Charges:</span>
+                        <span>
+                            {% if order.delivery_charge == 0 %}
+                                <span class="text-success">FREE</span>
+                            {% else %}
+                                ₹{{ "%.2f"|format(order.delivery_charge or 0) }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between fw-bold h5">
+                        <span>Total Amount:</span>
+                        <span class="text-success">₹{{ "%.2f"|format(order.total_amount) }}</span>
+                    </div>
+                    
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <h6><i class="fas fa-credit-card"></i> Payment Method</h6>
+                        <span class="badge bg-info">
+                            {{ order.payment_method|replace('_', ' ')|title }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Status -->
+            <div class="card">
+                <div class="card-header 
+                    {% if order.status == 'pending' %}bg-warning{% endif %}
+                    {% if order.status == 'confirmed' %}bg-info{% endif %}
+                    {% if order.status == 'preparing' %}bg-primary{% endif %}
+                    {% if order.status == 'out_for_delivery' %}bg-secondary{% endif %}
+                    {% if order.status == 'delivered' %}bg-success{% endif %}
+                    {% if order.status == 'cancelled' %}bg-danger{% endif %}
+                    text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i> 
+                        Order Status: {{ order.status|replace('_', ' ')|title }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Status Timeline -->
+                    <div class="timeline">
+                        <div class="timeline-item {{ 'active' if order.status in ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'] else '' }}">
+                            <div class="timeline-marker {{ 'bg-success' if order.status in ['confirmed', 'preparing', 'out_for_delivery', 'delivered'] else 'bg-warning' }}">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Order Placed</h6>
+                                <small class="text-muted">{{ order.created_at.strftime('%I:%M %p') }}</small>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item {{ 'active' if order.status in ['confirmed', 'preparing', 'out_for_delivery', 'delivered'] else '' }}">
+                            <div class="timeline-marker {{ 'bg-success' if order.status in ['confirmed', 'preparing', 'out_for_delivery', 'delivered'] else 'bg-secondary' }}">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Order Confirmed</h6>
+                                <small class="text-muted">
+                                    {% if order.status in ['confirmed', 'preparing', 'out_for_delivery', 'delivered'] %}
+                                        {{ (order.created_at + timedelta(minutes=5)).strftime('%I:%M %p') }}
+                                    {% else %}
+                                        Pending
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item {{ 'active' if order.status in ['preparing', 'out_for_delivery', 'delivered'] else '' }}">
+                            <div class="timeline-marker {{ 'bg-success' if order.status in ['preparing', 'out_for_delivery', 'delivered'] else 'bg-secondary' }}">
+                                <i class="fas fa-utensils"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Preparing</h6>
+                                <small class="text-muted">
+                                    {% if order.status in ['preparing', 'out_for_delivery', 'delivered'] %}
+                                        {{ (order.created_at + timedelta(minutes=15)).strftime('%I:%M %p') }}
+                                    {% else %}
+                                        Pending
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item {{ 'active' if order.status in ['out_for_delivery', 'delivered'] else '' }}">
+                            <div class="timeline-marker {{ 'bg-success' if order.status in ['out_for_delivery', 'delivered'] else 'bg-secondary' }}">
+                                <i class="fas fa-truck"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Out for Delivery</h6>
+                                <small class="text-muted">
+                                    {% if order.status in ['out_for_delivery', 'delivered'] %}
+                                        {{ (order.created_at + timedelta(minutes=35)).strftime('%I:%M %p') }}
+                                    {% else %}
+                                        Pending
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item {{ 'active' if order.status == 'delivered' else '' }}">
+                            <div class="timeline-marker {{ 'bg-success' if order.status == 'delivered' else 'bg-secondary' }}">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Delivered</h6>
+                                <small class="text-muted">
+                                    {% if order.status == 'delivered' %}
+                                        {{ order.created_at.strftime('%I:%M %p') }}
+                                    {% else %}
+                                        Estimated: {{ order.created_at.strftime('%I:%M %p') }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="mt-3 d-grid gap-2">
+                        {% if order.status in ['pending', 'confirmed'] %}
+                            <button class="btn btn-danger" onclick="cancelOrder({{ order.id }})">
+                                <i class="fas fa-times"></i> Cancel Order
+                            </button>
+                        {% endif %}
+                        
+                        {% if order.status == 'delivered' %}
+                            <button class="btn btn-success">
+                                <i class="fas fa-redo"></i> Reorder
+                            </button>
+                        {% endif %}
+                        
+                        <button class="btn btn-outline-primary">
+                            <i class="fas fa-download"></i> Download Invoice
+                        </button>
+                        
+                        <button class="btn btn-outline-info">
+                            <i class="fas fa-phone"></i> Contact Support
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 15px;
+    height: 100%;
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.timeline-item:last-child:before {
+    display: none;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -30px;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+}
+
+.timeline-content h6 {
+    margin-bottom: 2px;
+    font-size: 14px;
+}
+
+.timeline-item.active .timeline-content h6 {
+    color: #198754;
+    font-weight: bold;
+}
+</style>
+
+<script>
+function cancelOrder(orderId) {
+    if (confirm('Are you sure you want to cancel this order?')) {
+        // Create form data with CSRF token
+        const formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
+
+        fetch(`/cancel-order/${orderId}`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Order cancelled successfully!');
+                location.reload();
+            } else {
+                alert('Failed to cancel order: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to cancel order. Please try again.');
+        });
+    }
+}
+</script>
+{% endblock %}

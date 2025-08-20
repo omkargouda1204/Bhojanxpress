@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Order Details - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-receipt text-primary"></i> Order #{{ order.id }}
+                </h1>
+                <a href="{{ url_for('admin.orders') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Orders
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Order Information -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Order Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Order ID:</strong> #{{ order.id }}</p>
+                            <p><strong>Customer:</strong> {{ order.customer_name or (order.user.username if order.user else 'Unknown') }}</p>
+                            <p><strong>Phone:</strong> {{ order.phone_number or (order.user.phone if order.user else 'Not provided') }}</p>
+                            <p><strong>Email:</strong> {{ order.user.email if order.user else 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Order Date:</strong> {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-{{ 'warning' if order.status == 'pending' else 'info' if order.status == 'confirmed' else 'primary' if order.status == 'preparing' else 'success' if order.status == 'delivered' else 'danger' }}">
+                                    {{ order.status.title() }}
+                                </span>
+                            </p>
+                            <p><strong>Payment Method:</strong> {{ order.payment_method.title() }}</p>
+                            <p><strong>Total Amount:</strong> ₹{{ "%.2f"|format(order.total_amount) }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if order.special_instructions %}
+                    <div class="mt-3">
+                        <strong>Special Instructions:</strong>
+                        <p class="text-muted">{{ order.special_instructions }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Delivery Address -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Delivery Address</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ order.delivery_address }}</p>
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-utensils"></i> Order Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Category</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.order_items %}
+                                <tr>
+                                    <td>{{ item.food_item.name }}</td>
+                                    <td>{{ item.food_item.category if item.food_item.category else 'General' }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>₹{{ "%.2f"|format(item.price) }}</td>
+                                    <td>₹{{ "%.2f"|format(item.quantity * item.price) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Summary and Actions -->
+        <div class="col-lg-4">
+            <!-- Order Summary -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-calculator"></i> Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span>₹{{ "%.2f"|format(order.subtotal) }}</span>
+                    </div>
+                    {% if order.discount_amount > 0 %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Discount:</span>
+                        <span class="text-success">-₹{{ "%.2f"|format(order.discount_amount) }}</span>
+                    </div>
+                    {% endif %}
+                    {% if order.coupon_discount > 0 %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Coupon Discount:</span>
+                        <span class="text-success">-₹{{ "%.2f"|format(order.coupon_discount) }}</span>
+                    </div>
+                    {% endif %}
+                    {% if order.delivery_charge > 0 %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Delivery Charge:</span>
+                        <span>₹{{ "%.2f"|format(order.delivery_charge) }}</span>
+                    </div>
+                    {% endif %}
+                    {% if order.gst_amount > 0 %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>GST:</span>
+                        <span>₹{{ "%.2f"|format(order.gst_amount) }}</span>
+                    </div>
+                    {% endif %}
+                    <hr>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>Total:</span>
+                        <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Update -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-edit"></i> Update Status</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Order Status</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="pending" {{ 'selected' if order.status == 'pending' }}>Pending</option>
+                                <option value="confirmed" {{ 'selected' if order.status == 'confirmed' }}>Confirmed</option>
+                                <option value="preparing" {{ 'selected' if order.status == 'preparing' }}>Preparing</option>
+                                <option value="delivered" {{ 'selected' if order.status == 'delivered' }}>Delivered</option>
+                                <option value="cancelled" {{ 'selected' if order.status == 'cancelled' }}>Cancelled</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save"></i> Update Status
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-list"></i> View All Orders
+                        </a>
+                        <a href="{{ url_for('admin.pending_orders') }}" class="btn btn-outline-warning">
+                            <i class="fas fa-clock"></i> Pending Orders
+                        </a>
+                        <a href="{{ url_for('admin.reports') }}" class="btn btn-outline-info">
+                            <i class="fas fa-chart-bar"></i> View Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.badge {
+    font-size: 0.875em;
+}
+</style>
+{% endblock %}

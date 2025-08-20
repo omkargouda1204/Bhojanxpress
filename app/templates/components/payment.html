@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Payment - Order #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-credit-card"></i> Payment for Order #{{ order.id }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Order Summary</h5>
+                            <p><strong>Total Amount:</strong> ₹{{ "%.2f"|format(order.total_amount) }}</p>
+                            <p><strong>Payment Method:</strong> {{ order.payment_method|replace('_', ' ')|title }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge 
+                                    {% if order.status == 'pending' %}bg-warning{% endif %}
+                                    {% if order.status == 'confirmed' %}bg-info{% endif %}
+                                    {% if order.status == 'preparing' %}bg-primary{% endif %}
+                                    {% if order.status == 'delivered' %}bg-success{% endif %}
+                                    {% if order.status == 'cancelled' %}bg-danger{% endif %}
+                                ">
+                                    {{ order.status|replace('_', ' ')|title }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Payment Options</h5>
+                            <form id="payment-form" method="POST" action="{{ url_for('user.process_payment', order_id=order.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input payment-method" type="radio" name="payment_method" id="cod" value="cash_on_delivery" checked>
+                                        <label class="form-check-label" for="cod">
+                                            <i class="fas fa-money-bill"></i> Cash on Delivery
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input payment-method" type="radio" name="payment_method" id="card" value="card_payment">
+                                        <label class="form-check-label" for="card">
+                                            <i class="fas fa-credit-card"></i> Credit/Debit Card
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input payment-method" type="radio" name="payment_method" id="upi" value="upi_payment">
+                                        <label class="form-check-label" for="upi">
+                                            <i class="fas fa-mobile-alt"></i> UPI Payment
+                                        </label>
+                                    </div>
+                                    <!-- New PayPal Option -->
+                                    <div class="form-check">
+                                        <input class="form-check-input payment-method" type="radio" name="payment_method" id="paypal" value="paypal">
+                                        <label class="form-check-label" for="paypal">
+                                            <i class="fab fa-paypal"></i> PayPal
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Card Payment Details (hidden by default) -->
+                                <div id="card-details" class="card mt-3" style="display: none;">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Card Payment Details</h6>
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label for="card_number" class="form-label">Card Number</label>
+                                                <input type="text" class="form-control" id="card_number" name="card_number" placeholder="1234 5678 9012 3456" maxlength="19">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="expiry_date" class="form-label">Expiry Date</label>
+                                                <input type="text" class="form-control" id="expiry_date" name="expiry_date" placeholder="MM/YY" maxlength="5">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="cvv" class="form-label">CVV</label>
+                                                <input type="text" class="form-control" id="cvv" name="cvv" placeholder="123" maxlength="3">
+                                            </div>
+                                            <div class="col-md-12 mb-3">
+                                                <label for="card_name" class="form-label">Cardholder Name</label>
+                                                <input type="text" class="form-control" id="card_name" name="card_name" placeholder="John Doe">
+                                            </div>
+                                        </div>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> Your card details are secure and encrypted.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- UPI Payment Details (hidden by default) -->
+                                <div id="upi-details" class="card mt-3" style="display: none;">
+                                    <div class="card-body">
+                                        <h6 class="card-title">UPI Payment</h6>
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label for="upi_id" class="form-label">UPI ID</label>
+                                                <input type="text" class="form-control" id="upi_id" name="upi_id" placeholder="yourname@upi">
+                                            </div>
+                                        </div>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> You will be redirected to your UPI app to complete the payment.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PayPal Payment Details -->
+                                <div id="paypal-details" class="card mt-3" style="display: none;">
+                                    <div class="card-body">
+                                        <h6 class="card-title">PayPal Payment</h6>
+                                        <div class="text-center mb-3">
+                                            <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/checkout-logo-large.png" alt="PayPal Checkout" class="img-fluid" style="max-width: 200px;">
+                                        </div>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> Click "Proceed to Payment" to be redirected to PayPal for secure payment.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <button type="submit" class="btn btn-success btn-lg w-100" id="proceed-payment-btn">
+                                        <i class="fas fa-lock me-2"></i> Proceed to Payment
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- PayPal SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        const paymentMethods = document.querySelectorAll('.payment-method');
+        const cardDetails = document.getElementById('card-details');
+        const upiDetails = document.getElementById('upi-details');
+        const paypalDetails = document.getElementById('paypal-details');
+        const proceedBtn = document.getElementById('proceed-payment-btn');
+        const paymentForm = document.getElementById('payment-form');
+
+        // Toggle payment method details
+        paymentMethods.forEach(function(method) {
+            method.addEventListener('change', function() {
+                // Hide all sections
+                cardDetails.style.display = 'none';
+                upiDetails.style.display = 'none';
+                paypalDetails.style.display = 'none';
+
+                // Show selected
+                if (this.id === 'card') {
+                    cardDetails.style.display = 'block';
+                } else if (this.id === 'upi') {
+                    upiDetails.style.display = 'block';
+                } else if (this.id === 'paypal') {
+                    paypalDetails.style.display = 'block';
+                }
+            });
+        });
+
+        // Simple form validation for card and UPI
+        paymentForm.addEventListener('submit', function(e) {
+            const selected = document.querySelector('input[name="payment_method"]:checked').value;
+
+            if (selected === 'card_payment') {
+                // Validate card details
+                const cardNumber = document.getElementById('card_number').value.replace(/\s/g, '');
+                const expiryDate = document.getElementById('expiry_date').value;
+                const cvv = document.getElementById('cvv').value;
+                const cardName = document.getElementById('card_name').value;
+
+                if (cardNumber.length !== 16) {
+                    e.preventDefault();
+                    alert('Please enter a valid 16-digit card number');
+                    return false;
+                }
+
+                if (!expiryDate || expiryDate.length !== 5) {
+                    e.preventDefault();
+                    alert('Please enter a valid expiry date in MM/YY format');
+                    return false;
+                }
+
+                if (!cvv || cvv.length !== 3) {
+                    e.preventDefault();
+                    alert('Please enter a valid 3-digit CVV');
+                    return false;
+                }
+
+                if (!cardName) {
+                    e.preventDefault();
+                    alert('Please enter the cardholder name');
+                    return false;
+                }
+            } else if (selected === 'upi_payment') {
+                // Validate UPI ID
+                const upiId = document.getElementById('upi_id').value;
+                const upiPattern = /^[\w.-]+@[\w.-]+$/;
+
+                if (!upiId || !upiPattern.test(upiId)) {
+                    e.preventDefault();
+                    alert('Please enter a valid UPI ID');
+                    return false;
+                }
+            } else if (selected === 'paypal') {
+                // Handle PayPal option via AJAX
+                e.preventDefault();
+                fetch("{{ url_for('user.create_paypal_order', order_id=order.id) }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.approval_url) {
+                        window.location.href = data.approval_url;
+                    } else {
+                        alert(data.error || 'Failed to initiate PayPal payment.');
+                    }
+                });
+                return false;
+            }
+        });
+
+        // Card number formatting
+        const cardNumberInput = document.getElementById('card_number');
+        if (cardNumberInput) {
+            cardNumberInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\s/g, '');
+                let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+                if (formattedValue !== e.target.value) {
+                    e.target.value = formattedValue;
+                }
+            });
+        }
+
+        // Expiry date formatting
+        const expiryInput = document.getElementById('expiry_date');
+        if (expiryInput) {
+            expiryInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length >= 2) {
+                    value = value.substring(0, 2) + '/' + value.substring(2, 4);
+                }
+                e.target.value = value;
+            });
+        }
+
+        // CVV validation
+        const cvvInput = document.getElementById('cvv');
+        if (cvvInput) {
+            cvvInput.addEventListener('input', function(e) {
+                e.target.value = e.target.value.replace(/\D/g, '');
+            });
+        }
+    });
+</script>
+{% endblock %}

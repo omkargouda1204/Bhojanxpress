@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - Admin{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-5">
+                    <i class="fas fa-tags text-primary"></i> Categories
+                </h1>
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-tachometer-alt"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="m-0">Add New Category</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.categories') }}">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="main_course") }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Internal name, lowercase with underscores</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.display_name.label(class="form-label") }}
+                            {{ form.display_name(class="form-control" + (" is-invalid" if form.display_name.errors else ""), placeholder="Main Course") }}
+                            {% if form.display_name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.display_name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Display name shown to users</div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus-circle"></i> Add Category
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="m-0">Current Categories</h5>
+                </div>
+                <div class="card-body">
+                    {% if categories %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Display Name</th>
+                                    <th>Food Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                <tr>
+                                    <td>{{ category.id }}</td>
+                                    <td><code>{{ category.name }}</code></td>
+                                    <td>{{ category.display_name }}</td>
+                                    <td>
+                                        {% if category.food_items %}
+                                            <span class="badge bg-success">{{ category.food_items|length }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">0</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        No categories found. Add your first category using the form.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

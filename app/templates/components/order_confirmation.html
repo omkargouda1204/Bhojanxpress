@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Order Confirmation - Order #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-check-circle"></i> Order Confirmed!</h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle text-success fa-5x mb-3"></i>
+                        <h3>Thank you for your order!</h3>
+                        <p class="text-muted">Your order has been successfully placed and confirmed.</p>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Order Details</h5>
+                            <p><strong>Order ID:</strong> #{{ order.id }}</p>
+                            <p><strong>Total Amount:</strong> ₹{{ "%.2f"|format(order.total_amount) }}</p>
+                            <p><strong>Payment Method:</strong> {{ order.payment_method|replace('_', ' ')|title }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-success">{{ order.status|replace('_', ' ')|title }}</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Delivery Information</h5>
+                            <p><strong>Address:</strong> {{ order.delivery_address }}</p>
+                            <p><strong>Phone:</strong> {{ order.phone_number }}</p>
+                            <p><strong>Estimated Delivery:</strong> 45-60 minutes</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h5>Order Items</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.order_items %}
+                                    <tr>
+                                        <td>{{ item.food_item.name }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>₹{{ "%.2f"|format(item.price) }}</td>
+                                        <td>₹{{ "%.2f"|format(item.quantity * item.price) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a href="{{ url_for('user.order_details', order_id=order.id) }}" class="btn btn-primary">
+                            <i class="fas fa-eye"></i> View Order Details
+                        </a>
+                        <a href="{{ url_for('user.my_orders') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-list"></i> My Orders
+                        </a>
+                        <a href="{{ url_for('user.home') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-home"></i> Back to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
