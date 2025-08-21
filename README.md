@@ -34,3 +34,11 @@ If you need to verify MySQL is running and your credentials, you can use:
 mysql -u root -p
 ```
 And enter your password when prompted.
+
+### git push
+git init
+git add .
+git commit -am "initial commit"
+git remote add origin https://github.com/omkargouda1204/BhojanXpress.git
+git remote -v
+git push origin master
