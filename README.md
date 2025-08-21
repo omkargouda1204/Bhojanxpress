@@ -42,3 +42,4 @@ git commit -am "initial commit"
 git remote add origin https://github.com/omkargouda1204/BhojanXpress.git
 git remote -v
 git push origin master
+git push origin master

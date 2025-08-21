@@ -16,6 +16,11 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(15), nullable=True)
     address = db.Column(db.Text, nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
+    is_verified = db.Column(db.Boolean, default=False)
+    verification_otp = db.Column(db.String(6), nullable=True)
+    otp_expiry = db.Column(db.DateTime, nullable=True)
+    password_reset_otp = db.Column(db.String(6), nullable=True)
+    password_reset_otp_expiry = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships

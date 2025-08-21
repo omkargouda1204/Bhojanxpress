@@ -33,28 +33,28 @@ def my_orders():
                        .order_by(Order.created_at.desc())\
                        .paginate(page=page, per_page=per_page, error_out=False)
     
-    return render_template('my_orders.html', orders=orders)
+    return render_template('components/my_orders.html', orders=orders)
 
 @user_bp.route('/order/<int:order_id>')
 @login_required
 def order_details(order_id):
     """Display order details"""
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
-    return render_template('order_details.html', order=order, timedelta=timedelta)
+    return render_template('components/order_details.html', order=order, timedelta=timedelta)
 
 @user_bp.route('/payment/<int:order_id>')
 @login_required
 def payment(order_id):
     """Payment page for order"""
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
-    return render_template('payment.html', order=order, paypal_client_id=PAYPAL_CLIENT_ID)
+    return render_template('components/payment.html', order=order, paypal_client_id=PAYPAL_CLIENT_ID)
 
 @user_bp.route('/order_confirmation/<int:order_id>')
 @login_required
 def order_confirmation(order_id):
     """Order confirmation page"""
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
-    return render_template('order_confirmation.html', order=order)
+    return render_template('components/order_confirmation.html', order=order)
 
 @user_bp.route('/cancel-order/<int:order_id>', methods=['POST'])
 @login_required
@@ -215,7 +215,7 @@ def menu():
     db_categories = Category.query.all()
     categories = ['all'] + [cat.name for cat in db_categories]
 
-    return render_template('menu.html', food_items=food_items, categories=categories, current_category=category)
+    return render_template('components/menu.html', food_items=food_items, categories=categories, current_category=category)
 
 @user_bp.route('/search', methods=['GET', 'POST'])
 def search():
@@ -565,8 +565,8 @@ def cart():
     cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
     
     if not cart_items:
-        return render_template('cart.html', cart_items=[], cart_summary={})
-    
+        return render_template('components/cart.html', cart_items=[], cart_summary={})
+
     # Calculate cart totals
     subtotal = sum(item.food_item.price * item.quantity for item in cart_items)
 
@@ -603,7 +603,7 @@ def cart():
         'item_count': sum(item.quantity for item in cart_items)
     }
     
-    return render_template('cart.html', cart_items=cart_items, cart_summary=cart_summary)
+    return render_template('components/cart.html', cart_items=cart_items, cart_summary=cart_summary)
 
 @user_bp.route('/update_cart/<int:cart_id>', methods=['POST'])
 @login_required
@@ -757,8 +757,8 @@ def checkout():
     # Get user profile for shipping address
     user_profile = UserProfile.query.filter_by(user_id=current_user.id).first()
 
-    return render_template('checkout.html', 
-                         cart_items=cart_items, 
+    return render_template('components/checkout.html',
+                         cart_items=cart_items,
                          checkout_summary=checkout_summary,
                          user_profile=user_profile)
 
@@ -776,7 +776,7 @@ def profile():
                               .order_by(Order.created_at.desc())\
                               .limit(5).all()
     
-    return render_template('profile.html', 
+    return render_template('components/profile.html',
                          user_profile=user_profile,
                          recent_orders=recent_orders)
 
@@ -815,7 +815,7 @@ def update_profile():
 @user_bp.route('/contact')
 def contact():
     """Contact page"""
-    return render_template('contact.html')
+    return render_template('components/contact.html')
 
 @user_bp.route('/send-contact-message', methods=['POST'])
 def send_contact_message():
@@ -931,7 +931,7 @@ def receipt(order_id):
         buffer.seek(0)
         return send_file(buffer, as_attachment=True, download_name=f"invoice_{order.id}.pdf", mimetype='application/pdf')
     # Fallback: render HTML invoice
-    return render_template('receipt.html', order=order)
+    return render_template('components/receipt.html', order=order)
 
 @user_bp.route('/track_order/<int:order_id>')
 @login_required
@@ -942,7 +942,7 @@ def track_order(order_id):
         flash('Unauthorized access.', 'error')
         return redirect(url_for('user.my_orders'))
     
-    return render_template('track_order.html', order=order)
+    return render_template('components/track_order.html', order=order)
 
 @user_bp.route('/food/<int:food_id>', methods=['GET', 'POST'])
 def food_detail(food_id):

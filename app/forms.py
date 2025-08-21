@@ -59,3 +59,18 @@ class OrderStatusForm(FlaskForm):
                                ('delivered', 'Delivered'),
                                ('cancelled', 'Cancelled')],
                         validators=[DataRequired()])
+
+class OTPVerificationForm(FlaskForm):
+    otp = StringField('OTP', validators=[DataRequired(), Length(min=6, max=6)])
+
+class ForgotPasswordForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+
+class ResetPasswordForm(FlaskForm):
+    otp = StringField('OTP', validators=[DataRequired(), Length(min=6, max=6)])
+    password = PasswordField('New Password', validators=[
+        DataRequired(),
+        Length(min=8, message='Password must be at least 8 characters long')
+    ])
+    confirm_password = PasswordField('Confirm New Password',
+                                   validators=[DataRequired(), EqualTo('password')])

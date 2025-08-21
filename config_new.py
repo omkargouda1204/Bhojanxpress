@@ -23,12 +23,15 @@ class Config:
     PERMANENT_SESSION_LIFETIME = os.environ.get('SESSION_LIFETIME') or 7200  # 2 hours in seconds
     
     # Mail configuration (for future use)
-    MAIL_SERVER = os.environ.get('MAIL_SERVER')
-    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_PORT = 587  # Changed to TLS port
+    MAIL_USE_TLS = True  # Using TLS instead of SSL
+    MAIL_USE_SSL = False  # Disabling SSL since we're using TLS
+    MAIL_USERNAME = 'bhojanaxpress@gmail.com'
+    # Use app password for Gmail - replace this with your actual Gmail app password
+    MAIL_PASSWORD = 'btxbezayvyijxpcl'
+    EMAIL_PASSWORD = 'btxbezayvyijxpcl'  # Same app password
+
     # Pagination
     POSTS_PER_PAGE = 10
     
