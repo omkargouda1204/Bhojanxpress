@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Enhanced Hero Section with Better Animation -->
+<!-- Enhanced Hero Section with Better Animation (Increased Height) -->
 <div id="mainCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
   <div class="carousel-indicators">
     <button type="button" data-bs-target="#mainCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
@@ -10,28 +10,28 @@
   </div>
   <div class="carousel-inner rounded-4 shadow-lg">
     <div class="carousel-item active">
-      <img src="{{ url_for('static', filename='images/hero-banner.jpg') }}" class="d-block w-100" style="height: 520px; object-fit: cover; filter: brightness(0.7);" alt="Delicious Food">
+      <img src="{{ url_for('static', filename='images/hero-banner.jpg') }}" class="d-block w-100" style="height: 350px; object-fit: cover; filter: brightness(0.7);" alt="Delicious Food">
       <div class="carousel-caption d-md-block position-absolute top-50 start-50 translate-middle text-center w-75 animate__animated animate__fadeIn">
-        <h2 class="display-3 fw-bold text-white text-shadow">Welcome to BhojanXpress</h2>
-        <p class="lead fs-4 mb-4 text-white">Delicious food delivered fast, fresh, and hot to your doorstep.</p>
-        <a href="{{ url_for('user.menu') }}" class="btn btn-warning btn-lg shadow-lg px-5 py-3 animate__animated animate__pulse animate__infinite">Order Now <i class="fas fa-arrow-right ms-2"></i></a>
+        <h2 class="display-4 fw-bold text-white text-shadow">Welcome to BhojanXpress</h2>
+        <p class="lead fs-5 mb-4 text-white">Delicious food delivered fast, fresh, and hot to your doorstep.</p>
+        <a href="{{ url_for('user.menu') }}" class="btn btn-warning btn-lg shadow-lg px-4 py-2 animate__animated animate__pulse animate__infinite">Order Now <i class="fas fa-arrow-right ms-2"></i></a>
       </div>
     </div>
     <div class="carousel-item">
-      <img src="{{ url_for('static', filename='images/slide1.jpg') }}" class="d-block w-100" style="height: 520px; object-fit: cover; filter: brightness(0.7);" alt="Tasty Dishes">
+      <img src="{{ url_for('static', filename='images/slide1.jpg') }}" class="d-block w-100" style="height: 350px; object-fit: cover; filter: brightness(0.7);" alt="Tasty Dishes">
       <div class="carousel-caption d-md-block position-absolute top-50 start-50 translate-middle text-center w-75">
-        <h2 class="display-4 fw-bold text-white text-shadow">Try Our Bestsellers</h2>
-        <p class="fs-4 mb-4 text-white">Handpicked dishes loved by our customers.</p>
-        <a href="{{ url_for('user.menu') }}" class="btn btn-primary btn-lg shadow px-5 py-3">Browse Menu <i class="fas fa-utensils ms-2"></i></a>
+        <h2 class="display-5 fw-bold text-white text-shadow">Try Our Bestsellers</h2>
+        <p class="fs-5 mb-4 text-white">Handpicked dishes loved by our customers.</p>
+        <a href="{{ url_for('user.menu') }}" class="btn btn-primary btn-lg shadow px-4 py-2">Browse Menu <i class="fas fa-utensils ms-2"></i></a>
       </div>
     </div>
     <div class="carousel-item">
-      <img src="{{ url_for('static', filename='images/logo.png') }}" class="d-block w-100" style="height: 520px; object-fit: contain; background: linear-gradient(135deg, var(--primary-color) 0%, #e8540d 100%);" alt="BhojanXpress Logo">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" class="d-block w-100" style="height: 350px; object-fit: contain; background: linear-gradient(135deg, var(--primary-color) 0%, #e8540d 100%);" alt="BhojanXpress Logo">
       <div class="carousel-caption d-md-block position-absolute top-50 start-50 translate-middle text-center w-75 text-white">
-        <h2 class="display-4 fw-bold">Quality &amp; Taste</h2>
-        <p class="fs-4 mb-4">Experience the best food delivery in town.</p>
+        <h2 class="display-5 fw-bold">Quality &amp; Taste</h2>
+        <p class="fs-5 mb-4">Experience the best food delivery in town.</p>
         {% if not current_user.is_authenticated %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg shadow px-5 py-3">Join Now <i class="fas fa-user-plus ms-2"></i></a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg shadow px-4 py-2">Join Now <i class="fas fa-user-plus ms-2"></i></a>
         {% endif %}
       </div>
     </div>
@@ -83,38 +83,242 @@
               </div>
               {% endfor %}
             {% else %}
-              <!-- Default categories with placeholder images -->
-              {% set default_categories = [
-                {'name': 'appetizer', 'display_name': 'Appetizers', 'icon': 'leaf', 'color': '#28a745'},
-                {'name': 'main_course', 'display_name': 'Main Course', 'icon': 'drumstick-bite', 'color': '#dc3545'},
-                {'name': 'dessert', 'display_name': 'Desserts', 'icon': 'birthday-cake', 'color': '#fd7e14'},
-                {'name': 'beverage', 'display_name': 'Beverages', 'icon': 'coffee', 'color': '#6f42c1'},
-                {'name': 'snacks', 'display_name': 'Snacks', 'icon': 'cookie-bite', 'color': '#20c997'}
-              ] %}
-              {% for category in default_categories %}
-              <div class="category-item text-center mx-3 flex-shrink-0">
-                <a href="{{ url_for('user.menu', category=category.name) }}" class="text-decoration-none">
-                  <div class="category-card overflow-hidden rounded-4 shadow-sm">
-                    <div class="category-image-wrapper">
-                      <div class="category-placeholder" style="background: linear-gradient(135deg, {{ category.color }}, {{ category.color }}dd);">
-                        <i class="fas fa-{{ category.icon }} fa-3x text-white"></i>
-                      </div>
-                      <div class="category-overlay">
-                        <h6 class="category-name text-white fw-bold mb-0">{{ category.display_name }}</h6>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              {% endfor %}
-            {% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+           {% endif %}
+           </section>
 
+<!-- Enhanced Offers for You Section with Auto-Slider -->
+{% if active_coupons %}
+<section class="container-fluid my-4 offers-section">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="mb-0 fw-bold">Offers for you</h2>
+            <p class="text-muted small mt-1">Use these coupons to get amazing deals!</p>
+        </div>
+        {% if active_coupons|length >= 4 %}
+        <div class="slider-controls d-none d-md-flex">
+            <button id="offersSliderPrev" class="btn btn-outline-primary btn-sm me-2 rounded-circle" style="width: 40px; height: 40px;">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button id="offersSliderNext" class="btn btn-outline-primary btn-sm rounded-circle" style="width: 40px; height: 40px;">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="position-relative">
+        {% if active_coupons|length >= 4 %}
+        <!-- Auto-Slider Container for 4+ coupons -->
+        <div id="offersSliderContainer" class="offers-slider-container">
+            <div id="offersSlider" class="offers-slider d-flex transition-all" style="transition: transform 0.3s ease;">
+                {% for coupon in active_coupons %}
+                <div class="offer-slide flex-shrink-0" style="width: 320px;">
+                    <div class="coupon-item me-3">
+                        <div id="coupon-card-{{ coupon.id }}" class="card border-0 shadow-sm h-100 coupon-card" style="border-radius: 10px; background: linear-gradient(135deg, {{ '#FF6B35' if loop.index0 % 4 == 0 else '#3A86FF' if loop.index0 % 4 == 1 else '#38B000' if loop.index0 % 4 == 2 else '#9D4EDD' }} 0%, {{ '#FCA311' if loop.index0 % 4 == 0 else '#5BC0EB' if loop.index0 % 4 == 1 else '#6FFF74' if loop.index0 % 4 == 2 else '#C77DFF' }} 100%);">
+                            <div class="card-body text-white p-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="bg-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <i class="fas {{ 'fa-percentage' if coupon.discount_type == 'percentage' else 'fa-tag' }} text-{{ 'danger' if loop.index0 % 4 == 0 else 'primary' if loop.index0 % 4 == 1 else 'success' if loop.index0 % 4 == 2 else 'purple' }}" style="font-size: 1.25rem;"></i>
+                                    </div>
+                                    <h5 class="card-title mb-0 fw-bold">{{ coupon.code }}</h5>
+                                </div>
+
+                                <div class="card-text mb-3">
+                                    <div class="mb-1">{{ coupon.description }}</div>
+                                    <div class="fw-bold">
+                                        {% if coupon.discount_type == 'percentage' %}
+                                        Get {{ coupon.discount_value }}% OFF
+                                        {% else %}
+                                        Get ₹{{ "%.0f"|format(coupon.discount_value) }} OFF
+                                        {% endif %}
+                                        
+                                        {% if coupon.min_order_amount > 0 %}
+                                        on orders worth ₹{{ "%.0f"|format(coupon.min_order_amount) }} or more
+                                        {% endif %}
+                                    </div>
+                                    <div class="small mt-1">Valid till: {{ coupon.valid_until.strftime('%d %b %Y') }}</div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <button class="btn btn-light btn-sm copy-coupon-btn" 
+                                            data-coupon-code="{{ coupon.code }}" 
+                                            style="font-size: 0.8rem;" onclick="copyCouponCode('{{ coupon.code }}')">
+                                        <i class="fas fa-copy me-1"></i> Copy Code
+                                    </button>
+                                    
+                                    <button class="btn btn-light btn-sm text-primary apply-coupon-btn" 
+                                            data-coupon-code="{{ coupon.code }}"
+                                            style="font-size: 0.8rem;" onclick="applyCoupon('{{ coupon.code }}')">
+                                        <i class="fas fa-shopping-cart me-1"></i> Apply Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Slider Indicators -->
+        <div class="slider-indicators d-flex justify-content-center mt-3">
+            {% for i in range((active_coupons|length + 2) // 3) %}
+            <button class="slider-dot {{ 'active' if loop.index0 == 0 else '' }}" data-slide="{{ loop.index0 }}"></button>
+            {% endfor %}
+        </div>
+        
+        {% else %}
+        <!-- Regular horizontal scroll for less than 4 coupons -->
+        <div class="coupon-scroll-container">
+            <div class="d-flex flex-nowrap coupon-items-row" style="overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;">
+                {% for coupon in active_coupons %}
+                <div class="coupon-item me-3" style="min-width: 320px; scroll-snap-align: start;">
+                    <div id="coupon-card-{{ coupon.id }}" class="card border-0 shadow-sm h-100 coupon-card" style="border-radius: 10px; background: linear-gradient(135deg, {{ '#FF6B35' if loop.index0 % 4 == 0 else '#3A86FF' if loop.index0 % 4 == 1 else '#38B000' if loop.index0 % 4 == 2 else '#9D4EDD' }} 0%, {{ '#FCA311' if loop.index0 % 4 == 0 else '#5BC0EB' if loop.index0 % 4 == 1 else '#6FFF74' if loop.index0 % 4 == 2 else '#C77DFF' }} 100%);">
+                        <div class="card-body text-white p-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="bg-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <i class="fas {{ 'fa-percentage' if coupon.discount_type == 'percentage' else 'fa-tag' }} text-{{ 'danger' if loop.index0 % 4 == 0 else 'primary' if loop.index0 % 4 == 1 else 'success' if loop.index0 % 4 == 2 else 'purple' }}" style="font-size: 1.25rem;"></i>
+                                </div>
+                                <h5 class="card-title mb-0 fw-bold">{{ coupon.code }}</h5>
+                            </div>
+
+                            <div class="card-text mb-3">
+                                <div class="mb-1">{{ coupon.description }}</div>
+                                <div class="fw-bold">
+                                    {% if coupon.discount_type == 'percentage' %}
+                                    Get {{ coupon.discount_value }}% OFF
+                                    {% else %}
+                                    Get ₹{{ "%.0f"|format(coupon.discount_value) }} OFF
+                                    {% endif %}
+                                    
+                                    {% if coupon.min_order_amount > 0 %}
+                                    on orders worth ₹{{ "%.0f"|format(coupon.min_order_amount) }} or more
+                                    {% endif %}
+                                </div>
+                                <div class="small mt-1">Valid till: {{ coupon.valid_until.strftime('%d %b %Y') }}</div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-light btn-sm copy-coupon-btn" 
+                                        data-coupon-code="{{ coupon.code }}" 
+                                        style="font-size: 0.8rem;" onclick="copyCouponCode('{{ coupon.code }}')">
+                                    <i class="fas fa-copy me-1"></i> Copy Code
+                                </button>
+                                
+                                <button class="btn btn-light btn-sm text-primary apply-coupon-btn" 
+                                        data-coupon-code="{{ coupon.code }}"
+                                        style="font-size: 0.8rem;" onclick="applyCoupon('{{ coupon.code }}')">
+                                    <i class="fas fa-shopping-cart me-1"></i> Apply Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Most Popular Items Section -->
+{% if popular_items %}
+<section class="container-fluid my-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="mb-0 fw-bold">Most Popular</h2>
+            <p class="text-muted small mt-1">Top {{ popular_items|length }} most ordered items</p>
+        </div>
+    </div>
+    
+    <div class="scroll-container">
+        <div class="row flex-nowrap popular-items-row">
+            {% for item in popular_items[:10] %}
+            <div class="col-2 food-item-col">
+                <div class="card h-100 food-card border-0 shadow-sm clickable-card" 
+                     onclick="showFoodDetails({{ item.id }})">
+                    <div class="position-relative food-img-container">
+                        {% if item.image_url %}
+                        <img src="{{ item.image_url }}" alt="{{ item.name }}" class="card-img-top food-img">
+                        {% elif item.image_path %}
+                        <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="card-img-top food-img">
+                        {% else %}
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                            <i class="fas fa-utensils text-muted fa-2x"></i>
+                        </div>
+                        {% endif %}
+                        <span class="badge bg-danger position-absolute top-0 end-0 m-2">
+                            <i class="fas fa-fire me-1"></i> Popular
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-title">{{ item.name }}</h6>
+                        <p class="card-text text-muted small">{{ item.description|truncate(50) }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">₹{{ "%.0f"|format(item.price) }}</span>
+                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); addToCart({{ item.id }})">
+                                <i class="fas fa-cart-plus fa-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Featured Menu Items Section -->
+{% if featured_items %}
+<section class="container-fluid my-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0 fw-bold">Featured Menu Items</h2>
+        <a href="{{ url_for('user.menu') }}" class="btn btn-outline-primary">View All <i class="fas fa-arrow-right ms-1"></i></a>
+    </div>
+
+    <div class="row g-4">
+        {% for item in featured_items[:18] %}
+        <div class="col-2">
+            <div class="card h-100 food-card border-0 shadow-sm clickable-card" 
+                 onclick="showFoodDetails({{ item.id }})">
+                <div class="position-relative food-img-container">
+                    {% if item.image_url %}
+                    <img src="{{ item.image_url }}" alt="{{ item.name }}" class="card-img-top food-img">
+                    {% elif item.image_path %}
+                    <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="card-img-top food-img">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                        <i class="fas fa-utensils text-muted fa-2x"></i>
+                    </div>
+                    {% endif %}
+                    <span class="badge position-absolute top-0 end-0 m-2 {% if item.is_available %}bg-success{% else %}bg-danger{% endif %}">
+                        {% if item.is_available %}Available{% else %}Sold Out{% endif %}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-title">{{ item.name }}</h6>
+                    <p class="card-text text-muted small">{{ item.description|truncate(50) }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">₹{{ "%.0f"|format(item.price) }}</span>
+                        {% if item.is_available %}
+                        <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); addToCart({{ item.id }})">
+                            <i class="fas fa-shopping-cart fa-lg"></i>
+                        </button>
+                        {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled>
+                            <i class="fas fa-shopping-cart fa-lg"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
 <!-- Why Choose BhojanXpress Section with Font Awesome Icons -->
 <section class="why-choose-section">
   <div class="container">
@@ -156,207 +360,266 @@
   </div>
 </section>
 
-<!-- Featured Food Items Section -->
-{% if featured_items %}
-<section class="container my-5">
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <h2 class="mb-0 fw-bold">Featured Menu Items</h2>
-        <a href="{{ url_for('user.menu') }}" class="btn btn-outline-primary">View All <i class="fas fa-arrow-right ms-1"></i></a>
-    </div>
 
-
-    <div class="row g-4">
-        {% for item in featured_items %}
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100 food-card border-0 shadow-sm rounded-4 overflow-hidden">
-                <!-- Make the image clickable -->
-                <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="position-relative">
-                    {% if item.image_url %}
-                    <img src="{{ item.image_url }}" alt="{{ item.name }}" class="card-img-top food-img" style="height: 180px; object-fit: cover;">
-                    {% elif item.image_path %}
-                    <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="card-img-top food-img" style="height: 180px; object-fit: cover;">
-                    {% else %}
-                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
-                        <i class="fas fa-utensils fa-2x text-secondary"></i>
-                    </div>
-                    {% endif %}
-
-                    <span class="badge rounded-pill position-absolute top-0 end-0 m-3 {% if item.is_available %}bg-success{% else %}bg-danger{% endif %}">
-                        {% if item.is_available %}Available{% else %}Sold Out{% endif %}
-                    </span>
-                </a>
-
-                <div class="card-body d-flex flex-column">
-                    <!-- Make the title clickable -->
-                    <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="text-decoration-none text-dark">
-                        <h5 class="card-title mb-2">{{ item.name }}</h5>
-                    </a>
-                    <p class="card-text text-muted small mb-3">{{ item.description|truncate(60) }}</p>
-                    <div class="d-flex justify-content-between align-items-center mt-auto">
-                        <span class="fw-bold text-primary">₹{{ "%.2f"|format(item.price) }}</span>
-                        <!-- Add Cart Button -->
-                        {% if item.is_available %}
-                        <button onclick="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price }})" class="btn btn-warning">
-                            <i class="fas fa-shopping-cart"></i> Add to Cart
-                        </button>
-                        {% else %}
-                        <button class="btn btn-secondary" disabled>
-                            <i class="fas fa-shopping-cart"></i> Sold Out
-                        </button>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
-
-
-
-<!-- Category Food Items -->
-{% if category_items %}
-{% for category_name, items in category_items.items() %}
-{% if items %}
-<section class="container my-5">
-    {% set category_obj = categories|selectattr('name', 'equalto', category_name)|first %}
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <h2 class="mb-0">{{ category_obj.display_name }}</h2>
-        <a href="{{ url_for('user.menu', category=category_name) }}" class="btn btn-outline-primary">View All <i class="fas fa-arrow-right ms-1"></i></a>
-    </div>
-    <div class="row g-4">
-        {% for item in items %}
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100 food-card border-0 shadow-sm rounded-4 overflow-hidden">
-                <div class="position-relative">
-                    {% if item.image_url %}
-                    <img src="{{ item.image_url }}" alt="{{ item.name }}" class="card-img-top food-img" style="height: 180px; object-fit: cover;">
-                    {% elif item.image_path %}
-                    <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="card-img-top food-img" style="height: 180px; object-fit: cover;">
-                    {% else %}
-                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
-                        <i class="fas fa-utensils fa-2x text-secondary"></i>
-                    </div>
-                    {% endif %}
-
-                    <span class="badge rounded-pill position-absolute top-0 end-0 m-3 {% if item.is_available %}bg-success{% else %}bg-danger{% endif %}">
-                        {% if item.is_available %}Available{% else %}Sold Out{% endif %}
-                    </span>
-                </div>
-
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title mb-2">{{ item.name }}</h5>
-                    <p class="card-text text-muted small mb-3">{{ item.description|truncate(60) }}</p>
-                    <div class="d-flex justify-content-between align-items-center mt-auto">
-                        <span class="fw-bold text-primary">₹{{ "%.2f"|format(item.price) }}</span>
-                        <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="btn btn-sm btn-primary">
-                            <i class="fas fa-info-circle me-1"></i> Details
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
-{% endfor %}
-{% endif %}
-
-<!-- Special Offers Section -->
-<section class="container-fluid py-5 mb-5" style="background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);">
-  <div class="container">
-    <div class="row">
-      <div class="col-12 text-center mb-4">
-        <h2 class="display-5 fw-bold text-white mb-3">
-          <i class="fas fa-fire text-warning"></i> Special Offers
-        </h2>
-        <p class="lead text-white">Don't miss out on these amazing deals!</p>
-      </div>
-    </div>
-
-    {% if active_coupons %}
-    <div class="row justify-content-center">
-      {% for coupon in active_coupons %}
-      <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card bg-white shadow-lg border-0 h-100 offer-card">
-          <div class="card-body text-center p-4">
-            <div class="offer-badge mb-3">
-              <span class="badge bg-danger fs-6 px-3 py-2">
-                {% if coupon.discount_type == 'percentage' %}
-                  {{ coupon.discount_value|int }}% OFF
-                {% else %}
-                  ₹{{ coupon.discount_value|int }} OFF
-                {% endif %}
-              </span>
-            </div>
-            <h5 class="card-title fw-bold text-primary">{{ coupon.code }}</h5>
-            <p class="card-text text-muted">{{ coupon.description or 'Special discount offer' }}</p>
-            {% if coupon.min_order_amount %}
-            <p class="small text-success">
-              <i class="fas fa-info-circle"></i> Min order: ₹{{ coupon.min_order_amount }}
-            </p>
-            {% endif %}
-            <div class="offer-actions mt-3">
-              <button class="btn btn-outline-primary btn-sm copy-coupon" data-coupon="{{ coupon.code }}">
-                <i class="fas fa-copy"></i> Copy Code
-              </button>
-              <a href="{{ url_for('user.menu') }}" class="btn btn-primary btn-sm">
-                <i class="fas fa-shopping-cart"></i> Order Now
-              </a>
-            </div>
-            <small class="text-muted d-block mt-2">
-              Valid until {{ coupon.valid_until.strftime('%d %b %Y') }}
-            </small>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="row justify-content-center">
-      <div class="col-md-6 text-center">
-        <div class="card bg-white shadow border-0">
-          <div class="card-body p-4">
-            <i class="fas fa-gift fa-3x text-warning mb-3"></i>
-            <h5 class="text-muted">No Special Offers Available</h5>
-            <p class="text-muted">Check back soon for exciting deals!</p>
-            <a href="{{ url_for('user.menu') }}" class="btn btn-primary">
-              <i class="fas fa-utensils"></i> Browse Menu
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-  </div>
-</section>
-{% endblock %}
 
 {% block extra_css %}
 <style>
+  /* Coupon Section Styling (Dominos Style) */
+.coupon-scroll-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd #f5f5f5;
+}
+
+.coupon-scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.coupon-scroll-container::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 10px;
+}
+
+.coupon-scroll-container::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 10px;
+}
+
+.coupon-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
+}
+
+.coupon-items-row {
+  padding: 8px 4px;
+}
+
+.coupon-card {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.coupon-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+}
+
+.coupon-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
+}
+
+.coupon-card .copy-coupon-btn:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-2px);
+}
+
+  /* Common styles */
+.container-fluid {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    width: 100%;
+}
+
+/* Scroll container for Popular Items */
+.scroll-container {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+}
+
+.popular-items-row {
+    flex-wrap: nowrap;
+    margin-right: -0.5rem;
+    margin-left: -0.5rem;
+}
+
+.food-item-col {
+    padding: 0 0.5rem;
+    flex: 0 0 auto;
+    width: 16.666667%;
+}
+
+/* Food card styles */
+.food-card {
+    transition: all 0.3s ease;
+}
+
+/* Increased image container height */
+.food-img-container {
+    height: 220px; /* Increased from 160px */
+    overflow: hidden;
+}
+
+.food-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Card body spacing */
+.card-body {
+    padding: 1.25rem; /* Increased padding */
+}
+
+.card-title {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.card-text {
+    margin-bottom: 1rem;
+}
+
+/* Scrollbar styling */
+.scroll-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+    background: #fd7e14;
+    border-radius: 10px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .food-item-col {
+        width: 20%;
+    }
+    .col-2 {
+        width: 20%;
+    }
+    .food-img-container {
+        height: 200px; /* Slightly smaller on large screens */
+    }
+}
+
+@media (max-width: 992px) {
+    .food-item-col {
+        width: 25%;
+    }
+    .col-2 {
+        width: 25%;
+    }
+    .food-img-container {
+        height: 180px; /* Adjusted for medium screens */
+    }
+}
+
+@media (max-width: 768px) {
+    .food-item-col {
+        width: 33.333333%;
+    }
+    .col-2 {
+        width: 33.333333%;
+    }
+    .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    .food-img-container {
+        height: 160px; /* Adjusted for small screens */
+    }
+}
+
+@media (max-width: 576px) {
+    .food-item-col {
+        width: 50%;
+    }
+    .col-2 {
+        width: 50%;
+    }
+    .food-img-container {
+        height: 140px; /* Adjusted for mobile screens */
+    }
+}
+
+/* Increase Slider Size */
+.carousel-inner {
+    height: 800px !important;
+}
+
+.carousel-item img {
+    height: 800px !important;
+    object-fit: cover;
+}
+
+/* Remove Empty Space */
+section {
+    margin-bottom: 2rem !important;
+}
+
+.container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* Card Hover Effects */
+.food-card:hover .food-img,
+.clickable-card:hover .food-img {
+    transform: scale(1.08);
+}
+
+.food-img {
+    transition: transform 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .carousel-inner {
+        height: 350px !important;
+    }
+    
+    .carousel-item img {
+        height: 350px !important;
+    }
+    
+    .popular-scroll-container,
+    .featured-scroll-container {
+        margin: 0 -0.5rem;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+}
+    
+        
+        /* Mobile adjustments for popular items */
+        .popular-items-wrapper .flex-shrink-0 {
+            min-width: 240px !important;
+        }
+        
+        /* Mobile adjustments for offers */
+        .offers-wrapper .flex-shrink-0 {
+            min-width: 280px !important;
+        }
+        
+        /* Mobile adjustments for category items */
+        .category-item {
+            min-width: 120px !important;
+        }
+        
+        .category-card {
+            width: 120px !important;
+            height: 120px !important;
+        }
+    
     .text-shadow {
         text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
     }
 
-    .food-card {
-        transition: all 0.3s ease;
-    }
+    
 
-    .food-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-    }
-
-    .food-img {
-        transition: all 0.5s ease;
-    }
-
-    .food-card:hover .food-img {
-        transform: scale(1.05);
-    }
-
+    /* Category cards */
     .category-card {
         transition: all 0.3s ease;
     }
@@ -381,33 +644,19 @@
         opacity: 1;
     }
 
-    .special-offer {
-        transition: all 0.3s ease;
-    }
-
-    .special-offer:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-    }
-
+    
     /* Animation for "Order Now" button */
     .animate__pulse {
         animation-duration: 2s !important;
     }
 
     @keyframes pulse {
-        0% {
-            transform: scale(1);
-        }
-        50% {
-            transform: scale(1.05);
-        }
-        100% {
-            transform: scale(1);
-        }
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
     }
 
-    /* Styles for round category icons */
+    /* Round category section */
     .round-categories-section {
         margin-top: -30px;
         position: relative;
@@ -418,7 +667,7 @@
         padding: 30px 0;
     }
 
-    /* Enhanced category styling to fix display issues */
+    /* Enhanced category styling */
     .category-item {
         min-width: 150px;
         flex-shrink: 0;
@@ -475,234 +724,134 @@
         right: 0;
         background: linear-gradient(transparent, rgba(0,0,0,0.8));
         padding: 15px 10px 10px;
-        transform: translateY(0); /* Always show the category name */
-    }
-
-    .category-name {
-        font-size: 0.9rem;
-        margin: 0;
-        text-align: center;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.8); /* Improve text visibility */
-    }
-
-    /* Hide scrollbar for Chrome, Safari and Opera */
-    .category-scroll-container::-webkit-scrollbar {
-        display: none;
-    }
-
-    /* Hide scrollbar for IE, Edge and Firefox */
-    .category-scroll-container {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-    }
-
-    /* Touch scrolling for mobile */
-    .category-scroll-container {
-        -webkit-overflow-scrolling: touch;
-    }
-
-    /* Styles for special offers section */
-    .offer-card {
-        transition: all 0.3s ease;
-    }
-
-    .offer-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
-    }
-
-    .offer-badge {
-        position: relative;
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        margin-bottom: 1rem;
-        border-radius: 1.5rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: white;
-    }
-
-    .offer-badge::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 1.5rem;
-        transform: translate(-50%, -50%) scale(0);
-        transition: all 0.3s ease;
-    }
-
-    .offer-card:hover .offer-badge::after {
-        transform: translate(-50%, -50%) scale(1);
-    }
-
-    .copy-coupon {
-        cursor: pointer;
-    }
-
-    /* Styles for category scrolling */
-    .category-scroll-container {
-        overflow-x: auto;
-        white-space: nowrap;
-        padding: 10px 0;
-        /* Enable smooth scrolling */
-        scroll-behavior: smooth;
-    }
-
-    .category-items-wrapper {
-        display: inline-flex;
-        align-items: center;
-        gap: 20px;
-    }
-
-    .category-item {
-        min-width: 150px;
-        flex-shrink: 0;
-    }
-
-    .category-card {
-        width: 150px;
-        height: 150px;
-        position: relative;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    .category-card:hover {
-        transform: translateY(-5px) scale(1.05);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
-    }
-
-    .category-image-wrapper {
-        width: 100%;
-        height: 100%;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .category-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: all 0.3s ease;
-    }
-
-    .category-placeholder {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #fd7e14, #e8540d);
-    }
-
-    .category-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: linear-gradient(transparent, rgba(0,0,0,0.8));
-        padding: 15px 10px 10px;
-        transform: translateY(100%);
-        transition: all 0.3s ease;
-    }
-
-    .category-card:hover .category-overlay {
         transform: translateY(0);
     }
 
     .category-name {
         font-size: 0.9rem;
-        margin: 0;
         text-align: center;
     }
 
-    /* Hide scrollbar for Chrome, Safari and Opera */
-    .category-scroll-container::-webkit-scrollbar {
-        display: none;
+    /* Why Choose section styling */
+    .why-choose-section {
+        background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+        padding: 80px 0;
+        margin-top: 50px;
     }
 
-    /* Hide scrollbar for IE, Edge and Firefox */
-    .category-scroll-container {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-    }
-
-    /* Touch scrolling for mobile */
-    .category-scroll-container {
-        -webkit-overflow-scrolling: touch;
-    }
-
-    /* Styles for special offers scrolling */
-    .special-offers-container {
-        overflow-x: auto;
-        white-space: nowrap;
-        padding: 10px 0;
-        position: relative;
-    }
-
-    .special-offers-scroll-area {
-        display: inline-flex;
-        align-items: center;
-        gap: 20px;
-    }
-
-    .special-offer-card {
-        min-width: 250px;
-        flex-shrink: 0;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    .feature-card {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 30px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
+        height: 100%;
     }
 
-    .special-offer-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.15);
     }
 
-    .offer-content {
-        padding: 20px;
-        text-align: center;
+    .feature-icon {
+        font-size: 3rem;
+        color: #fd7e14;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
     }
 
-    .offer-title {
-        font-size: 1.25rem;
+    .feature-card:hover .feature-icon {
+        transform: scale(1.1);
+    }
+
+    .feature-title {
+        color: #fff;
+        margin-bottom: 15px;
         font-weight: 600;
-        margin: 0 0 10px;
     }
 
-    .offer-description {
-        font-size: 0.875rem;
-        color: #666;
-        margin: 0 0 15px;
+    .feature-description {
+        color: rgba(255, 255, 255, 0.8);
+        line-height: 1.6;
     }
 
-    .offer-validity {
-        font-size: 0.75rem;
-        color: #999;
-        margin: 0 0 15px;
+    
+    /* Responsive improvements */
+    @media (max-width: 992px) {
+        .offers-wrapper,
+        .popular-items-wrapper {
+            gap: 0.75rem;
+        }
+        
+        .flex-shrink-0 {
+            min-width: 250px;
+        }
     }
 
-    .copy-code {
-        cursor: pointer;
+    @media (max-width: 768px) {
+        .offers-wrapper,
+        .popular-items-wrapper {
+            gap: 0.5rem;
+        }
+        
+        .flex-shrink-0 {
+            min-width: 220px;
+        }
+        
+        .round-categories-section {
+            margin-top: -20px;
+            padding: 20px 0;
+        }
+        
+        .category-card {
+            width: 120px;
+            height: 120px;
+        }
+        
+        .category-item {
+            min-width: 120px;
+        }
     }
 
-    /* Hide scrollbar for special offers scrolling */
-    .special-offers-container::-webkit-scrollbar {
-        display: none;
+
+
+    .category-link:hover .category-card .card-img-wrapper::after {
+        opacity: 1;
     }
 
-    .special-offers-container {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
+    .special-offer {
+        transition: all 0.3s ease;
     }
+
+    .special-offer:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Animation for "Order Now" button */
+    .animate__pulse {
+        animation-duration: 2s !important;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    
+   
+
 </style>
+{% endblock %}
 {% endblock %}
 
 {% block extra_js %}
@@ -730,28 +879,449 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Copy coupon code to clipboard
-    document.querySelectorAll('.copy-coupon').forEach(button => {
+    document.querySelectorAll('.copy-coupon-btn').forEach(button => {
         button.addEventListener('click', function() {
-            const couponCode = this.getAttribute('data-coupon');
-            navigator.clipboard.writeText(couponCode).then(() => {
-                alert('Coupon code copied: ' + couponCode);
+            const code = this.getAttribute('data-code');
+            navigator.clipboard.writeText(code).then(() => {
+                // Change button icon temporarily
+                const originalIcon = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i>';
+                this.style.color = '#28a745';
+
+                setTimeout(() => {
+                    this.innerHTML = originalIcon;
+                    this.style.color = '';
+                }, 2000);
+                
+                // Show toast notification
+                showToast('Coupon code copied to clipboard!', 'success');
             }, (err) => {
                 console.error('Could not copy text: ', err);
+                showToast('Failed to copy code. Please try again.', 'error');
             });
         });
     });
 
-    // Copy code button functionality in special offers section
+    // Copy coupon code to clipboard (old version for backward compatibility)
     document.querySelectorAll('.copy-code').forEach(button => {
         button.addEventListener('click', function() {
             const code = this.getAttribute('data-code');
             navigator.clipboard.writeText(code).then(() => {
-                alert('Coupon code copied: ' + code);
+                // Change button text and style temporarily
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                this.classList.add('btn-success');
+                this.classList.remove('btn-outline-primary');
+
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.classList.remove('btn-success');
+                    this.classList.add('btn-outline-primary');
+                }, 2000);
             }, (err) => {
                 console.error('Could not copy text: ', err);
+                alert('Failed to copy code. Please try again.');
             });
         });
     });
+
+    // Remove coupon functionality
+    document.querySelectorAll('.remove-coupon').forEach(button => {
+        button.addEventListener('click', function() {
+            const couponId = this.getAttribute('data-coupon-id');
+            const couponCard = document.getElementById('coupon-card-' + couponId);
+
+            if (confirm('Are you sure you want to remove this coupon?')) {
+                if (couponCard) {
+                    // Add AJAX call to remove the coupon from user's saved coupons
+                    fetch('/api/coupons/remove/' + couponId, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Add fade-out animation
+                            couponCard.style.transition = 'all 0.5s ease';
+                            couponCard.style.opacity = '0';
+                            couponCard.style.transform = 'translateY(20px)';
+
+                            // Remove from DOM after animation completes
+                            setTimeout(() => {
+                                couponCard.remove();
+
+                                // Check if there are any remaining coupons
+                                const remainingCoupons = document.querySelectorAll('.special-offer-card');
+                                if (remainingCoupons.length === 0) {
+                                    // If no coupons left, hide the entire section
+                                    const specialOffersSection = document.getElementById('specialOffersSection');
+                                    if (specialOffersSection) {
+                                        specialOffersSection.style.display = 'none';
+                                    }
+                                }
+                            }, 500);
+                        } else {
+                            alert('Failed to remove coupon: ' + (data.message || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error removing coupon:', error);
+                        alert('Failed to remove coupon. Please try again.');
+                    });
+                }
+            }
+        });
+    });
+
+    // Hide Special Offers section if no coupons are available
+    const specialOffersSection = document.getElementById('specialOffersSection');
+    const couponCards = document.querySelectorAll('.special-offer-card');
+
+    if (specialOffersSection && couponCards.length === 0) {
+        specialOffersSection.style.display = 'none';
+    }
 });
+
+// Global functions for food interactions
+function showFoodDetails(foodId) {
+    // Redirect to food detail page
+    window.location.href = `/food/${foodId}`;
+}
+
+function addToCart(foodId) {
+    // Add to cart via AJAX
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    fetch(`/add_to_cart/${foodId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            quantity: 1
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Item added to cart!', 'success');
+            // Update cart count if element exists
+            const cartCount = document.querySelector('.cart-count-badge');
+            if (cartCount) {
+                cartCount.textContent = data.cart_count;
+                cartCount.style.display = 'block';
+            }
+        } else {
+            showToast(data.message || 'Error adding to cart', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error adding to cart', 'error');
+    });
+}
+
+// Copy coupon code functionality
+function copyCouponCode(code) {
+    navigator.clipboard.writeText(code).then(function() {
+        showToast(`Coupon code "${code}" copied to clipboard!`, 'success');
+    }).catch(function(err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast(`Coupon code "${code}" copied!`, 'success');
+    });
+}
+
+// Apply coupon functionality
+function applyCoupon(code) {
+    // Store coupon in session storage for use in cart
+    sessionStorage.setItem('appliedCoupon', code);
+    showToast(`Coupon "${code}" will be applied at checkout!`, 'success');
+    // Redirect to cart page
+    setTimeout(() => {
+        window.location.href = '/cart';
+    }, 1000);
+}
+
+// Toast notification function
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; animation: slideIn 0.3s ease;';
+    toast.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.remove();
+        }
+    }, 3000);
+}
+
+// Add CSS for toast animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* Offers Auto-Slider Styles */
+    .offers-slider-container {
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .offers-slider {
+        display: flex;
+        transition: transform 0.3s ease;
+        gap: 1rem;
+    }
+    
+    .offer-slide {
+        flex: 0 0 auto;
+    }
+    
+    .slider-indicators {
+        gap: 0.5rem;
+    }
+    
+    .slider-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid #ddd;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .slider-dot.active {
+        background: var(--primary-color, #007bff);
+        border-color: var(--primary-color, #007bff);
+    }
+    
+    .slider-dot:hover {
+        border-color: var(--primary-color, #007bff);
+    }
+    
+    @media (max-width: 768px) {
+        .offer-slide {
+            width: 280px !important;
+        }
+        
+        .slider-controls {
+            display: none !important;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Offers Auto-Slider Functionality
+class OffersSlider {
+    constructor() {
+        this.slider = document.getElementById('offersSlider');
+        this.container = document.getElementById('offersSliderContainer');
+        this.prevBtn = document.getElementById('offersSliderPrev');
+        this.nextBtn = document.getElementById('offersSliderNext');
+        this.dots = document.querySelectorAll('.slider-dot');
+        
+        if (!this.slider) return;
+        
+        this.currentIndex = 0;
+        this.totalSlides = this.slider.children.length;
+        this.slidesPerView = this.getSlidesPerView();
+        this.maxIndex = Math.max(0, this.totalSlides - this.slidesPerView);
+        this.autoSlideInterval = null;
+        this.isHovered = false;
+        
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+        this.startAutoSlide();
+        this.updateSlider();
+    }
+    
+    getSlidesPerView() {
+        const containerWidth = this.container.offsetWidth;
+        const slideWidth = 320; // Width of each slide
+        const gap = 16; // Gap between slides
+        return Math.floor(containerWidth / (slideWidth + gap));
+    }
+    
+    setupEventListeners() {
+        if (this.prevBtn) {
+            this.prevBtn.addEventListener('click', () => this.previousSlide());
+        }
+        
+        if (this.nextBtn) {
+            this.nextBtn.addEventListener('click', () => this.nextSlide());
+        }
+        
+        this.dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => this.goToSlide(index));
+        });
+        
+        // Pause auto-slide on hover
+        this.container.addEventListener('mouseenter', () => {
+            this.isHovered = true;
+            this.stopAutoSlide();
+        });
+        
+        this.container.addEventListener('mouseleave', () => {
+            this.isHovered = false;
+            this.startAutoSlide();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            this.slidesPerView = this.getSlidesPerView();
+            this.maxIndex = Math.max(0, this.totalSlides - this.slidesPerView);
+            this.currentIndex = Math.min(this.currentIndex, this.maxIndex);
+            this.updateSlider();
+        });
+        
+        // Touch events for mobile
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        
+        this.slider.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            isDragging = true;
+            this.stopAutoSlide();
+        });
+        
+        this.slider.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentX = e.touches[0].clientX;
+        });
+        
+        this.slider.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const diff = startX - currentX;
+            const threshold = 50;
+            
+            if (diff > threshold) {
+                this.nextSlide();
+            } else if (diff < -threshold) {
+                this.previousSlide();
+            }
+            
+            if (!this.isHovered) {
+                this.startAutoSlide();
+            }
+        });
+    }
+    
+    updateSlider() {
+        const slideWidth = 320; // Width of each slide
+        const gap = 16; // Gap between slides
+        const translateX = -this.currentIndex * (slideWidth + gap);
+        
+        this.slider.style.transform = `translateX(${translateX}px)`;
+        
+        // Update dots
+        this.dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === this.currentIndex);
+        });
+        
+        // Update button states
+        if (this.prevBtn) {
+            this.prevBtn.disabled = this.currentIndex === 0;
+        }
+        
+        if (this.nextBtn) {
+            this.nextBtn.disabled = this.currentIndex >= this.maxIndex;
+        }
+    }
+    
+    nextSlide() {
+        if (this.currentIndex < this.maxIndex) {
+            this.currentIndex++;
+        } else {
+            this.currentIndex = 0; // Loop back to start
+        }
+        this.updateSlider();
+    }
+    
+    previousSlide() {
+        if (this.currentIndex > 0) {
+            this.currentIndex--;
+        } else {
+            this.currentIndex = this.maxIndex; // Loop to end
+        }
+        this.updateSlider();
+    }
+    
+    goToSlide(index) {
+        this.currentIndex = Math.max(0, Math.min(index, this.maxIndex));
+        this.updateSlider();
+    }
+    
+    startAutoSlide() {
+        if (this.totalSlides <= this.slidesPerView) return; // No need to auto-slide if all slides are visible
+        
+        this.stopAutoSlide();
+        this.autoSlideInterval = setInterval(() => {
+            if (!this.isHovered) {
+                this.nextSlide();
+            }
+        }, 4000); // Change slide every 4 seconds
+    }
+    
+    stopAutoSlide() {
+        if (this.autoSlideInterval) {
+            clearInterval(this.autoSlideInterval);
+            this.autoSlideInterval = null;
+        }
+    }
+}
+
+// Initialize offers slider when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    const offersSlider = new OffersSlider();
+});
+
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 100px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
 </script>
 {% endblock %}

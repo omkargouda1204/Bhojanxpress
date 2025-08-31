@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login_manager
 from datetime import datetime
 
-__all__ = ['User', 'FoodItem', 'CartItem', 'Order', 'OrderItem', 'Coupon', 'UserProfile', 'Category', 'Rating', 'ContactMessage']
+__all__ = ['User', 'FoodItem', 'CartItem', 'Order', 'OrderItem', 'Coupon', 'UserProfile', 'Category', 'Rating', 'ContactMessage', 'ReviewImage']
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -143,7 +143,12 @@ class Rating(db.Model):
     food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False)
     rating = db.Column(db.Integer, nullable=False)  # 1-5 stars
     comment = db.Column(db.Text, nullable=True)
+    helpful_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref='ratings')
 
     def __repr__(self):
         return f'<Rating {self.id}: {self.rating}/5>'
@@ -166,3 +171,16 @@ class ContactMessage(db.Model):
 
     def __repr__(self):
         return f'<ContactMessage {self.id}: {self.subject_type}>'
+
+class ReviewImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    rating_id = db.Column(db.Integer, db.ForeignKey('rating.id'), nullable=False)
+    image_url = db.Column(db.String(255), nullable=True)  # URL for uploaded images
+    image_filename = db.Column(db.String(255), nullable=True)  # Original filename
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    rating = db.relationship('Rating', backref=db.backref('images', lazy=True, cascade='all, delete-orphan'))
+
+    def __repr__(self):
+        return f'<ReviewImage {self.id} for Rating {self.rating_id}>'

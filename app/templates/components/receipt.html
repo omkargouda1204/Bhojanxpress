@@ -55,37 +55,37 @@
                         </div>
                     </div>
 
-                    <!-- Order Items -->
-                    <div class="table-responsive mb-4 order-items-container">
-                        <table class="table table-hover align-middle receipt-table">
-                            <thead class="table-primary">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Item</th>
-                                    <th class="text-center">Qty</th>
-                                    <th class="text-end">Price</th>
-                                    <th class="text-end">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% if order.order_items and order.order_items|length > 0 %}
-                                    {% for item in order.order_items %}
-                                    <tr>
-                                        <td>{{ loop.index }}</td>
-                                        <td class="fw-bold">{{ item.food_item.name if item.food_item else 'Item Deleted' }}</td>
-                                        <td class="text-center">{{ item.quantity }}</td>
-                                        <td class="text-end">₹{{ '%.2f'|format(item.price) }}</td>
-                                        <td class="text-end">₹{{ '%.2f'|format(item.price * item.quantity) }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted">No items found for this order.</td>
-                                    </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
+<!--                    &lt;!&ndash; Order Items &ndash;&gt;-->
+<!--                    <div class="table-responsive mb-4 order-items-container">-->
+<!--                        <table class="table table-hover align-middle receipt-table">-->
+<!--                            <thead class="table-primary">-->
+<!--                                <tr>-->
+<!--                                    <th>#</th>-->
+<!--                                    <th>Item</th>-->
+<!--                                    <th class="text-center">Qty</th>-->
+<!--                                    <th class="text-end">Price</th>-->
+<!--                                    <th class="text-end">Amount</th>-->
+<!--                                </tr>-->
+<!--                            </thead>-->
+<!--                            <tbody>-->
+<!--                                {% if order.order_items and order.order_items|length > 0 %}-->
+<!--                                    {% for item in order.order_items %}-->
+<!--                                    <tr>-->
+<!--                                        <td>{{ loop.index }}</td>-->
+<!--                                        <td class="fw-bold">{{ item.food_item.name if item.food_item else 'Item Deleted' }}</td>-->
+<!--                                        <td class="text-center">{{ item.quantity }}</td>-->
+<!--                                        <td class="text-end">₹{{ '%.2f'|format(item.price) }}</td>-->
+<!--                                        <td class="text-end">₹{{ '%.2f'|format(item.price * item.quantity) }}</td>-->
+<!--                                    </tr>-->
+<!--                                    {% endfor %}-->
+<!--                                {% else %}-->
+<!--                                    <tr>-->
+<!--                                        <td colspan="5" class="text-center text-muted">No items found for this order.</td>-->
+<!--                                    </tr>-->
+<!--                                {% endif %}-->
+<!--                            </tbody>-->
+<!--                        </table>-->
+<!--                    </div>-->
 
                     <!-- Summary -->
                     <div class="row summary-section">

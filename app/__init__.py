@@ -61,12 +61,14 @@ def create_app():
     from app.routes.user_routes import user_bp
     from app.routes.admin_routes import admin_bp
     from app.routes.chatbot_routes import chatbot_bp
+    from app.routes.api_routes import api_bp
     from app.utils.template_filters import template_filters
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(chatbot_bp)
+    app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(template_filters)
 
     return app

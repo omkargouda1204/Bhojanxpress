@@ -282,25 +282,42 @@ def reset_password():
 
     form = ResetPasswordForm()
     if form.validate_on_submit():
-        # Store OTP in session if database fields don't exist
-        reset_otp = session.get('password_reset_otp', {})
+        # Debug information
+        print(f"Form submitted with OTP: {form.otp.data}")
 
-        # Check if user has password_reset_otp attribute, if not use the one from session
+        # Check both database and session for OTP
+        session_otp_data = session.get('password_reset_otp', {})
+        session_otp = session_otp_data.get('otp')
+
+        # Try to get OTP from user object or session
         try:
             user_otp = user.password_reset_otp
             otp_expiry = user.password_reset_otp_expiry
             using_session = False
-        except AttributeError:
+            print(f"Using database OTP: {user_otp}, Expiry: {otp_expiry}")
+        except (AttributeError, Exception) as e:
             # Fallback to session-based OTP
-            user_otp = reset_otp.get('otp')
-            otp_expiry = datetime.fromtimestamp(reset_otp.get('expiry', 0)) if reset_otp.get('expiry') else None
+            print(f"Database OTP not available ({str(e)}), using session OTP: {session_otp}")
+            user_otp = session_otp
+            otp_expiry = datetime.fromtimestamp(session_otp_data.get('expiry', 0)) if session_otp_data.get('expiry') else None
             using_session = True
 
+        # Debug information
+        print(f"User OTP (from {'session' if using_session else 'database'}): {user_otp}")
+        print(f"Form OTP: {form.otp.data}")
+        print(f"OTP expiry: {otp_expiry}, Current time: {datetime.utcnow()}")
+
+        # Make sure we're comparing strings
+        form_otp = str(form.otp.data).strip()
+        if user_otp:
+            user_otp = str(user_otp).strip()
+
         # Check if OTP is valid and not expired
-        if user_otp == form.otp.data:
+        if user_otp and form_otp and user_otp == form_otp:
             if otp_expiry and otp_expiry > datetime.utcnow():
                 # Reset password
                 user.set_password(form.password.data)
+                print(f"Password reset successful for user: {user.email}")
 
                 # Clear OTP data
                 if not using_session:
@@ -321,7 +338,14 @@ def reset_password():
                 return redirect(url_for('auth.login'))
             else:
                 flash('OTP has expired. Please request a new one.', 'error')
+                return redirect(url_for('auth.resend_reset_otp'))
         else:
+            if not user_otp:
+                print("No OTP found in database or session")
+            elif not form_otp:
+                print("No OTP provided in form")
+            else:
+                print(f"OTP mismatch: '{user_otp}' != '{form_otp}'")
             flash('Invalid OTP. Please try again.', 'error')
 
     return render_template('reset_password.html', form=form, email=user.email)

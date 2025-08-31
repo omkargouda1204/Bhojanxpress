@@ -47,6 +47,8 @@ class SearchForm(FlaskForm):
                                  ('beverage', 'Beverage'),
                                  ('snacks', 'Snacks')],
                           default='all')
+    price_min = FloatField('Min Price', validators=[Optional(), NumberRange(min=0)])
+    price_max = FloatField('Max Price', validators=[Optional(), NumberRange(min=0)])
 
 class CartForm(FlaskForm):
     quantity = IntegerField('Quantity', validators=[DataRequired(), NumberRange(min=1, max=10)])

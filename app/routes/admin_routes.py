@@ -54,9 +54,16 @@ def dashboard():
 @login_required
 @admin_required
 def pending_orders():
-    # Get all pending orders with user relationship loaded
-    from sqlalchemy.orm import joinedload
-    orders = Order.query.options(joinedload(Order.user)).filter_by(status='pending').order_by(Order.created_at.desc()).all()
+    # Get all pending orders with user information
+    try:
+        from sqlalchemy.orm import joinedload
+        orders = Order.query.options(joinedload(Order.user)).filter_by(status='pending').order_by(Order.created_at.desc()).all()
+    except AttributeError:
+        # Fallback if relationship doesn't work - get orders and users separately
+        orders = Order.query.filter_by(status='pending').order_by(Order.created_at.desc()).all()
+        # Manually add user information
+        for order in orders:
+            order.user = User.query.get(order.user_id)
     return render_template('admin/pending_orders.html', orders=orders)
 
 @admin_bp.route('/reports')
@@ -506,6 +513,7 @@ def add_coupon():
             coupon.max_discount_amount = max_discount_amount
             coupon.valid_until = valid_until
             coupon.is_active = True
+            coupon.display_on_home = request.form.get('display_on_home') == 'on'
 
             # Only set usage_limit if it's available in the database schema
             try:
@@ -563,6 +571,7 @@ def edit_coupon(coupon_id):
             coupon.min_order_amount = min_order_amount
             coupon.max_discount_amount = max_discount_amount
             coupon.valid_until = valid_until
+            coupon.display_on_home = request.form.get('display_on_home') == 'on'
 
             # Only update usage_limit if it's available in the database schema
             try:

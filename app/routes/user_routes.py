@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
 from app import db
-from app.models import FoodItem, CartItem, Order, OrderItem, Coupon, UserProfile, Category, Rating, ContactMessage
+from app.models import FoodItem, CartItem, Order, OrderItem, Coupon, UserProfile, Category, Rating, ContactMessage, ReviewImage
+from app.models.special_offers import SpecialOffer
+from sqlalchemy import func
 
 from app.forms import SearchForm, CartForm, OrderForm
 from app.utils.helpers import search_food_items, get_cart_total, calculate_delivery_time, format_currency, validate_phone_number, flash_errors
@@ -175,21 +177,40 @@ def place_order():
 @user_bp.route('/')
 def home():
     # Get featured food items (latest 6 items)
-    featured_items = FoodItem.query.filter_by(is_available=True).order_by(FoodItem.created_at.desc()).limit(6).all()
+    # Featured Menu Items - Show all available items (max 18 for 3 rows)
+    featured_items = FoodItem.query.filter_by(is_available=True).order_by(FoodItem.created_at.desc()).limit(18).all()
 
     # Get all categories for dynamic display
     categories = Category.query.all()
 
-    # Get active coupons that admin has given permission to display
+    # Get ALL active coupons (remove limit)
     active_coupons = Coupon.query.filter(
         Coupon.is_active == True,
         Coupon.display_on_home == True,  # Admin permission to display
         Coupon.valid_until > datetime.now()
-    ).order_by(Coupon.created_at.desc()).limit(6).all()
+    ).order_by(Coupon.created_at.desc()).all()  # Get ALL, not limited
+    
+    # Get special offers
+    special_offers = SpecialOffer.query.filter(
+        SpecialOffer.is_active == True,
+        SpecialOffer.valid_until > datetime.now()
+    ).all()
+    
+    # Get most popular food items (based on order count) - Limited to 10 items
+    popular_items = db.session.query(
+        FoodItem, func.sum(OrderItem.quantity).label('total_ordered')
+    ).join(OrderItem).group_by(FoodItem).filter(
+        FoodItem.is_available == True
+    ).order_by(func.sum(OrderItem.quantity).desc()).limit(10).all()
+    
+    # Extract just the food items from the query result
+    popular_food_items = [item[0] for item in popular_items]
 
     return render_template('home.html',
                          featured_items=featured_items,
                          active_coupons=active_coupons,
+                         special_offers=special_offers,
+                         popular_items=popular_food_items,
                          categories=categories)
 
 @user_bp.route('/menu')
@@ -213,9 +234,69 @@ def menu():
 
     # Get actual categories from database
     db_categories = Category.query.all()
-    categories = ['all'] + [cat.name for cat in db_categories]
+    # Create a simple list for filtering, but pass the actual category objects to template
+    categories_list = ['all'] + [cat.name for cat in db_categories]
 
-    return render_template('components/menu.html', food_items=food_items, categories=categories, current_category=category)
+    return render_template('components/menu.html', food_items=food_items, categories=db_categories, current_category=category)
+
+@user_bp.route('/search_suggestions')
+def search_suggestions():
+    """Returns search suggestions for autocomplete"""
+    query = request.args.get('q', '')
+    category = request.args.get('category', 'all')
+    price_min = request.args.get('price_min')
+    price_max = request.args.get('price_max')
+    
+    if not query or len(query) < 2:
+        return jsonify([])
+    
+    # Base query
+    search_query = FoodItem.query.filter(FoodItem.is_available == True)
+    
+    # Apply filters
+    search_query = search_query.filter(
+        FoodItem.name.ilike(f'%{query}%') |
+        FoodItem.description.ilike(f'%{query}%')
+    )
+    
+    if category and category != 'all':
+        search_query = search_query.filter(FoodItem.category == category)
+        
+    if price_min:
+        search_query = search_query.filter(FoodItem.price >= float(price_min))
+        
+    if price_max:
+        search_query = search_query.filter(FoodItem.price <= float(price_max))
+    
+    # Get limited results for suggestions
+    results = search_query.limit(8).all()
+    
+    suggestions = []
+    for item in results:
+        # Determine image URL properly
+        image_url = None
+        if hasattr(item, 'image_url') and item.image_url:
+            image_url = item.image_url
+        elif hasattr(item, 'image_path') and item.image_path:
+            image_url = url_for('static', filename=item.image_path)
+        else:
+            image_url = url_for('static', filename='images/food-placeholder.png')
+            
+        # Get category display name
+        category_name = item.category.replace('_', ' ').title() if item.category else 'General'
+        if hasattr(item, 'category_rel') and item.category_rel and hasattr(item.category_rel, 'display_name'):
+            category_name = item.category_rel.display_name
+            
+        suggestions.append({
+            'id': item.id,
+            'name': item.name,
+            'price': item.price,
+            'category': category_name,
+            'image_url': image_url,
+            'description': item.description[:50] + '...' if item.description and len(item.description) > 50 else item.description or ''
+        })
+    
+    return jsonify(suggestions)
 
 @user_bp.route('/search', methods=['GET', 'POST'])
 def search():
@@ -225,19 +306,49 @@ def search():
     if form.validate_on_submit():
         query = form.query.data
         category = form.category.data
+        price_min = form.price_min.data
+        price_max = form.price_max.data
+        
+        # Use the search function with filters
         results = search_food_items(query, category)
+        
+        # Additional filtering by price if needed
+        if price_min or price_max:
+            filtered_results = []
+            for item in results:
+                if (not price_min or item.price >= price_min) and \
+                   (not price_max or item.price <= price_max):
+                    filtered_results.append(item)
+            results = filtered_results
         
         if not results:
             flash(f'No results found for "{query}".', 'info')
 
-    elif request.method == 'GET' and request.args.get('q'):
-        query = request.args.get('q')
+    elif request.method == 'GET' and (request.args.get('q') or request.args.get('query')):
+        # Handle both 'q' parameter (from autocomplete) and 'query' parameter (from form)
+        query = request.args.get('q') or request.args.get('query')
         category = request.args.get('category', 'all')
-        results = search_food_items(query, category)
+        price_min = request.args.get('price_min')
+        price_max = request.args.get('price_max')
+        
         form.query.data = query
         form.category.data = category
+        if price_min: form.price_min.data = float(price_min)
+        if price_max: form.price_max.data = float(price_max)
+        
+        # Get search results with filters
+        results = search_food_items(query, category)
+        
+        # Additional filtering by price
+        if price_min or price_max:
+            filtered_results = []
+            for item in results:
+                if (not price_min or item.price >= float(price_min)) and \
+                   (not price_max or item.price <= float(price_max)):
+                    filtered_results.append(item)
+            results = filtered_results
     
-    return render_template('search_results.html', form=form, results=results)
+    return render_template('components/search_results.html', form=form, results=results)
 
 @user_bp.route('/process_payment', methods=['POST'])
 @login_required
@@ -978,9 +1089,13 @@ def food_detail(food_id):
 
                 # Update existing rating or create new one
                 if user_rating:
+                    # Delete existing images
+                    for img in user_rating.images:
+                        db.session.delete(img)
+                    
                     user_rating.rating = rating_value
                     user_rating.comment = comment
-                    user_rating.created_at = datetime.utcnow()
+                    user_rating.updated_at = datetime.utcnow()
                     flash('Your rating has been updated!', 'success')
                 else:
                     new_rating = Rating(
@@ -991,8 +1106,48 @@ def food_detail(food_id):
                     )
                     db.session.add(new_rating)
                     flash('Your rating has been submitted!', 'success')
+                    user_rating = new_rating
+
+                # Handle image uploads
+                uploaded_files = request.files.getlist('reviewImages')
+                if uploaded_files:
+                    import os
+                    from werkzeug.utils import secure_filename
+                    
+                    # Create uploads directory if it doesn't exist
+                    upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'reviews')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    
+                    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+                    
+                    for i, file in enumerate(uploaded_files[:3]):  # Limit to 3 images
+                        if file and file.filename and '.' in file.filename:
+                            file_ext = file.filename.rsplit('.', 1)[1].lower()
+                            if file_ext in allowed_extensions:
+                                # Generate unique filename
+                                filename = f"review_{user_rating.id if hasattr(user_rating, 'id') and user_rating.id else 'temp'}_{i}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
+                                filepath = os.path.join(upload_folder, filename)
+                                
+                                # Save file
+                                file.save(filepath)
+                                
+                                # Create ReviewImage record
+                                review_image = ReviewImage(
+                                    rating_id=user_rating.id if hasattr(user_rating, 'id') and user_rating.id else None,
+                                    image_url=f"/static/uploads/reviews/{filename}",
+                                    image_filename=file.filename
+                                )
+                                db.session.add(review_image)
 
                 db.session.commit()
+                
+                # Update rating_id for images if it was a new rating
+                if not hasattr(user_rating, 'id') or not user_rating.id:
+                    db.session.refresh(user_rating)
+                    for img in db.session.query(ReviewImage).filter_by(rating_id=None).all():
+                        img.rating_id = user_rating.id
+                    db.session.commit()
+                
                 return redirect(url_for('user.food_detail', food_id=food_id))
             else:
                 flash('Please provide a valid rating (1-5 stars).', 'error')
@@ -1000,9 +1155,68 @@ def food_detail(food_id):
             db.session.rollback()
             flash(f'Error submitting rating: {str(e)}', 'error')
 
-    return render_template('food_detail.html',
+    return render_template('components/food_detail.html',
                           food=food_item,
                           ratings=ratings,
                           avg_rating=avg_rating,
                           user_rating=user_rating,
                           similar_items=similar_items)
+
+@user_bp.route('/review/<int:review_id>/delete', methods=['DELETE'])
+@login_required
+def delete_review(review_id):
+    """Delete a user's review"""
+    try:
+        rating = Rating.query.filter_by(id=review_id, user_id=current_user.id).first()
+        if not rating:
+            return jsonify({'success': False, 'message': 'Review not found or you don\'t have permission to delete it'})
+        
+        # Delete associated images
+        import os
+        for image in rating.images:
+            if image.image_url and image.image_url.startswith('/static/uploads/'):
+                file_path = os.path.join(current_app.root_path, image.image_url.lstrip('/'))
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            db.session.delete(image)
+        
+        # Delete the rating
+        db.session.delete(rating)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Review deleted successfully'})
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error deleting review: {str(e)}'})
+
+@user_bp.route('/review/<int:review_id>/helpful', methods=['POST'])
+@login_required
+def mark_helpful(review_id):
+    """Mark a review as helpful or not helpful"""
+    try:
+        data = request.get_json()
+        helpful = data.get('helpful', True)
+        
+        rating = Rating.query.get_or_404(review_id)
+        
+        # Initialize helpful_count if not exists
+        if not hasattr(rating, 'helpful_count') or rating.helpful_count is None:
+            rating.helpful_count = 0
+        
+        # For simplicity, just increment/decrement the count
+        # In a full implementation, you'd track individual user votes
+        if helpful:
+            rating.helpful_count = (rating.helpful_count or 0) + 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'helpful_count': rating.helpful_count or 0,
+            'message': 'Thank you for your feedback!'
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error recording feedback: {str(e)}'})

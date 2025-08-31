@@ -19,6 +19,8 @@
           justify-content: center;
           font-family: 'Segoe UI', sans-serif;
           padding: 20px 0;
+          overflow-x: hidden;
+          position: relative;
         }
         .register-card {
           background: #fff;
@@ -28,6 +30,11 @@
           width: 100%;
           max-width: 650px;
           animation: fadeInUp 1.2s;
+          position: relative;
+          z-index: 10;
+          backdrop-filter: blur(5px);
+          background-color: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.18);
         }
         @keyframes fadeInUp {
           from {
@@ -44,6 +51,15 @@
           margin-bottom: 0.8rem;
           color: #FF5722;
           font-size: 2.2rem;
+          background: linear-gradient(135deg, #FF8C00, #FF5722);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-size: 200% auto;
+          animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+          0% { background-position: -100% 0; }
+          100% { background-position: 200% 0; }
         }
         .register-card p {
           color: #6c757d;
@@ -55,6 +71,7 @@
           border: 2px solid #f0f0f0;
           transition: all 0.4s ease;
           font-size: 1.1rem;
+          background-color: rgba(255, 255, 255, 0.8);
         }
         .form-control:focus {
           border-color: #FF8C00;
@@ -76,41 +93,79 @@
           font-weight: 600;
           letter-spacing: 0.5px;
           font-size: 1.1rem;
+          position: relative;
+          overflow: hidden;
+          z-index: 1;
+        }
+        .btn-primary:after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(135deg, #FF5722, #FF8C00);
+          z-index: -2;
+        }
+        .btn-primary:before {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 0%;
+          height: 100%;
+          background: linear-gradient(135deg, #FF5722, #FF8C00);
+          transition: all 0.4s;
+          z-index: -1;
         }
         .btn-primary:hover {
-          background: linear-gradient(135deg, #FF5722, #FF8C00);
-          box-shadow: 0 8px 20px rgba(255, 87, 34, 0.4);
+          color: #fff;
           transform: translateY(-5px);
+          box-shadow: 0 8px 20px rgba(255, 87, 34, 0.4);
+        }
+        .btn-primary:hover:before {
+          width: 100%;
         }
         .text-link {
           color: #FF5722;
           font-weight: 600;
           text-decoration: none;
           transition: all 0.3s;
-          font-size: 1.05rem;
+          display: inline-block;
+          position: relative;
+        }
+        .text-link:after {
+          content: '';
+          position: absolute;
+          width: 100%;
+          transform: scaleX(0);
+          height: 2px;
+          bottom: 0;
+          left: 0;
+          background: linear-gradient(to right, #FF8C00, #FF5722);
+          transform-origin: bottom right;
+          transition: transform 0.3s ease-out;
         }
         .text-link:hover {
-          text-decoration: underline;
           color: #FF8C00;
-          transform: scale(1.05);
-          display: inline-block;
+        }
+        .text-link:hover:after {
+          transform: scaleX(1);
+          transform-origin: bottom left;
         }
         .brand-icon {
           color: #FF5722;
-          font-size: 3rem;
+          font-size: 3.5rem;
           margin-bottom: 0.7rem;
           animation: pulse 2s infinite;
+          background: linear-gradient(135deg, #FF8C00, #FF5722);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
         @keyframes pulse {
-          0% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.1);
-          }
-          100% {
-            transform: scale(1);
-          }
+          0% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); }
         }
         .alert-error {
           background-color: #ffebee;
@@ -124,7 +179,7 @@
           10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
           20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
-        .alert-success {
+        .alert-success, .alert-info {
           background-color: #e8f5e9;
           color: #2e7d32;
           border-color: #c8e6c9;
@@ -136,55 +191,75 @@
           50% { transform: scale(1.05); }
           100% { transform: scale(1); opacity: 1; }
         }
-        .input-group-text {
-          background-color: #fff5f0;
-          border-color: #f0f0f0;
-          color: #FF5722;
-          border-top-left-radius: 12px;
-          border-bottom-left-radius: 12px;
-          transition: all 0.3s;
-        }
-        .input-group:hover .input-group-text {
-          background-color: #ffe0d1;
-        }
         .food-icon {
           animation: float 3s ease-in-out infinite;
           position: absolute;
-          font-size: 1.5rem;
+          font-size: 2rem;
           opacity: 0.6;
-          color: #FF8C00;
+          color: #fff;
+          text-shadow: 0 0 10px rgba(255, 140, 0, 0.7);
+          z-index: 0;
         }
         @keyframes float {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-15px); }
-          100% { transform: translateY(0px); }
+          0% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-15px) rotate(5deg); }
+          100% { transform: translateY(0px) rotate(0deg); }
         }
         .icon-1 { top: 10%; left: 10%; animation-delay: 0s; }
         .icon-2 { top: 20%; right: 15%; animation-delay: 0.5s; }
         .icon-3 { bottom: 15%; left: 15%; animation-delay: 1s; }
         .icon-4 { bottom: 10%; right: 10%; animation-delay: 1.5s; }
-        .icon-5 { top: 40%; left: 20%; animation-delay: 2s; }
-        .row > div {
-          transition: all 0.3s ease;
+        .icon-5 { top: 50%; left: 5%; animation-delay: 2s; }
+        .icon-6 { top: 40%; right: 5%; animation-delay: 2.5s; }
+
+        /* Glowing effect */
+        .glow-container {
+          position: absolute;
+          width: 150px;
+          height: 150px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,140,0,0.5) 0%, rgba(255,87,34,0) 70%);
+          filter: blur(15px);
+          z-index: -1;
         }
-        .row > div:hover {
-          transform: translateY(-3px);
+        .glow-1 { top: 20%; left: 20%; animation: pulse 4s infinite alternate; }
+        .glow-2 { bottom: 20%; right: 20%; animation: pulse 5s infinite alternate; }
+        .glow-3 { top: 60%; left: 60%; animation: pulse 6s infinite alternate; }
+
+        /* Password strength */
+        .password-strength {
+          height: 5px;
+          transition: all 0.3s ease;
+          border-radius: 5px;
+          margin-top: 5px;
+          background-color: #e0e0e0;
+        }
+        .password-feedback {
+          margin-top: 5px;
+          font-size: 0.85rem;
+          transition: all 0.3s ease;
         }
     </style>
 </head>
 <body>
+    <!-- Glowing background effects -->
+    <div class="glow-container glow-1"></div>
+    <div class="glow-container glow-2"></div>
+    <div class="glow-container glow-3"></div>
+
     <!-- Animated food icons in background -->
     <div class="food-icon icon-1"><i class="fas fa-pizza-slice"></i></div>
     <div class="food-icon icon-2"><i class="fas fa-hamburger"></i></div>
     <div class="food-icon icon-3"><i class="fas fa-ice-cream"></i></div>
     <div class="food-icon icon-4"><i class="fas fa-coffee"></i></div>
-    <div class="food-icon icon-5"><i class="fas fa-drumstick-bite"></i></div>
+    <div class="food-icon icon-5"><i class="fas fa-utensils"></i></div>
+    <div class="food-icon icon-6"><i class="fas fa-cookie"></i></div>
 
     <div class="register-card animate__animated animate__fadeIn">
         <div class="text-center mb-4">
-            <div class="brand-icon"><i class="fas fa-utensils"></i></div>
-            <h2 class="animate__animated animate__fadeInDown">BhojanXpress</h2>
-            <p class="animate__animated animate__fadeIn animate__delay-1s">Create your account and start enjoying delicious meals!</p>
+            <div class="brand-icon animate__animated animate__bounceIn"><i class="fas fa-user-plus"></i></div>
+            <h2 class="animate__animated animate__fadeInDown">Create Account</h2>
+            <p class="animate__animated animate__fadeIn animate__delay-1s">Join BhojanXpress for delicious food at your doorstep!</p>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -197,50 +272,56 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="/auth/register">
+        <form method="POST" action="{{ url_for('auth.register') }}">
             {{ form.csrf_token if form }}
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <div class="row g-3">
+            <div class="row">
                 <div class="col-md-6 mb-4 animate__animated animate__fadeInLeft animate__delay-1s">
                     <label for="username" class="form-label fw-bold">Username</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-user"></i></span>
                         <input type="text" class="form-control" id="username" name="username"
                                placeholder="Choose a username"
-                               pattern="^[a-zA-Z0-9_-]{3,16}$"
-                               title="Username should be 3-16 characters and may include letters, numbers, underscores and hyphens"
+                               minlength="4" maxlength="25"
                                required>
                     </div>
-                    <small class="form-text text-muted">3-16 characters, letters, numbers, _ and -</small>
+                    <small class="form-text text-muted">Username must be 4-25 characters</small>
                 </div>
+
                 <div class="col-md-6 mb-4 animate__animated animate__fadeInRight animate__delay-1s">
-                    <label for="email" class="form-label fw-bold">Email</label>
+                    <label for="email" class="form-label fw-bold">Email Address</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-envelope"></i></span>
                         <input type="email" class="form-control" id="email" name="email"
-                               placeholder="example@gmail.com"
+                               placeholder="Enter your email"
                                pattern="^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-                               title="Enter a valid email address (e.g., yourname@gmail.com)"
+                               title="Please enter a valid email address"
                                required>
                     </div>
-                    <small class="form-text text-muted">Enter a valid email like example@gmail.com</small>
+                    <small class="form-text text-muted">We'll send a verification code to this email</small>
                 </div>
             </div>
 
-            <div class="row g-3">
+            <div class="row">
                 <div class="col-md-6 mb-4 animate__animated animate__fadeInLeft animate__delay-2s">
                     <label for="password" class="form-label fw-bold">Password</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-lock"></i></span>
                         <input type="password" class="form-control" id="password" name="password"
                                placeholder="Create a strong password"
-                               pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
-                               title="Password must contain at least 8 characters, including uppercase, lowercase, number and special character"
+                               minlength="6"
                                required>
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
-                    <small class="form-text text-muted">Min 8 chars with uppercase, lowercase, number & special char</small>
+                    <div class="password-strength" id="passwordStrength"></div>
+                    <small class="form-text text-muted password-feedback" id="passwordFeedback">
+                        Password must be at least 6 characters
+                    </small>
                 </div>
+
                 <div class="col-md-6 mb-4 animate__animated animate__fadeInRight animate__delay-2s">
                     <label for="confirm_password" class="form-label fw-bold">Confirm Password</label>
                     <div class="input-group">
@@ -249,44 +330,128 @@
                                placeholder="Repeat your password"
                                required>
                     </div>
-                    <small class="form-text text-muted">Re-enter the same password</small>
+                    <small class="form-text text-muted" id="confirmFeedback">Both passwords must match</small>
                 </div>
             </div>
 
-            <div class="d-grid gap-2 mt-5 animate__animated animate__fadeInUp animate__delay-3s">
-                <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="fas fa-user-plus me-2"></i>Create Account
-                </button>
+            <div class="d-grid mt-4 animate__animated animate__fadeInUp animate__delay-3s">
+                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-user-plus me-2"></i>Create Account</button>
             </div>
         </form>
 
-        <div class="mt-4 text-center animate__animated animate__fadeIn animate__delay-3s">
-            <p>Already have an account?
-                <a href="/auth/login" class="text-link">Login here</a>
-            </p>
+        <div class="text-center mt-4 animate__animated animate__fadeIn animate__delay-3s">
+            <p>Already have an account? <a href="{{ url_for('auth.login') }}" class="text-link">Sign In</a></p>
         </div>
     </div>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Add JavaScript for password validation -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Password visibility toggle
+            const togglePassword = document.getElementById('togglePassword');
             const password = document.getElementById('password');
-            const confirmPassword = document.getElementById('confirm_password');
 
-            // Check if passwords match
-            function validatePassword() {
-                if (password.value != confirmPassword.value) {
-                    confirmPassword.setCustomValidity("Passwords don't match");
-                } else {
-                    confirmPassword.setCustomValidity('');
-                }
+            if (togglePassword && password) {
+                togglePassword.addEventListener('click', function() {
+                    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                    password.setAttribute('type', type);
+                    this.querySelector('i').classList.toggle('fa-eye');
+                    this.querySelector('i').classList.toggle('fa-eye-slash');
+                });
             }
 
-            password.addEventListener('change', validatePassword);
-            confirmPassword.addEventListener('keyup', validatePassword);
+            // Password strength indicator
+            const passwordInput = document.getElementById('password');
+            const confirmInput = document.getElementById('confirm_password');
+            const strengthBar = document.getElementById('passwordStrength');
+            const feedback = document.getElementById('passwordFeedback');
+            const confirmFeedback = document.getElementById('confirmFeedback');
+
+            if (passwordInput && strengthBar && feedback) {
+                passwordInput.addEventListener('input', function() {
+                    const password = this.value;
+                    let strength = 0;
+                    let feedback_text = '';
+
+                    // Check length
+                    if (password.length >= 6) {
+                        strength += 25;
+                        feedback_text += '✓ Length (6+ chars) ';
+                    } else {
+                        feedback_text += '✗ Length (6+ chars) ';
+                    }
+
+                    // Check for uppercase
+                    if (/[A-Z]/.test(password)) {
+                        strength += 25;
+                        feedback_text += '✓ Uppercase ';
+                    } else {
+                        feedback_text += '✗ Uppercase ';
+                    }
+
+                    // Check for lowercase
+                    if (/[a-z]/.test(password)) {
+                        strength += 25;
+                        feedback_text += '✓ Lowercase ';
+                    } else {
+                        feedback_text += '✗ Lowercase ';
+                    }
+
+                    // Check for numbers or special chars
+                    if (/[0-9!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                        strength += 25;
+                        feedback_text += '✓ Number/Special ';
+                    } else {
+                        feedback_text += '✗ Number/Special ';
+                    }
+
+                    // Update strength bar
+                    strengthBar.style.width = strength + '%';
+
+                    // Update strength color
+                    if (strength <= 25) {
+                        strengthBar.style.backgroundColor = '#f44336'; // Red - weak
+                        feedback.style.color = '#f44336';
+                    } else if (strength <= 50) {
+                        strengthBar.style.backgroundColor = '#ffa726'; // Orange - medium
+                        feedback.style.color = '#ffa726';
+                    } else if (strength <= 75) {
+                        strengthBar.style.backgroundColor = '#ffeb3b'; // Yellow - good
+                        feedback.style.color = '#d6b300';
+                    } else {
+                        strengthBar.style.backgroundColor = '#66bb6a'; // Green - strong
+                        feedback.style.color = '#66bb6a';
+                    }
+
+                    feedback.textContent = feedback_text;
+                });
+            }
+
+            // Confirm password validation
+            if (confirmInput && passwordInput && confirmFeedback) {
+                confirmInput.addEventListener('input', function() {
+                    if (this.value === passwordInput.value) {
+                        confirmFeedback.textContent = '✓ Passwords match';
+                        confirmFeedback.style.color = '#66bb6a';
+                    } else {
+                        confirmFeedback.textContent = '✗ Passwords do not match';
+                        confirmFeedback.style.color = '#f44336';
+                    }
+                });
+            }
+
+            // Random movement for food icons
+            const foodIcons = document.querySelectorAll('.food-icon');
+            foodIcons.forEach(icon => {
+                setInterval(() => {
+                    const xPos = Math.random() * 5 - 2.5; // -2.5 to 2.5
+                    const yPos = Math.random() * 5 - 2.5; // -2.5 to 2.5
+                    const rotation = Math.random() * 10 - 5; // -5 to 5 degrees
+
+                    icon.style.transform = `translate(${xPos}px, ${yPos}px) rotate(${rotation}deg)`;
+                }, 3000);
+            });
         });
     </script>
 </body>

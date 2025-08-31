@@ -5,10 +5,12 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import dns.resolver
-from flask import current_app, render_template_string
+from flask import current_app, render_template_string, session
 import os
 import logging
 import requests
+import re
+import traceback
 
 def generate_otp():
     """Generate a 6-digit OTP"""
@@ -59,7 +61,6 @@ def send_email(to_email, subject, html_content):
         current_app.logger.info(f"Email saved to file: {filepath}")
 
         # Extract OTP for console display
-        import re
         otp_match = re.search(r'<div[^>]*>(\d{6})</div>', html_content)
         if otp_match:
             otp = otp_match.group(1)
@@ -67,16 +68,17 @@ def send_email(to_email, subject, html_content):
             print(f"OTP for {to_email}: {otp}")
             print(f"====================\n")
 
-        # Connect to Mailtrap SMTP server with provided credentials
+        # Mailtrap credentials
         smtp_server = "sandbox.smtp.mailtrap.io"
         smtp_port = 587
-        smtp_username = "b4fc0351feea70"
-        smtp_password = "9de6bb1467b7c3"
+        smtp_username = "8b5384f4325e9e"
+        smtp_password = "0e37e51c13d4da"
 
-        current_app.logger.info(f"Connecting to Mailtrap SMTP: {smtp_server}:{smtp_port}")
+        current_app.logger.info(f"SMTP Connection: Server={smtp_server}, Port={smtp_port}, TLS=True, SSL=False")
 
         # Create SMTP connection
         server = smtplib.SMTP(smtp_server, smtp_port)
+        server.set_debuglevel(1)  # Enable debug output
         server.starttls()  # Enable TLS
 
         # Login and send
@@ -90,7 +92,6 @@ def send_email(to_email, subject, html_content):
         return True
     except Exception as e:
         current_app.logger.error(f"Failed to send email: {str(e)}")
-        import traceback
         current_app.logger.error(traceback.format_exc())
         return False
 
@@ -100,8 +101,16 @@ def send_verification_otp(user):
     expiry = datetime.utcnow() + timedelta(minutes=10)  # OTP valid for 10 minutes
 
     # Update user with OTP
-    user.verification_otp = otp
-    user.otp_expiry = expiry
+    try:
+        user.verification_otp = otp
+        user.otp_expiry = expiry
+    except Exception as e:
+        current_app.logger.error(f"Error setting OTP attributes: {e}")
+        # Fallback to session storage
+        session['registration_otp'] = {
+            'otp': otp,
+            'expiry': expiry.timestamp()
+        }
 
     # Create email content
     subject = "BhojanXpress - Verify Your Email"
@@ -132,9 +141,21 @@ def send_password_reset_otp(user):
     otp = generate_otp()
     expiry = datetime.utcnow() + timedelta(minutes=10)  # OTP valid for 10 minutes
 
-    # Update user with password reset OTP
-    user.password_reset_otp = otp
-    user.password_reset_otp_expiry = expiry
+    try:
+        # Update user with password reset OTP
+        user.password_reset_otp = otp
+        user.password_reset_otp_expiry = expiry
+        current_app.logger.info(f"Set password reset OTP in database for {user.email}: {otp}")
+    except Exception as e:
+        current_app.logger.error(f"Error setting password reset OTP attributes: {e}")
+        # Fallback to session storage
+        from flask import session
+        session['password_reset_otp'] = {
+            'otp': otp,
+            'expiry': expiry.timestamp(),
+            'email': user.email
+        }
+        current_app.logger.info(f"Stored password reset OTP in session for {user.email}: {otp}")
 
     # Create email content
     subject = "BhojanXpress - Password Reset Request"
@@ -156,6 +177,11 @@ def send_password_reset_otp(user):
     </body>
     </html>
     """
+
+    # Print OTP to console for debugging
+    print(f"\n====================")
+    print(f"PASSWORD RESET OTP for {user.email}: {otp}")
+    print(f"====================\n")
 
     # Send email
     return send_email(user.email, subject, html_content)
