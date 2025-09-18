@@ -1,0 +1,312 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ agent.name }} - Delivery Agent Profile{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-user-circle"></i> {{ agent.name }} - Delivery Agent Profile
+        </h1>
+        <div>
+            <a href="{{ url_for('admin.delivery_agents') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Agents
+            </a>
+            <a href="{{ url_for('admin.edit_delivery_agent', agent_id=agent.id) }}" class="btn btn-primary">
+                <i class="fas fa-user-edit"></i> Edit Agent
+            </a>
+        </div>
+    </div>
+
+    <!-- Agent Info and Statistics -->
+    <div class="row">
+        <!-- Personal Information -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Personal Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-user-circle fa-5x text-gray-300"></i>
+                        <h5 class="mt-2">{{ agent.name }}</h5>
+                        <span class="badge badge-{{ 'success' if agent.is_active else 'danger' }}">
+                            {{ 'Active' if agent.is_active else 'Inactive' }}
+                        </span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>Email:</strong> {{ agent.email }}</p>
+                            <p><strong>Phone:</strong> {{ agent.phone or 'Not provided' }}</p>
+                            <p><strong>Joined:</strong> {{ agent.created_at.strftime('%d %B, %Y') if agent.created_at else 'N/A' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <form method="POST" action="{{ url_for('admin.toggle_delivery_agent_status', agent_id=agent.id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-{{ 'warning' if agent.is_active else 'success' }} w-100"
+                                    onclick="return confirm('Are you sure you want to {{ 'deactivate' if agent.is_active else 'activate' }} this delivery agent?')">
+                                {{ 'Deactivate Agent' if agent.is_active else 'Activate Agent' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="col-lg-8">
+            <div class="row">
+                <div class="col-md-3 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Total Deliveries
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_deliveries }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-truck fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Pending Orders
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.pending_orders }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-clock fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-4">
+                    <div class="card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Total Earnings
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ "%.2f"|format(stats.total_earnings) }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-rupee-sign fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Commission Earned
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ "%.2f"|format(stats.total_commission_earned) }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Commission Details -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-success">Commission Management</h6>
+                    {% if stats.pending_commission > 0 %}
+                    <form method="POST" action="{{ url_for('admin.pay_bulk_commission') }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="agent_id" value="{{ agent.id }}"/>
+                        <button type="submit" class="btn btn-sm btn-success"
+                                onclick="return confirm('Pay all pending commission (₹{{ stats.pending_commission|round(2) }}) to {{ agent.name|e }}?')">
+                            <i class="fas fa-money-check-alt"></i> Pay All Pending
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center p-3 border rounded">
+                                <h4 class="text-success">₹{{ "%.2f"|format(stats.total_commission_earned) }}</h4>
+                                <small class="text-muted">Total Commission Earned</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3 border rounded">
+                                <h4 class="text-warning">₹{{ "%.2f"|format(stats.pending_commission) }}</h4>
+                                <small class="text-muted">Pending Commission</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3 border rounded">
+                                <h4 class="text-info">₹{{ "%.2f"|format(stats.paid_commission) }}</h4>
+                                <small class="text-muted">Paid Commission</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <h6>Commission Rate: <span class="text-primary">10%</span> of delivery charges</h6>
+                        <p class="text-muted">Commission is calculated at 10% of the delivery charge for each successful delivery.</p>
+
+                        {% if stats.pending_commission > 0 %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Pending Payment:</strong> This agent has ₹{{ "%.2f"|format(stats.pending_commission) }} in unpaid commission.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Pending Commission Orders -->
+                    {% if pending_commission_orders %}
+                    <div class="mt-4">
+                        <h6 class="text-warning">Orders with Pending Commission</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Customer</th>
+                                        <th>Delivered Date</th>
+                                        <th>Delivery Charge</th>
+                                        <th>Commission (10%)</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in pending_commission_orders %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ url_for('admin.order_details', order_id=order.id) }}">#{{ order.id }}</a>
+                                        </td>
+                                        <td>{{ order.customer_name or order.user.name }}</td>
+                                        <td>{{ order.delivered_at.strftime('%d/%m/%Y') if order.delivered_at else 'N/A' }}</td>
+                                        <td>₹{{ "%.2f"|format(order.delivery_charge or 0) }}</td>
+                                        <td>₹{{ "%.2f"|format((order.delivery_charge or 0) * 0.1) }}</td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('admin.pay_commission', order_id=order.id) }}" style="display: inline;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <button type="submit" class="btn btn-xs btn-success"
+                                                        onclick="return confirm('Mark commission as paid for order #{{ order.id }}?')">
+                                                    <i class="fas fa-check"></i> Pay
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Orders</h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Customer</th>
+                                        <th>Order Amount</th>
+                                        <th>Delivery Charge</th>
+                                        <th>Commission</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Commission Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in recent_orders %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ url_for('admin.order_details', order_id=order.id) }}">#{{ order.id }}</a>
+                                        </td>
+                                        <td>{{ order.customer_name or order.user.name }}</td>
+                                        <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+                                        <td>₹{{ "%.2f"|format(order.delivery_charge or 0) }}</td>
+                                        <td>₹{{ "%.2f"|format((order.delivery_charge or 0) * 0.1) }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if order.status == 'delivered' else 'primary' if order.status == 'out_for_delivery' else 'warning' }}">
+                                                {{ order.status.replace('_', ' ').title() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ order.created_at.strftime('%d/%m/%Y') }}</td>
+                                        <td>
+                                            {% if order.status == 'delivered' %}
+                                                {% if order.commission_paid %}
+                                                    <span class="badge badge-success">Paid</span>
+                                                    {% if order.commission_paid_at %}
+                                                    <br><small class="text-muted">{{ order.commission_paid_at.strftime('%d/%m/%Y') }}</small>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge badge-warning">Pending</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge badge-secondary">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No orders assigned to this agent yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.border-left-primary { border-left: 0.25rem solid #4e73df !important; }
+.border-left-success { border-left: 0.25rem solid #1cc88a !important; }
+.border-left-info { border-left: 0.25rem solid #36b9cc !important; }
+.border-left-warning { border-left: 0.25rem solid #f6c23e !important; }
+.text-gray-800 { color: #5a5c69 !important; }
+.text-gray-300 { color: #dddfeb !important; }
+</style>
+{% endblock %}

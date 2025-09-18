@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
@@ -52,23 +52,42 @@ def create_app():
     # Configure login manager
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
+    login_manager.login_message_category = 'info'
 
     # Import models to ensure they are registered with SQLAlchemy
     from app import models
 
-    # Register blueprints
+    # Register Blueprints
     from app.routes.auth_routes import auth_bp
     from app.routes.user_routes import user_bp
     from app.routes.admin_routes import admin_bp
-    from app.routes.chatbot_routes import chatbot_bp
     from app.routes.api_routes import api_bp
-    from app.utils.template_filters import template_filters
+    from app.routes.chatbot_routes import chatbot_bp
+    from app.routes.delivery_routes import delivery_bp
+    # from app.routes.review_routes import review_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(api_bp)
     app.register_blueprint(chatbot_bp)
-    app.register_blueprint(api_bp, url_prefix='/api')
-    app.register_blueprint(template_filters)
+    app.register_blueprint(delivery_bp, url_prefix='/delivery')
+    # app.register_blueprint(review_bp, url_prefix='/reviews')
+
+    # Register template filters
+    from app.utils.template_filters import format_currency, format_datetime, time_ago
+    app.jinja_env.filters['format_currency'] = format_currency
+    app.jinja_env.filters['format_datetime'] = format_datetime
+    app.jinja_env.filters['time_ago'] = time_ago
+
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        db.session.rollback()
+        return render_template('errors/500.html'), 500
 
     return app

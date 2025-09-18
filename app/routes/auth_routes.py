@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, logout_user, current_user, login_required
 from datetime import datetime, timedelta
 from app import db
 from app.models import User
-from app.forms import LoginForm, RegistrationForm, OTPVerificationForm, ForgotPasswordForm, ResetPasswordForm
+from app.forms import LoginForm, RegistrationForm, OTPVerificationForm, ForgotPasswordForm, ResetPasswordForm, DeliveryBoyRegistrationForm
 from app.utils.helpers import validate_phone_number, flash_errors
 from app.utils.email_utils import send_verification_otp, send_password_reset_otp, is_email_domain_valid, generate_otp, send_email
 
@@ -12,9 +12,11 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        # If already logged in, redirect accordingly
+        # Redirect based on user type
         if current_user.is_admin:
             return redirect(url_for('admin.dashboard'))
+        elif current_user.is_delivery_boy:
+            return redirect(url_for('delivery.dashboard'))
         return redirect(url_for('user.home'))
     
     form = LoginForm()
@@ -31,10 +33,8 @@ def login():
             print(f"Trying email login: {'Found user' if user else 'No user found'}")
         
         if user:
-            print(f"User found: {user.username}, {user.email}, Admin: {user.is_admin}")
+            print(f"User found: {user.username}, {user.email}, Admin: {user.is_admin}, Delivery: {user.is_delivery_boy}")
 
-            # Check if the user's email is verified (if the attribute exists)
-            # We no longer require verification for login as per new requirements
             if user.check_password(form.password.data):
                 login_user(user, remember=True)
                 print(f"Password correct for {user.username}. Login successful.")
@@ -43,6 +43,9 @@ def login():
                 if user.is_admin:
                     flash(f'Welcome back, Admin {user.username}!', 'success')
                     return redirect(next_page) if next_page else redirect(url_for('admin.dashboard'))
+                elif user.is_delivery_boy:
+                    flash(f'Welcome back, {user.username}!', 'success')
+                    return redirect(next_page) if next_page else redirect(url_for('delivery.dashboard'))
                 else:
                     flash(f'Welcome back, {user.username}!', 'success')
                     return redirect(next_page) if next_page else redirect(url_for('user.home'))
@@ -51,9 +54,8 @@ def login():
                 flash('Invalid password. Please try again.', 'error')
         else:
             print(f"No user found with username/email: {form.username.data}")
-            flash('User not found. Please check your username or email.', 'error')
-    
-    flash_errors(form)
+            flash('User not found. Please check your username/email and try again.', 'error')
+
     return render_template('login.html', form=form)
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
@@ -63,74 +65,78 @@ def register():
     
     form = RegistrationForm()
     if form.validate_on_submit():
-        # Check if username already exists
-        if User.query.filter_by(username=form.username.data).first():
-            flash('Username already exists. Please choose a different one.', 'error')
-            return render_template('register.html', form=form)
-        
-        # Check if email already exists
-        if User.query.filter_by(email=form.email.data).first():
-            flash('Email already registered. Please use a different email.', 'error')
-            return render_template('register.html', form=form)
-        
-        # Validate email domain
-        if not is_email_domain_valid(form.email.data):
-            flash('Please enter a valid email address with an existing domain.', 'error')
-            return render_template('register.html', form=form)
+        # Check if username or email already exists
+        existing_user = User.query.filter(
+            (User.username == form.username.data) |
+            (User.email == form.email.data)
+        ).first()
 
-        try:
-            # Store registration data in session instead of creating user right away
-            session['registration_data'] = {
-                'username': form.username.data,
-                'email': form.email.data,
-                'password': form.password.data,
-                'timestamp': datetime.utcnow().timestamp()
-            }
-
-            # Generate OTP and send verification email
-            otp = generate_otp()
-            expiry = datetime.utcnow() + timedelta(minutes=10)
-
-            # Store OTP in session
-            session['registration_otp'] = {
-                'otp': otp,
-                'expiry': expiry.timestamp()
-            }
-
-            # Send verification email
-            subject = "BhojanXpress - Verify Your Email"
-            html_content = f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #f9f9f9;">
-                    <h2 style="color: #FF5722; text-align: center;">Welcome to BhojanXpress!</h2>
-                    <p>Thank you for registering with BhojanXpress. Please verify your email by entering the OTP below:</p>
-                    <div style="text-align: center; margin: 25px 0;">
-                        <div style="font-size: 24px; font-weight: bold; letter-spacing: 5px; padding: 10px; background: #FF8C00; color: white; border-radius: 5px; display: inline-block;">{otp}</div>
-                    </div>
-                    <p>This OTP will expire in 10 minutes.</p>
-                    <p>If you didn't request this verification, please ignore this email.</p>
-                    <p style="text-align: center; margin-top: 30px; font-size: 14px; color: #777;">
-                        &copy; {datetime.utcnow().year} BhojanXpress. All rights reserved.
-                    </p>
-                </div>
-            </body>
-            </html>
-            """
-
-            if send_email(form.email.data, subject, html_content):
-                flash('Please verify your email address with the OTP sent to your email.', 'success')
-                return redirect(url_for('auth.verify_registration'))
+        if existing_user:
+            if existing_user.username == form.username.data:
+                flash('Username already exists. Please choose a different one.', 'error')
             else:
-                flash('Failed to send verification email. Please try again or contact support.', 'error')
-                return render_template('register.html', form=form)
+                flash('Email already registered. Please use a different email.', 'error')
+            return render_template('register.html', form=form)
 
-        except Exception as e:
-            flash('An error occurred during registration. Please try again.', 'error')
-            print(f"Registration error: {e}")
+        # Create new user
+        user = User(
+            username=form.username.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            address=form.address.data
+        )
+        user.set_password(form.password.data)
 
-    flash_errors(form)
+        # Set user type
+        if form.user_type.data == 'delivery_boy':
+            user.is_delivery_boy = True
+
+        db.session.add(user)
+        db.session.commit()
+
+        flash('Registration successful! You can now log in.', 'success')
+        return redirect(url_for('auth.login'))
+
     return render_template('register.html', form=form)
+
+@auth_bp.route('/register_delivery_boy', methods=['GET', 'POST'])
+def register_delivery_boy():
+    """Separate registration form for delivery boys with additional fields"""
+    if current_user.is_authenticated:
+        return redirect(url_for('user.home'))
+
+    form = DeliveryBoyRegistrationForm()
+    if form.validate_on_submit():
+        # Check if username or email already exists
+        existing_user = User.query.filter(
+            (User.username == form.username.data) |
+            (User.email == form.email.data)
+        ).first()
+
+        if existing_user:
+            if existing_user.username == form.username.data:
+                flash('Username already exists. Please choose a different one.', 'error')
+            else:
+                flash('Email already registered. Please use a different email.', 'error')
+            return render_template('auth/register_delivery_boy.html', form=form)
+
+        # Create new delivery boy user
+        user = User(
+            username=form.username.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            address=form.address.data,
+            is_delivery_boy=True
+        )
+        user.set_password(form.password.data)
+
+        db.session.add(user)
+        db.session.commit()
+
+        flash('Delivery boy registration successful! Please wait for admin approval.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/register_delivery_boy.html', form=form)
 
 @auth_bp.route('/verify-registration', methods=['GET', 'POST'])
 def verify_registration():
@@ -262,7 +268,7 @@ def forgot_password():
             # Wait a bit to prevent timing attacks
             # In a real application, this should be implemented more securely
 
-    return render_template('forgot_password.html', form=form)
+    return render_template('components/forgot_password.html', form=form)
 
 @auth_bp.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
@@ -348,7 +354,7 @@ def reset_password():
                 print(f"OTP mismatch: '{user_otp}' != '{form_otp}'")
             flash('Invalid OTP. Please try again.', 'error')
 
-    return render_template('reset_password.html', form=form, email=user.email)
+    return render_template('components/reset_password.html', form=form, email=user.email)
 
 @auth_bp.route('/resend-reset-otp', methods=['GET'])
 def resend_reset_otp():

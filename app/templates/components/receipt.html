@@ -6,15 +6,16 @@
     <div class="row justify-content-center">
         <div class="col-lg-8 col-12">
             <div class="card shadow border-0 receipt-card">
+                <!-- Invoice Header - Flipkart Style -->
                 <div class="card-header bg-primary text-white p-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BhojanXpress" height="60" class="bg-white rounded p-1">
-                            <h2 class="mt-2 mb-0 fw-bold">RECEIPT</h2>
+                            <h2 class="mt-2 mb-0 fw-bold">TAX INVOICE</h2>
                         </div>
                         <div class="text-end">
                             <h5 class="mb-1 fw-bold">ORDER #{{ order.id }}</h5>
-                            <div class="receipt-date">{{ order.created_at.strftime('%d %b, %Y %H:%M') }}</div>
+                            <div class="receipt-date">Placed on: {{ order.created_at.strftime('%d %b, %Y %H:%M') }}</div>
                         </div>
                     </div>
                 </div>
@@ -55,39 +56,45 @@
                         </div>
                     </div>
 
-<!--                    &lt;!&ndash; Order Items &ndash;&gt;-->
-<!--                    <div class="table-responsive mb-4 order-items-container">-->
-<!--                        <table class="table table-hover align-middle receipt-table">-->
-<!--                            <thead class="table-primary">-->
-<!--                                <tr>-->
-<!--                                    <th>#</th>-->
-<!--                                    <th>Item</th>-->
-<!--                                    <th class="text-center">Qty</th>-->
-<!--                                    <th class="text-end">Price</th>-->
-<!--                                    <th class="text-end">Amount</th>-->
-<!--                                </tr>-->
-<!--                            </thead>-->
-<!--                            <tbody>-->
-<!--                                {% if order.order_items and order.order_items|length > 0 %}-->
-<!--                                    {% for item in order.order_items %}-->
-<!--                                    <tr>-->
-<!--                                        <td>{{ loop.index }}</td>-->
-<!--                                        <td class="fw-bold">{{ item.food_item.name if item.food_item else 'Item Deleted' }}</td>-->
-<!--                                        <td class="text-center">{{ item.quantity }}</td>-->
-<!--                                        <td class="text-end">₹{{ '%.2f'|format(item.price) }}</td>-->
-<!--                                        <td class="text-end">₹{{ '%.2f'|format(item.price * item.quantity) }}</td>-->
-<!--                                    </tr>-->
-<!--                                    {% endfor %}-->
-<!--                                {% else %}-->
-<!--                                    <tr>-->
-<!--                                        <td colspan="5" class="text-center text-muted">No items found for this order.</td>-->
-<!--                                    </tr>-->
-<!--                                {% endif %}-->
-<!--                            </tbody>-->
-<!--                        </table>-->
-<!--                    </div>-->
+                    <!-- Order Items - Flipkart Style -->
+                    <div class="order-items-container mb-4">
+                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-shopping-cart me-2"></i>ORDER ITEMS</h6>
+                        <table class="table table-hover align-middle receipt-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Price</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if order.order_items and order.order_items|length > 0 %}
+                                    {% for item in order.order_items %}
+                                    <tr>
+                                        <td class="fw-bold">
+                                            {{ item.food_item.name if item.food_item else 'Item Deleted' }}
+                                            {% if item.food_item and item.food_item.category %}
+                                            <br><small class="text-muted">{{ item.food_item.category.name }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-primary">{{ item.quantity }}</span>
+                                        </td>
+                                        <td class="text-end">₹{{ '%.2f'|format(item.price) }}</td>
+                                        <td class="text-end fw-bold">₹{{ '%.2f'|format(item.price * item.quantity) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">No items found for this order.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
 
-                    <!-- Summary -->
+                    <!-- Summary - Flipkart Style -->
                     <div class="row summary-section">
                         <div class="col-md-6">
                             {% if order.special_instructions %}
@@ -138,19 +145,23 @@
                     </div>
                 </div>
 
-                <!-- Footer -->
+                <!-- Footer - Flipkart Style-->
                 <div class="card-footer p-4 text-center">
-                    <div class="action-buttons">
+                    <div class="action-buttons mb-3">
                         <button class="btn btn-primary" onclick="window.print()">
-                            <i class="fas fa-print me-2"></i> Print Receipt
+                            <i class="fas fa-print me-2"></i> Print Invoice
                         </button>
                         <a href="{{ url_for('user.my_orders') }}" class="btn btn-outline-secondary ms-2">
                             <i class="fas fa-arrow-left me-2"></i> Back to Orders
                         </a>
+                        <a href="{{ url_for('user.receipt', order_id=order.id, download=1) }}" class="btn btn-success ms-2">
+                            <i class="fas fa-download me-2"></i> Download PDF
+                        </a>
                     </div>
                     <div class="mt-3 thank-you">
                         <p class="mb-1 fw-bold">Thank you for ordering with BhojanXpress!</p>
-                        <p class="mb-0 small text-muted">For any assistance, please contact our customer support.</p>
+                        <p class="mb-3 small text-muted">For any assistance, please contact our customer support at +91 84317 29319 or email bhojanaxpress@gmail.com.</p>
+                        <p class="legal-text small text-muted mb-0">This is a computer-generated invoice and does not require a physical signature.</p>
                     </div>
                 </div>
             </div>
@@ -201,20 +212,27 @@
 
     .coupon-badge {
         display: inline-block;
-        background: #e9f7ef;
-        color: #28a745;
-        padding: 8px 15px;
-        border-radius: 30px;
-        font-weight: bold;
+        background-color: #e9f7fe;
+        color: #0d6efd;
+        padding: 5px 10px;
+        border-radius: 4px;
+        border: 1px dashed #0d6efd;
     }
 
     .discount-amount {
-        color: #dc3545;
+        color: #28a745;
+        font-weight: bold;
         margin-left: 10px;
     }
 
-    .thank-you {
-        color: #007bff;
+    .legal-text {
+        font-size: 0.8rem;
+        opacity: 0.7;
+    }
+
+    /* Flipkart-inspired styles */
+    .card-header {
+        background: linear-gradient(135deg, #2874f0 0%, #1e5fb3 100%) !important;
     }
 
     @media print {
@@ -223,13 +241,21 @@
         }
 
         body {
-            background-color: white !important;
+            background: white;
         }
 
-        .card {
+        .container {
+            width: 100%;
+            max-width: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .receipt-card {
+            border: none;
             box-shadow: none !important;
-            border: 1px solid #ddd !important;
         }
     }
 </style>
+
 {% endblock %}

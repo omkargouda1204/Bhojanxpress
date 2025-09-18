@@ -114,3 +114,134 @@ function showNotification(message, type) {
         }
     }, 3000);
 }
+
+// Menu Filter and Sort Functionality
+let allItems = [];
+let filteredItems = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Store all items for filtering
+    const foodItems = document.querySelectorAll('.food-item');
+    allItems = Array.from(foodItems);
+    filteredItems = [...allItems];
+
+    // Initialize event listeners
+    initializeEventListeners();
+});
+
+function initializeEventListeners() {
+    // Show/Hide Filter Buttons
+    const showFiltersBtn = document.getElementById('showFiltersBtn');
+    const hideFiltersBtn = document.getElementById('hideFiltersBtn');
+    const filterSidebar = document.getElementById('filterSidebar');
+
+    if (showFiltersBtn) {
+        showFiltersBtn.addEventListener('click', function() {
+            filterSidebar.style.display = 'block';
+            filterSidebar.classList.add('mobile-filter-show');
+        });
+    }
+
+    if (hideFiltersBtn) {
+        hideFiltersBtn.addEventListener('click', function() {
+            filterSidebar.style.display = 'none';
+            filterSidebar.classList.remove('mobile-filter-show');
+        });
+    }
+
+    // Sort dropdown
+    const sortOptions = document.querySelectorAll('.sort-option');
+    sortOptions.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const sortType = this.getAttribute('data-sort');
+            const sortLabel = this.textContent.trim();
+            document.getElementById('sortLabel').textContent = sortLabel;
+            sortItems(sortType);
+        });
+    });
+
+    // Category filters with auto-apply
+    const categoryFilters = document.querySelectorAll('.category-filter');
+    categoryFilters.forEach(filter => {
+        filter.addEventListener('change', function() {
+            if (this.checked) {
+                updateActiveFilters();
+                applyFilters();
+            }
+        });
+    });
+
+    // Price filters
+    const minPriceSelect = document.getElementById('minPriceSelect');
+    const maxPriceSelect = document.getElementById('maxPriceSelect');
+
+    if (minPriceSelect) {
+        minPriceSelect.addEventListener('change', function() {
+            updateActiveFilters();
+            autoApplyFilters();
+        });
+    }
+
+    if (maxPriceSelect) {
+        maxPriceSelect.addEventListener('change', function() {
+            updateActiveFilters();
+            autoApplyFilters();
+        });
+    }
+}
+
+function autoApplyFilters() {
+    // Automatically apply filters when price or category changes
+    applyFilters();
+}
+
+function applyFilters() {
+    const category = document.querySelector('input[name="categoryFilter"]:checked')?.value || 'all';
+    const minPrice = parseFloat(document.getElementById('minPriceSelect')?.value) || 0;
+    const maxPrice = parseFloat(document.getElementById('maxPriceSelect')?.value) || Infinity;
+
+    filteredItems = allItems.filter(item => {
+        // Category filter
+        const itemCategory = item.getAttribute('data-category');
+        if (category !== 'all' && itemCategory !== category) {
+            return false;
+        }
+
+        // Price filter
+        const itemPrice = parseFloat(item.getAttribute('data-price'));
+        if (itemPrice < minPrice || (maxPrice !== Infinity && itemPrice > maxPrice)) {
+            return false;
+        }
+
+        // Only show available items by default
+        const itemAvailable = item.getAttribute('data-available') === 'true';
+        if (!itemAvailable) {
+            return false;
+        }
+
+        return true;
+    });
+
+    // Hide all items first
+    allItems.forEach(item => {
+        item.style.display = 'none';
+    });
+
+    // Show filtered items
+    filteredItems.forEach(item => {
+        item.style.display = 'block';
+    });
+
+    // Update results count
+    updateResultsCount();
+
+    // Update active filters display
+    updateActiveFilters();
+
+    // Hide filter sidebar on mobile after applying
+    const filterSidebar = document.getElementById('filterSidebar');
+    if (window.innerWidth < 992) {
+        filterSidebar.style.display = 'none';
+    }
+}

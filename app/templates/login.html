@@ -305,28 +305,39 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('auth.login') }}">
-            {{ form.csrf_token if form }}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {{ form.hidden_tag() }}
 
             <div class="mb-4 animate__animated animate__fadeInLeft animate__delay-1s">
-                <label for="username" class="form-label fw-bold">Username or Email</label>
+                {{ form.username.label(class="form-label fw-bold") }}
                 <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-user"></i></span>
-                    <input type="text" class="form-control" id="username" name="username"
-                           placeholder="Enter your username or email" required>
+                    {{ form.username(class="form-control", placeholder="Enter your username or email") }}
                 </div>
+                {% if form.username.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.username.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
 
             <div class="mb-3 animate__animated animate__fadeInRight animate__delay-1s">
-                <label for="password" class="form-label fw-bold">Password</label>
+                {{ form.password.label(class="form-label fw-bold") }}
                 <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input type="password" class="form-control" id="password" name="password"
-                           placeholder="Enter your password" required>
+                    {{ form.password(class="form-control", placeholder="Enter your password") }}
                     <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
+                {% if form.password.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.password.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
 
             <div class="mb-4 animate__animated animate__fadeIn animate__delay-2s text-end">

@@ -16,6 +16,8 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(15), nullable=True)
     address = db.Column(db.Text, nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
+    is_delivery_boy = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)  # Agent status toggle
     is_verified = db.Column(db.Boolean, default=False)
     verification_otp = db.Column(db.String(6), nullable=True)
     otp_expiry = db.Column(db.DateTime, nullable=True)
@@ -23,16 +25,25 @@ class User(UserMixin, db.Model):
     password_reset_otp_expiry = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Account details (for delivery agents)
+    bank_name = db.Column(db.String(100), nullable=True)
+    account_number = db.Column(db.String(20), nullable=True)
+    ifsc_code = db.Column(db.String(15), nullable=True)
+    account_holder_name = db.Column(db.String(100), nullable=True)
+    upi_id = db.Column(db.String(50), nullable=True)
+
     # Relationships
     orders = db.relationship('Order', backref='user', lazy=True)
     cart_items = db.relationship('CartItem', backref='user', lazy=True)
-    
+    reviews = db.relationship('Review', backref='user', lazy=True)
+    delivery_assignments = db.relationship('Order', foreign_keys='Order.delivery_boy_id', backref='delivery_boy', lazy=True)
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-    
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
     def __repr__(self):
         return f'<User {self.username}>'
 
@@ -40,12 +51,32 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     display_name = db.Column(db.String(50), nullable=False)
-    
+
     # Relationship with food items
     food_items = db.relationship('FoodItem', backref='category_rel', lazy=True)
-    
+
     def __repr__(self):
         return f'<Category {self.name}>'
+
+class NutritionalInfo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False, unique=True)
+    calories_per_serving = db.Column(db.Float, nullable=True)
+    protein_g = db.Column(db.Float, nullable=True)
+    carbohydrates_g = db.Column(db.Float, nullable=True)
+    fat_g = db.Column(db.Float, nullable=True)
+    fiber_g = db.Column(db.Float, nullable=True)
+    sugar_g = db.Column(db.Float, nullable=True)
+    sodium_mg = db.Column(db.Float, nullable=True)
+    cholesterol_mg = db.Column(db.Float, nullable=True)
+    serving_size = db.Column(db.String(50), nullable=True)
+    allergens = db.Column(db.Text, nullable=True)  # Comma-separated list
+    ingredients = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<NutritionalInfo for FoodItem {self.food_item_id}>'
 
 class FoodItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -59,17 +90,20 @@ class FoodItem(db.Model):
     is_available = db.Column(db.Boolean, default=True)
     preparation_time = db.Column(db.Integer, default=15)  # in minutes
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     order_items = db.relationship('OrderItem', backref='food_item', lazy=True)
     cart_items = db.relationship('CartItem', backref='food_item', lazy=True)
-    
+    nutritional_info = db.relationship('NutritionalInfo', backref='food_item', uselist=False, cascade='all, delete-orphan')
+    reviews = db.relationship('Review', backref='food_item', lazy=True)
+
     def __repr__(self):
         return f'<FoodItem {self.name}>'
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    delivery_boy_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     customer_name = db.Column(db.String(100), nullable=False, default='Customer')
     delivery_address = db.Column(db.Text, nullable=False)
     phone_number = db.Column(db.String(15), nullable=False)
@@ -80,14 +114,19 @@ class Order(db.Model):
     delivery_charge = db.Column(db.Float, default=0.0)
     gst_amount = db.Column(db.Float, default=0.0)
     total_amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, confirmed, preparing, delivered, cancelled
+    status = db.Column(db.String(20), default='pending')  # pending, confirmed, preparing, out_for_delivery, delivered, cancelled
+    payment_status = db.Column(db.String(20), default='pending')  # pending, completed, failed, refunded
     special_instructions = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     estimated_delivery = db.Column(db.DateTime, nullable=True)
-    
+    delivery_started_at = db.Column(db.DateTime, nullable=True)
+    delivered_at = db.Column(db.DateTime, nullable=True)
+    commission_paid = db.Column(db.Boolean, default=False)
+    commission_paid_at = db.Column(db.DateTime, nullable=True)
+
     # Relationships
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
-    
+
     def __repr__(self):
         return f'<Order {self.id}>'
 
@@ -97,9 +136,38 @@ class OrderItem(db.Model):
     food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)  # Price at time of order
-    
+
     def __repr__(self):
         return f'<OrderItem {self.id}>'
+
+class Review(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True)  # Optional link to order
+    rating = db.Column(db.Integer, nullable=False)  # 1-5 stars
+    title = db.Column(db.String(200), nullable=True)
+    comment = db.Column(db.Text, nullable=True)
+    is_verified_purchase = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    review_images = db.relationship('ReviewImage', backref='review', lazy=True, cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<Review {self.id} - {self.rating} stars>'
+
+class ReviewImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('review.id'), nullable=False)
+    image_data = db.Column(db.LargeBinary, nullable=True)
+    image_url = db.Column(db.String(255), nullable=True)
+    image_filename = db.Column(db.String(255), nullable=True)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ReviewImage {self.id} for Review {self.review_id}>'
 
 class CartItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -107,7 +175,7 @@ class CartItem(db.Model):
     food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __repr__(self):
         return f'<CartItem {self.id}>'
 
@@ -126,13 +194,13 @@ class Coupon(db.Model):
     valid_from = db.Column(db.DateTime, default=datetime.utcnow)
     valid_until = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __repr__(self):
         return f'<Coupon {self.code}>'
-    
+
     def is_valid(self):
         now = datetime.utcnow()
-        return (self.is_active and 
+        return (self.is_active and
                 self.valid_from <= now <= self.valid_until and
                 (self.usage_limit is None or self.used_count < self.usage_limit))
 
@@ -148,10 +216,10 @@ class UserProfile(db.Model):
     state = db.Column(db.String(50), nullable=True)
     zip_code = db.Column(db.String(10), nullable=True)
     country = db.Column(db.String(50), default='India')
-    
+
     # Relationship
     user = db.relationship('User', backref=db.backref('profile', uselist=False), lazy=True)
-    
+
     def __repr__(self):
         return f'<UserProfile {self.user_id}>'
 

@@ -19,27 +19,43 @@
 
             <!-- Left Menus -->
             <ul class="navbar-nav slide-in-left nav-gap me-auto">
-                <li class="nav-item"><a class="nav-link nav-hover-effect" href="{{ url_for('user.home') }}"><i class="bi bi-house-door"></i> Home</a></li>
-                <li class="nav-item"><a class="nav-link nav-hover-effect" href="{{ url_for('user.menu') }}"><i class="bi bi-card-list"></i> Menu</a></li>
+                <li class="nav-item">
+                    <a class="nav-link nav-hover-effect" href="{{ url_for('user.home') }}">
+                        <i class="bi bi-house-door"></i> <span class="nav-text">Home</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-hover-effect" href="{{ url_for('user.menu') }}">
+                        <i class="bi bi-card-list"></i> <span class="nav-text">Menu</span>
+                    </a>
+                </li>
                 {% if current_user.is_authenticated %}
-                <li class="nav-item"><a class="nav-link nav-hover-effect" href="{{ url_for('user.my_orders') }}"><i class="bi bi-bag-check"></i> My Orders</a></li>
+                <li class="nav-item">
+                    <a class="nav-link nav-hover-effect" href="{{ url_for('user.my_orders') }}">
+                        <i class="bi bi-bag-check"></i> <span class="nav-text">My Orders</span>
+                    </a>
+                </li>
                 {% endif %}
-                <li class="nav-item"><a class="nav-link nav-hover-effect" href="{{ url_for('user.contact') }}"><i class="bi bi-chat-dots"></i> Contact</a></li>
+                <li class="nav-item">
+                    <a class="nav-link nav-hover-effect" href="{{ url_for('user.contact') }}">
+                        <i class="bi bi-chat-dots"></i> <span class="nav-text">Contact</span>
+                    </a>
+                </li>
             </ul>
 
-            <!-- Center Search Bar with Autocomplete (Flipkart style) - Increased Size -->
-            <form class="d-flex mx-auto flex-grow-1 justify-content-center position-relative"
-                  style="max-width: 800px; min-width: 400px;" method="GET" action="{{ url_for('user.search') }}">
+            <!-- Center Search Bar with Autocomplete - Improved mobile responsiveness -->
+            <form class="d-flex mx-auto justify-content-center position-relative search-form"
+                  method="GET" action="{{ url_for('user.search') }}">
                 <div class="input-group w-100 search-container">
                     <input class="form-control search-input border-0 shadow-sm" type="search" name="query" id="search-input"
                            placeholder="Search for food, cuisines, offers..." aria-label="Search"
-                           autocomplete="off" style="border-radius: 8px 0 0 8px; font-size: 16px; padding: 16px 20px; height: 56px;">
-                    <button class="btn btn-warning search-btn border-0" type="submit" style="border-radius: 0 8px 8px 0; padding: 16px 24px; height: 56px;">
+                           autocomplete="off">
+                    <button class="btn btn-warning search-btn border-0" type="submit">
                         <i class="bi bi-search text-white fs-5"></i>
                     </button>
                 </div>
                 <!-- Search suggestions dropdown -->
-                <div id="search-suggestions" class="list-group position-absolute w-100 shadow-lg search-dropdown" 
+                <div id="search-suggestions" class="list-group position-absolute w-100 shadow-lg search-dropdown"
                      style="top: 100%; z-index: 1050; max-height: 400px; overflow-y: auto; display: none; border-radius: 0 0 8px 8px; background: white; border: 1px solid #ddd;">
                     <!-- Suggestions will be populated by JavaScript -->
                 </div>
@@ -50,16 +66,18 @@
                 {% if current_user.is_authenticated %}
                 <li class="nav-item me-3">
                     <a class="nav-link position-relative cart-link nav-hover-effect" href="{{ url_for('user.cart') }}">
-                        <i class="bi bi-cart3"></i> Cart
+                        <i class="bi bi-cart3"></i> <span class="nav-text">Cart</span>
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-count-badge">0</span>
                     </a>
                 </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle nav-hover-effect" href="#" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                        <i class="bi bi-person-circle"></i> <span class="nav-text">{{ current_user.username }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end animated fadeInDown">
-                        {% if not current_user.is_admin %}
+                        {% if current_user.is_delivery_boy %}
+                        <li><a class="dropdown-item" href="{{ url_for('delivery.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a></li>
+                        {% elif not current_user.is_admin %}
                         <li><a class="dropdown-item" href="{{ url_for('user.profile') }}"><i class="bi bi-person me-2"></i> My Profile</a></li>
                         {% endif %}
                         {% if current_user.is_admin %}
@@ -70,8 +88,16 @@
                     </ul>
                 </li>
                 {% else %}
-                <li class="nav-item"><a class="nav-link nav-hover-effect btn btn-outline-light rounded-pill ms-2 px-3 sign-up-btn" href="{{ url_for('auth.login') }}"><i class="bi bi-box-arrow-in-right"></i> Login</a></li>
-                <li class="nav-item"><a class="nav-link nav-hover-effect btn btn-light rounded-pill ms-2 px-3 text-dark fw-bold" href="{{ url_for('auth.register') }}"><i class="bi bi-person-plus"></i> Sign Up</a></li>
+                <li class="nav-item">
+                    <a class="nav-link nav-hover-effect btn btn-outline-light rounded-pill ms-2 px-3 sign-up-btn" href="{{ url_for('auth.login') }}">
+                        <i class="bi bi-box-arrow-in-right"></i> <span class="nav-text">Login</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-hover-effect btn btn-light rounded-pill ms-2 px-3 text-dark fw-bold" href="{{ url_for('auth.register') }}">
+                        <i class="bi bi-person-plus"></i> <span class="nav-text">Sign Up</span>
+                    </a>
+                </li>
                 {% endif %}
             </ul>
         </div>
@@ -84,14 +110,14 @@
     ================================ */
     .navbar-animated {
       background: linear-gradient(135deg, rgba(255,94,58,0.95), rgba(253,126,20,0.95)),
-                  url("{{ url_for('static', filename='images/navbar-bg.jpg') }}") center/cover no-repeat;
+                  url("{{ url_for('static', filename='images/hero-banner.jpg') }}") center/cover no-repeat;
       box-shadow: 0 4px 16px rgba(0,0,0,0.35);
       padding: 0.9rem 1.5rem;
       transition: all 0.3s ease;
     }
     .navbar-animated:hover {
       background: linear-gradient(135deg, rgba(253,126,20,0.95), rgba(255,94,58,0.95)),
-                  url("{{ url_for('static', filename='images/navbar-bg.jpg') }}") center/cover no-repeat;
+                  url("{{ url_for('static', filename='images/hero-banner.jpg') }}") center/cover no-repeat;
     }
 
     /* Logo round shape */
@@ -131,6 +157,48 @@
       background: rgba(255,255,255,0.15);
       color: #ffe066 !important;
       transform: translateY(-2px) scale(1.05);
+    }
+
+    /* Icon-only navigation */
+    @media (max-width: 991.98px) {
+      .nav-text {
+        display: inline-block;
+      }
+
+      .navbar-collapse {
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .search-form {
+        width: 100%;
+        margin: 10px 0;
+      }
+
+      .navbar-nav {
+        margin-top: 10px;
+        width: 100%;
+      }
+
+      .nav-item {
+        margin-bottom: 5px;
+      }
+    }
+
+    @media (min-width: 992px) {
+      .nav-text {
+        display: none;
+      }
+
+      .nav-hover-effect:hover .nav-text {
+        display: inline-block;
+        animation: fadeInRight 0.3s ease;
+      }
+
+      .search-form {
+        flex: 0 0 40%;
+        max-width: 500px;
+      }
     }
 
     /* ================================
@@ -185,6 +253,28 @@
     .search-dropdown .list-group-item.active {
         background-color: #e3f2fd;
         border-color: #2196f3;
+    }
+
+    /* Mobile responsiveness improvements */
+    @media (max-width: 576px) {
+      .navbar-brand .brand-text {
+        font-size: 1.3rem;
+      }
+
+      .logo-round {
+        height: 40px;
+        width: 40px;
+      }
+
+      .search-input, .search-btn {
+        height: 48px;
+        font-size: 0.9rem;
+        padding: 0.8rem 1rem;
+      }
+
+      .navbar-animated {
+        padding: 0.6rem 1rem;
+      }
     }
 
     /* ================================
@@ -254,9 +344,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         searchInput.addEventListener('input', function() {
             const query = this.value.trim();
-            
+
             clearTimeout(searchTimeout);
-            
+
             if (query.length < 2) {
                 suggestionsDiv.style.display = 'none';
                 return;
@@ -272,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 html += `
                                     <a href="/food/${item.id}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
                                         <div class="flex-shrink-0 me-3">
-                                            <img src="${item.image_url}" 
+                                            <img src="${item.image_url}"
                                                  alt="${item.name}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                                         </div>
                                         <div class="flex-grow-1">

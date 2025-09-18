@@ -44,6 +44,33 @@ def order_details(order_id):
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
     return render_template('components/order_details.html', order=order, timedelta=timedelta)
 
+@user_bp.route('/download_invoice/<int:order_id>')
+@login_required
+def download_invoice(order_id):
+    """Download invoice for user's order"""
+    order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
+    order_items = OrderItem.query.filter_by(order_id=order_id).all()
+
+    # Create invoice HTML content
+    invoice_html = render_template('components/invoice_template.html',
+                                 order=order,
+                                 order_items=order_items,
+                                 current_date=datetime.now())
+
+    # Create a file-like object
+    invoice_io = io.BytesIO()
+    invoice_io.write(invoice_html.encode('utf-8'))
+    invoice_io.seek(0)
+
+    filename = f"BhojanXpress_Invoice_{order.id}_{datetime.now().strftime('%Y%m%d')}.html"
+
+    return send_file(
+        invoice_io,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='text/html'
+    )
+
 @user_bp.route('/payment/<int:order_id>')
 @login_required
 def payment(order_id):
@@ -61,34 +88,35 @@ def order_confirmation(order_id):
 @user_bp.route('/cancel-order/<int:order_id>', methods=['POST'])
 @login_required
 def cancel_order(order_id):
-    """Cancel an order - only allowed within 10 minutes of placement"""
+    """Cancel an order"""
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
-    
-    # Calculate time difference between now and order creation
-    time_diff = datetime.utcnow() - order.created_at
-    cancellation_limit_minutes = 10  # Allow cancellation within 10 minutes
 
-    # Check if order can be cancelled based on status and time
+    # Check if order can be cancelled based on status
     if order.status in ['pending', 'confirmed']:
-        # Check if within cancellation time limit
-        if time_diff.total_seconds() <= (cancellation_limit_minutes * 60):
-            try:
-                order.status = 'cancelled'
-                db.session.commit()
-                return jsonify({
-                    'success': True,
-                    'message': 'Order cancelled successfully'
-                })
-            except Exception as e:
-                db.session.rollback()
-                return jsonify({
-                    'success': False,
-                    'message': 'Error cancelling order'
-                })
-        else:
+        try:
+            # Automatically update status to cancelled without time restrictions
+            order.status = 'cancelled'
+
+            # Handle refunds for online payments
+            online_payment_methods = ['credit_card', 'debit_card', 'paypal', 'upi', 'netbanking']
+            if order.payment_method in online_payment_methods:
+                order.payment_status = 'refunded'
+
+                # Send refund notification email
+                from app.utils.email_utils import send_refund_notification
+                send_refund_notification(current_user, order)
+
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': 'Order cancelled successfully'
+            })
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error cancelling order: {str(e)}")
             return jsonify({
                 'success': False,
-                'message': f'Order cannot be cancelled after {cancellation_limit_minutes} minutes of placement'
+                'message': 'Error cancelling order'
             })
     else:
         return jsonify({
@@ -101,11 +129,11 @@ def cancel_order(order_id):
 def place_order():
     """Place an order from cart"""
     cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
-    
+
     if not cart_items:
         flash('Your cart is empty', 'warning')
         return redirect(url_for('user.cart'))
-    
+
     try:
         # Get form data
         full_name = request.form.get('full_name')
@@ -113,10 +141,10 @@ def place_order():
         delivery_address = request.form.get('delivery_address')
         payment_method = request.form.get('payment_method')
         special_instructions = request.form.get('special_instructions', '')
-        
+
         # Calculate totals from session (checkout summary)
         checkout_summary = session.get('checkout_summary', {})
-        
+
         # Create order
         order = Order(
             user_id=current_user.id,
@@ -133,10 +161,10 @@ def place_order():
             total_amount=checkout_summary.get('total_amount', 0),
             status='pending'
         )
-        
+
         db.session.add(order)
         db.session.flush()  # Get order ID
-        
+
         # Create order items
         for cart_item in cart_items:
             order_item = OrderItem(
@@ -146,16 +174,16 @@ def place_order():
                 price=cart_item.food_item.price
             )
             db.session.add(order_item)
-        
+
         # Clear cart
         CartItem.query.filter_by(user_id=current_user.id).delete()
-        
+
         # Clear session data
         session.pop('applied_coupon', None)
         session.pop('checkout_summary', None)
-        
+
         db.session.commit()
-        
+
         # Redirect based on payment method
         if payment_method in ['card_payment', 'paypal', 'upi_payment']:
             # For online payments, redirect to payment page
@@ -189,20 +217,20 @@ def home():
         Coupon.display_on_home == True,  # Admin permission to display
         Coupon.valid_until > datetime.now()
     ).order_by(Coupon.created_at.desc()).all()  # Get ALL, not limited
-    
+
     # Get special offers
     special_offers = SpecialOffer.query.filter(
         SpecialOffer.is_active == True,
         SpecialOffer.valid_until > datetime.now()
     ).all()
-    
+
     # Get most popular food items (based on order count) - Limited to 10 items
     popular_items = db.session.query(
         FoodItem, func.sum(OrderItem.quantity).label('total_ordered')
     ).join(OrderItem).group_by(FoodItem).filter(
         FoodItem.is_available == True
     ).order_by(func.sum(OrderItem.quantity).desc()).limit(10).all()
-    
+
     # Extract just the food items from the query result
     popular_food_items = [item[0] for item in popular_items]
 
@@ -544,8 +572,8 @@ def capture_paypal_payment(paypal_order_id):
     result = paypal_client.capture_payment(paypal_order_id)
 
     if result['success']:
-        # Update order status
-        order.status = 'confirmed'
+        # Update order status to pending (not automatically confirmed)
+        order.status = 'pending'
         order.payment_status = 'paid'
         order.payment_details = json.dumps(result['details'])
         db.session.commit()
@@ -582,13 +610,13 @@ def paypal_return():
         result = paypal_client.capture_payment(token)
 
         if result['success']:
-            # Update order status
-            order.status = 'confirmed'
+            # Update order status to pending (not confirmed) - wait for admin approval
+            order.status = 'pending'
             order.payment_status = 'paid'
             order.payment_details = json.dumps(result['details'])
             db.session.commit()
 
-            flash('Payment completed successfully! Your order has been confirmed.', 'success')
+            flash('Payment completed successfully! Your order is pending approval.', 'success')
             return redirect(url_for('user.order_confirmation', order_id=order.id))
         else:
             flash(f'Payment capture failed: {result.get("error", "Unknown error")}', 'error')
@@ -995,6 +1023,14 @@ def send_contact_message():
 def receipt(order_id):
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
     download = request.args.get('download')
+
+    # Explicitly load order items to avoid attribute error
+    try:
+        order_items = OrderItem.query.filter_by(order_id=order.id).all()
+    except Exception as e:
+        current_app.logger.error(f"Error loading order items: {str(e)}")
+        order_items = []
+
     if download and REPORTLAB_AVAILABLE:
         # Generate PDF
         buffer = io.BytesIO()
@@ -1019,8 +1055,17 @@ def receipt(order_id):
         p.drawString(40, y, "Order Items:")
         y -= 20
         p.setFont("Helvetica", 12)
-        for item in order.order_items:
-            p.drawString(50, y, f"{item.food_item.name} (x{item.quantity}) - ₹{item.price:.2f} each")
+
+        # Iterate through explicitly loaded order items instead of using relationship
+        for item in order_items:
+            # Get the food item
+            food_item = FoodItem.query.get(item.food_item_id)
+            if food_item:
+                food_name = food_item.name
+            else:
+                food_name = "Unknown Item"
+
+            p.drawString(50, y, f"{food_name} (x{item.quantity}) - ₹{item.price:.2f} each")
             y -= 18
             if y < 100:
                 p.showPage()
@@ -1068,10 +1113,10 @@ def food_detail(food_id):
     if ratings:
         avg_rating = sum(r.rating for r in ratings) / len(ratings)
 
-    # Check if the current user has already rated this item
-    user_rating = None
+    # Get user's reviews for this item (multiple reviews allowed)
+    user_reviews = []
     if current_user.is_authenticated:
-        user_rating = Rating.query.filter_by(food_item_id=food_id, user_id=current_user.id).first()
+        user_reviews = Rating.query.filter_by(food_item_id=food_id, user_id=current_user.id).all()
 
     # Get similar food items from the same category
     similar_items = FoodItem.query.filter(
@@ -1086,27 +1131,37 @@ def food_detail(food_id):
             rating_value = int(request.form.get('rating', 0))
             if 1 <= rating_value <= 5:
                 comment = request.form.get('comment', '')
+                edit_review_id = request.form.get('edit_review_id')
 
-                # Update existing rating or create new one
-                if user_rating:
-                    # Delete existing images
-                    for img in user_rating.images:
-                        db.session.delete(img)
+                current_rating = None
+                
+                if edit_review_id:
+                    # Update existing review
+                    current_rating = Rating.query.filter_by(
+                        id=edit_review_id, 
+                        user_id=current_user.id, 
+                        food_item_id=food_id
+                    ).first()
                     
-                    user_rating.rating = rating_value
-                    user_rating.comment = comment
-                    user_rating.updated_at = datetime.utcnow()
-                    flash('Your rating has been updated!', 'success')
+                    if current_rating:
+                        # Delete existing images
+                        for img in current_rating.images:
+                            db.session.delete(img)
+                        
+                        current_rating.rating = rating_value
+                        current_rating.comment = comment
+                        current_rating.updated_at = datetime.utcnow()
+                        flash('Your review has been updated!', 'success')
                 else:
-                    new_rating = Rating(
+                    # Create new review
+                    current_rating = Rating(
                         user_id=current_user.id,
                         food_item_id=food_id,
                         rating=rating_value,
                         comment=comment
                     )
-                    db.session.add(new_rating)
-                    flash('Your rating has been submitted!', 'success')
-                    user_rating = new_rating
+                    db.session.add(current_rating)
+                    flash('Your review has been submitted!', 'success')
 
                 # Handle image uploads
                 uploaded_files = request.files.getlist('reviewImages')
@@ -1125,7 +1180,7 @@ def food_detail(food_id):
                             file_ext = file.filename.rsplit('.', 1)[1].lower()
                             if file_ext in allowed_extensions:
                                 # Generate unique filename
-                                filename = f"review_{user_rating.id if hasattr(user_rating, 'id') and user_rating.id else 'temp'}_{i}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
+                                filename = f"review_{current_rating.id if hasattr(current_rating, 'id') and current_rating.id else 'temp'}_{i}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
                                 filepath = os.path.join(upload_folder, filename)
                                 
                                 # Save file
@@ -1133,7 +1188,7 @@ def food_detail(food_id):
                                 
                                 # Create ReviewImage record
                                 review_image = ReviewImage(
-                                    rating_id=user_rating.id if hasattr(user_rating, 'id') and user_rating.id else None,
+                                    rating_id=current_rating.id if hasattr(current_rating, 'id') and current_rating.id else None,
                                     image_url=f"/static/uploads/reviews/{filename}",
                                     image_filename=file.filename
                                 )
@@ -1142,10 +1197,10 @@ def food_detail(food_id):
                 db.session.commit()
                 
                 # Update rating_id for images if it was a new rating
-                if not hasattr(user_rating, 'id') or not user_rating.id:
-                    db.session.refresh(user_rating)
+                if not hasattr(current_rating, 'id') or not current_rating.id:
+                    db.session.refresh(current_rating)
                     for img in db.session.query(ReviewImage).filter_by(rating_id=None).all():
-                        img.rating_id = user_rating.id
+                        img.rating_id = current_rating.id
                     db.session.commit()
                 
                 return redirect(url_for('user.food_detail', food_id=food_id))
@@ -1159,64 +1214,168 @@ def food_detail(food_id):
                           food=food_item,
                           ratings=ratings,
                           avg_rating=avg_rating,
-                          user_rating=user_rating,
+                          user_reviews=user_reviews,
                           similar_items=similar_items)
+
+@user_bp.route('/reorder/<int:order_id>', methods=['POST'])
+@login_required
+def reorder(order_id):
+    """Reorder items from a previous order"""
+    try:
+        # Get the original order
+        order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
+
+        # Check if order has items
+        items = order.order_items
+        if not items or len(items) == 0:
+            return jsonify({
+                'success': False,
+                'message': 'No items found in the original order'
+            })
+
+        # Add each item from the original order to the cart
+        added_count = 0
+        for order_item in items:
+            # Skip if food item doesn't exist anymore
+            if not order_item.food_item:
+                continue
+
+            # Check if item already in cart
+            cart_item = CartItem.query.filter_by(user_id=current_user.id, food_item_id=order_item.food_item_id).first()
+
+            if cart_item:
+                cart_item.quantity += order_item.quantity
+            else:
+                cart_item = CartItem(
+                    user_id=current_user.id,
+                    food_item_id=order_item.food_item_id,
+                    quantity=order_item.quantity
+                )
+                db.session.add(cart_item)
+
+            added_count += 1
+
+        # If we successfully added items, commit changes
+        if added_count > 0:
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': f'Added {added_count} items to your cart',
+                'redirect_url': url_for('user.cart')
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No valid items found in the original order'
+            })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in reorder: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while reordering'
+        })
+
+# Review Management Routes
+@user_bp.route('/review/<int:review_id>/edit', methods=['GET'])
+@login_required
+def edit_review(review_id):
+    """Get review data for editing"""
+    try:
+        review = Rating.query.filter_by(id=review_id, user_id=current_user.id).first()
+        
+        if not review:
+            return jsonify({
+                'success': False,
+                'message': 'Review not found or you do not have permission to edit it'
+            })
+        
+        return jsonify({
+            'success': True,
+            'review': {
+                'id': review.id,
+                'rating': review.rating,
+                'comment': review.comment or ''
+            }
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error fetching review for edit: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while loading the review'
+        })
 
 @user_bp.route('/review/<int:review_id>/delete', methods=['DELETE'])
 @login_required
 def delete_review(review_id):
-    """Delete a user's review"""
+    """Delete a review"""
     try:
-        rating = Rating.query.filter_by(id=review_id, user_id=current_user.id).first()
-        if not rating:
-            return jsonify({'success': False, 'message': 'Review not found or you don\'t have permission to delete it'})
+        review = Rating.query.filter_by(id=review_id, user_id=current_user.id).first()
+        
+        if not review:
+            return jsonify({
+                'success': False,
+                'message': 'Review not found or you do not have permission to delete it'
+            })
         
         # Delete associated images
-        import os
-        for image in rating.images:
-            if image.image_url and image.image_url.startswith('/static/uploads/'):
-                file_path = os.path.join(current_app.root_path, image.image_url.lstrip('/'))
-                if os.path.exists(file_path):
-                    os.remove(file_path)
+        for image in review.images:
+            # Delete physical file
+            try:
+                import os
+                filepath = os.path.join(current_app.root_path, 'static', 'uploads', 'reviews', os.path.basename(image.image_url))
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except Exception as e:
+                current_app.logger.warning(f"Could not delete image file: {str(e)}")
+            
             db.session.delete(image)
         
-        # Delete the rating
-        db.session.delete(rating)
+        # Delete the review
+        db.session.delete(review)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'Review deleted successfully'})
-    
+        return jsonify({
+            'success': True,
+            'message': 'Review deleted successfully'
+        })
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'Error deleting review: {str(e)}'})
+        current_app.logger.error(f"Error deleting review: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while deleting the review'
+        })
 
 @user_bp.route('/review/<int:review_id>/helpful', methods=['POST'])
 @login_required
-def mark_helpful(review_id):
-    """Mark a review as helpful or not helpful"""
+def mark_review_helpful(review_id):
+    """Mark a review as helpful or unhelpful"""
     try:
+        review = Rating.query.get_or_404(review_id)
         data = request.get_json()
         helpful = data.get('helpful', True)
         
-        rating = Rating.query.get_or_404(review_id)
-        
-        # Initialize helpful_count if not exists
-        if not hasattr(rating, 'helpful_count') or rating.helpful_count is None:
-            rating.helpful_count = 0
-        
-        # For simplicity, just increment/decrement the count
-        # In a full implementation, you'd track individual user votes
         if helpful:
-            rating.helpful_count = (rating.helpful_count or 0) + 1
+            review.helpful_count = (review.helpful_count or 0) + 1
+        else:
+            review.helpful_count = max(0, (review.helpful_count or 0) - 1)
         
         db.session.commit()
         
         return jsonify({
-            'success': True, 
-            'helpful_count': rating.helpful_count or 0,
+            'success': True,
+            'helpful_count': review.helpful_count,
             'message': 'Thank you for your feedback!'
         })
-    
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'Error recording feedback: {str(e)}'})
+        current_app.logger.error(f"Error marking review helpful: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while recording your feedback'
+        })

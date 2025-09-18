@@ -1,5 +1,14 @@
 # BhojanXpress
 
+BhojanXpress is a food delivery management system that includes dashboards for administrators, restaurants, and delivery agents.
+
+## Recently Fixed Issues
+
+The application had several issues that have been fixed. For details, see:
+- [FIXES.md](FIXES.md) - Summary of issues fixed
+- [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) - Technical implementation details
+- [QUICK_START.md](QUICK_START.md) - How to quickly get started with the application
+
 ## MySQL Setup Instructions
 
 This application requires MySQL as the database. SQLite is not supported.
@@ -18,7 +27,26 @@ This application requires MySQL as the database. SQLite is not supported.
    ```
    Replace `username` and `password` with your actual MySQL credentials.
 
-5. Run the application:
+5. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+6. Verify all required dependencies:
+   ```
+   python check_dependencies.py
+   ```
+
+7. Run the test script to ensure all fixes are working:
+   ```
+   python test_fixes.py
+   ```
+   You should see all tests PASSED. The test script verifies:
+   - dateutil.relativedelta import works correctly
+   - Order model relationship for items/order_items works
+   - No duplicate routes exist in delivery_routes.py
+
+8. Run the application:
    ```
    python run.py
    ```
@@ -35,11 +63,34 @@ mysql -u root -p
 ```
 And enter your password when prompted.
 
-### git push
+## Login Credentials
+
+### Admin Dashboard
+- Email: admin@bhojanxpress.com
+- Password: admin123
+
+### Delivery Dashboard
+- Email: delivery@bhojanxpress.com
+- Username: delivery_boy
+- Password: delivery123
+
+### Restaurant Dashboard
+- Email: restaurant@bhojanxpress.com
+- Password: restaurant123
+
+## Development Notes
+
+### Running in Development Mode
+```
+flask run --host=0.0.0.0
+```
+
+### Git Commands Reference
+```
 git init
 git add .
-git commit -am "initial commit"
+git commit -am "commit message"
 git remote add origin https://github.com/omkargouda1204/BhojanXpress.git
 git remote -v
 git push origin master
-git push origin master
+```

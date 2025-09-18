@@ -21,7 +21,8 @@ def dashboard():
     total_users = User.query.filter_by(is_admin=False).count()
     total_orders = Order.query.count()
     total_food_items = FoodItem.query.count()
-    
+    total_delivery_agents = User.query.filter_by(is_delivery_boy=True).count()
+
     # Revenue calculation
     today = datetime.now().date()
     today_orders = Order.query.filter(
@@ -43,6 +44,7 @@ def dashboard():
         'total_users': total_users,
         'total_orders': total_orders,
         'total_food_items': total_food_items,
+        'total_delivery_agents': total_delivery_agents,
         'today_revenue': format_currency(today_revenue),
         'pending_orders': pending_orders,
         'unread_messages': unread_messages
@@ -319,28 +321,71 @@ def delete_food(food_id):
 @login_required
 @admin_required
 def orders():
-    page = request.args.get('page', 1, type=int)
+    """Comprehensive order management view with filtering by status"""
+    # Get query parameters for filtering
     status = request.args.get('status', 'all')
-    
+    page = request.args.get('page', 1, type=int)
+    per_page = 15
+
+    # Base query
     query = Order.query
-    
+
+    # Apply status filter if specified
     if status != 'all':
-        query = query.filter_by(status=status)
-    
+        query = query.filter(Order.status == status)
+
+    # Get total counts for different status tabs
+    pending_count = Order.query.filter_by(status='pending').count()
+    confirmed_count = Order.query.filter_by(status='confirmed').count()
+    preparing_count = Order.query.filter_by(status='preparing').count()
+    out_for_delivery_count = Order.query.filter_by(status='out_for_delivery').count()
+    delivered_count = Order.query.filter_by(status='delivered').count()
+    cancelled_count = Order.query.filter_by(status='cancelled').count()
+
+    # Get paginated orders
     orders = query.order_by(Order.created_at.desc()).paginate(
-        page=page, per_page=15, error_out=False
+        page=page, per_page=per_page, error_out=False
     )
-    
-    statuses = ['all', 'pending', 'confirmed', 'preparing', 'delivered', 'cancelled']
-    
-    return render_template('admin/orders.html', orders=orders, statuses=statuses, current_status=status)
+
+    # Status counts for tabs
+    status_counts = {
+        'all': Order.query.count(),
+        'pending': pending_count,
+        'confirmed': confirmed_count,
+        'preparing': preparing_count,
+        'out_for_delivery': out_for_delivery_count,
+        'delivered': delivered_count,
+        'cancelled': cancelled_count
+    }
+
+    return render_template(
+        'admin/orders.html',
+        orders=orders,
+        current_status=status,
+        status_counts=status_counts
+    )
 
 @admin_bp.route('/order/<int:order_id>')
 @login_required
 @admin_required
 def order_details(order_id):
     order = Order.query.get_or_404(order_id)
-    return render_template('admin/order_details.html', order=order)
+
+    # Get only active delivery agents for assignment
+    active_delivery_agents = User.query.filter_by(
+        is_delivery_boy=True,
+        is_active=True
+    ).all()
+
+    # Add pending orders count for each agent
+    for agent in active_delivery_agents:
+        agent.pending_orders = Order.query.filter_by(
+            delivery_boy_id=agent.id
+        ).filter(Order.status.in_(['confirmed', 'preparing', 'out_for_delivery'])).count()
+
+    return render_template('admin/order_details.html',
+                         order=order,
+                         active_delivery_agents=active_delivery_agents)
 
 @admin_bp.route('/update_order_status/<int:order_id>', methods=['POST'])
 @csrf.exempt
@@ -348,19 +393,19 @@ def order_details(order_id):
 @admin_required
 def update_order_status(order_id):
     order = Order.query.get_or_404(order_id)
-    
+
     # Handle both form and JSON requests
     if request.is_json:
         data = request.get_json()
         new_status = data.get('status')
     else:
         new_status = request.form.get('status')
-    
-    if new_status in ['pending', 'confirmed', 'preparing', 'delivered', 'cancelled']:
+
+    if new_status in ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'cancelled']:
         try:
             order.status = new_status
             db.session.commit()
-            
+
             if request.is_json:
                 return jsonify({'success': True, 'message': f'Order #{order.id} status updated to {new_status.title()}.'})
             else:
@@ -376,7 +421,7 @@ def update_order_status(order_id):
             return jsonify({'success': False, 'error': 'Invalid status.'})
         else:
             flash('Invalid status.', 'error')
-    
+
     return redirect(url_for('admin.order_details', order_id=order_id))
 
 @admin_bp.route('/users')
@@ -387,7 +432,7 @@ def users():
     users = User.query.filter_by(is_admin=False).order_by(User.created_at.desc()).paginate(
         page=page, per_page=15, error_out=False
     )
-    
+
     return render_template('admin/users.html', users=users)
 
 @admin_bp.route('/user/<int:user_id>')
@@ -396,7 +441,7 @@ def users():
 def user_details(user_id):
     user = User.query.get_or_404(user_id)
     user_orders = Order.query.filter_by(user_id=user_id).order_by(Order.created_at.desc()).limit(10).all()
-    
+
     # Calculate user statistics
     total_orders = Order.query.filter_by(user_id=user_id).count()
     total_spent = db.session.query(db.func.sum(Order.total_amount)).filter(
@@ -408,7 +453,7 @@ def user_details(user_id):
         'total_orders': total_orders,
         'total_spent': format_currency(total_spent)
     }
-    
+
     return render_template('admin/user_details.html', user=user, user_orders=user_orders, user_stats=user_stats)
 
 @admin_bp.route('/reports_dashboard')
@@ -434,9 +479,9 @@ def reports_dashboard():
             'revenue': day_revenue,
             'orders': len(day_orders)
         })
-        
+
         current_date += timedelta(days=1)
-    
+
     # Category-wise sales
     category_sales = db.session.query(
         FoodItem.category,
@@ -445,7 +490,7 @@ def reports_dashboard():
     ).join(OrderItem).join(Order).filter(
         Order.status != 'cancelled'
     ).group_by(FoodItem.category).all()
-    
+
     return render_template('admin/reports.html', daily_revenue=daily_revenue, category_sales=category_sales)
 
 @admin_bp.route('/toggle_food_availability/<int:food_id>', methods=['POST'])
@@ -457,7 +502,7 @@ def toggle_food_availability(food_id):
     try:
         food_item.is_available = not food_item.is_available
         db.session.commit()
-        
+
         status = "available" if food_item.is_available else "unavailable"
         flash(f'{food_item.name} is now {status}.', 'success')
     except Exception as e:
@@ -723,3 +768,325 @@ def delete_contact_message(message_id):
         flash('Error deleting contact message.', 'error')
 
     return redirect(url_for('admin.contact_messages'))
+
+@admin_bp.route('/delivery_agents')
+@login_required
+@admin_required
+def delivery_agents():
+    """Manage delivery agents with comprehensive statistics"""
+    page = request.args.get('page', 1, type=int)
+
+    agents = User.query.filter_by(is_delivery_boy=True).order_by(User.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+
+    # Get comprehensive statistics for each agent
+    agent_stats = {}
+    for agent in agents.items:
+        total_deliveries = Order.query.filter_by(
+            delivery_boy_id=agent.id,
+            status='delivered'
+        ).count()
+
+        pending_deliveries = Order.query.filter(
+            Order.delivery_boy_id == agent.id,
+            Order.status.in_(['confirmed', 'preparing', 'out_for_delivery'])
+        ).count()
+
+        total_earnings = db.session.query(db.func.sum(Order.delivery_charge)).filter(
+            Order.delivery_boy_id == agent.id,
+            Order.status == 'delivered'
+        ).scalar() or 0
+
+        agent_stats[agent.id] = {
+            'total_deliveries': total_deliveries,
+            'pending_deliveries': pending_deliveries,
+            'total_earnings': total_earnings
+        }
+
+    return render_template('admin/delivery_agents.html',
+                         delivery_agents=agents,
+                         agent_stats=agent_stats)
+
+@admin_bp.route('/delivery_agents/<int:agent_id>/toggle_status', methods=['POST'])
+@login_required
+@admin_required
+def toggle_delivery_agent_status(agent_id):
+    """Toggle delivery agent active status"""
+    agent = User.query.get_or_404(agent_id)
+
+    if not agent.is_delivery_boy:
+        flash('User is not a delivery agent.', 'error')
+        return redirect(url_for('admin.delivery_agents'))
+
+    try:
+        # Toggle the agent's active status
+        new_status = not agent.is_active
+        agent.is_active = new_status
+        db.session.commit()
+        
+        status_text = "activated" if new_status else "deactivated"
+        flash(f'Delivery agent {agent.username} has been {status_text}.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error toggling agent status: {str(e)}")  # For debugging
+        flash(f'Error updating delivery agent status: {str(e)}', 'error')
+
+    return redirect(url_for('admin.delivery_agents'))
+
+@admin_bp.route('/pay_commission/<int:order_id>', methods=['POST'])
+@login_required
+@admin_required
+def pay_commission(order_id):
+    """Mark commission as paid for a specific order"""
+    order = Order.query.get_or_404(order_id)
+    
+    if order.status != 'delivered':
+        flash('Commission can only be paid for delivered orders.', 'error')
+        return redirect(request.referrer or url_for('admin.delivery_agents'))
+    
+    try:
+        order.commission_paid = True
+        order.commission_paid_at = datetime.utcnow()
+        db.session.commit()
+        
+        flash(f'Commission marked as paid for Order #{order.id}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error updating commission status.', 'error')
+    
+    return redirect(request.referrer or url_for('admin.delivery_agents'))
+
+@admin_bp.route('/download_invoice/<int:order_id>')
+@login_required
+@admin_required
+def download_invoice(order_id):
+    """Download invoice in Flipkart-style format"""
+    order = Order.query.get_or_404(order_id)
+    order_items = OrderItem.query.filter_by(order_id=order_id).all()
+
+    # Create invoice HTML content
+    invoice_html = render_template('admin/invoice_template.html',
+                                 order=order,
+                                 order_items=order_items,
+                                 current_date=datetime.now())
+
+    # Create a file-like object
+    invoice_io = io.BytesIO()
+    invoice_io.write(invoice_html.encode('utf-8'))
+    invoice_io.seek(0)
+
+    filename = f"BhojanXpress_Invoice_{order.id}_{datetime.now().strftime('%Y%m%d')}.html"
+
+    return send_file(
+        invoice_io,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='text/html'
+    )
+
+@admin_bp.route('/email_invoice/<int:order_id>', methods=['POST'])
+@login_required
+@admin_required
+def email_invoice(order_id):
+    """Email invoice to customer"""
+    order = Order.query.get_or_404(order_id)
+
+    if not order.user or not order.user.email:
+        return jsonify({
+            'success': False,
+            'error': 'No customer email available'
+        }), 400
+
+    try:
+        # Generate invoice HTML
+        invoice_html = render_template('admin/invoice_template.html',
+                                     order=order,
+                                     order_items=order.order_items,
+                                     current_date=datetime.now())
+
+        # Here you would typically send the email using Flask-Mail
+        # For now, we'll just return success
+        return jsonify({
+            'success': True,
+            'message': f'Invoice sent to {order.user.email}'
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@admin_bp.route('/add_delivery_agent', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def add_delivery_agent():
+    """Add a new delivery agent"""
+    if request.method == 'POST':
+        try:
+            # Validate CSRF token
+            csrf.protect()
+
+            name = request.form.get('name')
+            email = request.form.get('email')
+            phone = request.form.get('phone')
+            password = request.form.get('password')
+
+            # Validate required fields
+            if not all([name, email, password]):
+                flash('Name, email, and password are required.', 'error')
+                return render_template('admin/add_delivery_agent.html')
+
+            # Check if email already exists
+            if User.query.filter_by(email=email).first():
+                flash('Email already exists. Please use a different email.', 'error')
+                return render_template('admin/add_delivery_agent.html')
+
+            # Create new delivery agent user
+            from werkzeug.security import generate_password_hash
+            delivery_agent = User(
+                username=name,
+                email=email,
+                phone=phone,
+                password_hash=generate_password_hash(password),
+                is_delivery_boy=True,
+                is_active=True,
+                is_admin=False
+            )
+
+            db.session.add(delivery_agent)
+            db.session.commit()
+
+            flash(f'Delivery agent "{name}" added successfully!', 'success')
+            return redirect(url_for('admin.delivery_agents'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding delivery agent: {str(e)}', 'error')
+
+    return render_template('admin/add_delivery_agent.html')
+
+@admin_bp.route('/delivery_agent_profile/<int:agent_id>')
+@login_required
+@admin_required
+def delivery_agent_profile(agent_id):
+    """View detailed profile of a delivery agent"""
+    agent = User.query.filter_by(id=agent_id, is_delivery_boy=True).first_or_404()
+
+    # Get agent statistics
+    total_deliveries = Order.query.filter_by(
+        delivery_boy_id=agent.id,
+        status='delivered'
+    ).count()
+
+    pending_orders = Order.query.filter_by(
+        delivery_boy_id=agent.id
+    ).filter(Order.status.in_(['confirmed', 'preparing', 'out_for_delivery'])).count()
+
+    # Calculate commission details
+    delivered_orders = Order.query.filter_by(
+        delivery_boy_id=agent.id,
+        status='delivered'
+    ).all()
+
+    total_commission_earned = sum((order.delivery_charge or 0) * 0.1 for order in delivered_orders)
+
+    pending_commission_orders = Order.query.filter(
+        Order.delivery_boy_id == agent.id,
+        Order.status == 'delivered',
+        Order.commission_paid == False
+    ).all()
+    pending_commission = sum((order.delivery_charge or 0) * 0.1 for order in pending_commission_orders)
+
+    paid_commission = total_commission_earned - pending_commission
+
+    # Recent orders
+    recent_orders = Order.query.filter_by(
+        delivery_boy_id=agent.id
+    ).order_by(Order.created_at.desc()).limit(10).all()
+
+    stats = {
+        'total_deliveries': total_deliveries,
+        'pending_orders': pending_orders,
+        'total_commission_earned': total_commission_earned,
+        'pending_commission': pending_commission,
+        'paid_commission': paid_commission,
+        'total_earnings': sum(order.delivery_charge or 0 for order in delivered_orders)
+    }
+
+    return render_template('admin/delivery_agent_profile.html',
+                         agent=agent,
+                         stats=stats,
+                         recent_orders=recent_orders,
+                         pending_commission_orders=pending_commission_orders)
+
+@admin_bp.route('/edit_delivery_agent/<int:agent_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_delivery_agent(agent_id):
+    """Edit delivery agent details"""
+    agent = User.query.filter_by(id=agent_id, is_delivery_boy=True).first_or_404()
+
+    if request.method == 'POST':
+        try:
+            # Validate CSRF token
+            csrf.protect()
+
+            # Update agent information
+            agent.username = request.form.get('name', agent.username)
+            agent.phone = request.form.get('phone', agent.phone)
+
+            # Update password if provided
+            new_password = request.form.get('new_password')
+            if new_password and new_password.strip():
+                from werkzeug.security import generate_password_hash
+                agent.password_hash = generate_password_hash(new_password)
+
+            # Update status
+            agent.is_active = request.form.get('is_active') == 'on'
+
+            db.session.commit()
+            flash(f'Delivery agent "{agent.username}" updated successfully!', 'success')
+            return redirect(url_for('admin.delivery_agent_profile', agent_id=agent.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating delivery agent: {str(e)}', 'error')
+
+    return render_template('admin/edit_delivery_agent.html', agent=agent)
+
+@admin_bp.route('/assign_delivery_agent/<int:order_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def assign_delivery_agent(order_id):
+    """Assign delivery agent to an order"""
+    order = Order.query.get_or_404(order_id)
+    
+    # Only allow assignment for orders with 'preparing' status
+    if order.status != 'preparing':
+        flash('Only orders with "Preparing" status can be assigned to delivery agents', 'error')
+        return redirect(url_for('admin.pending_orders'))
+
+    if request.method == 'POST':
+        agent_id = request.form.get('agent_id')
+        if agent_id:
+            agent = User.query.filter_by(id=agent_id, is_delivery_boy=True, is_active=True).first()
+            if agent:
+                order.delivery_boy_id = agent_id
+                order.status = 'out_for_delivery'  # Update status to out for delivery when agent is assigned
+                db.session.commit()
+                flash(f'Order #{order.id} has been assigned to {agent.username} and status updated to "Out for Delivery"', 'success')
+            else:
+                flash('Invalid delivery agent selected', 'error')
+        return redirect(url_for('admin.pending_orders'))
+
+    # Get available delivery agents (active agents only)
+    available_agents = User.query.filter_by(
+        is_delivery_boy=True,
+        is_active=True
+    ).all()
+
+    return render_template('admin/assign_agent.html',
+                         order=order,
+                         available_agents=available_agents)

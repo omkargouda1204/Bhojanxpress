@@ -68,26 +68,36 @@ def send_email(to_email, subject, html_content):
             print(f"OTP for {to_email}: {otp}")
             print(f"====================\n")
 
-        # Mailtrap credentials
-        smtp_server = "sandbox.smtp.mailtrap.io"
-        smtp_port = 587
-        smtp_username = "8b5384f4325e9e"
-        smtp_password = "0e37e51c13d4da"
+        # Try to send the email through SMTP
+        try:
+            # Mailtrap credentials
+            smtp_server = "sandbox.smtp.mailtrap.io"
+            smtp_port = 587
+            smtp_username = "8b5384f4325e9e"
+            smtp_password = "0e37e51c13d4da"
 
-        current_app.logger.info(f"SMTP Connection: Server={smtp_server}, Port={smtp_port}, TLS=True, SSL=False")
+            current_app.logger.info(f"SMTP Connection: Server={smtp_server}, Port={smtp_port}, TLS=True, SSL=False")
 
-        # Create SMTP connection
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.set_debuglevel(1)  # Enable debug output
-        server.starttls()  # Enable TLS
+            # Create SMTP connection with timeout
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
+            server.set_debuglevel(1)  # Enable debug output
 
-        # Login and send
-        server.login(smtp_username, smtp_password)
-        server.sendmail(sender_email, to_email, message.as_string())
-        server.quit()
+            # Try establishing TLS connection
+            server.ehlo()
+            server.starttls()
+            server.ehlo()  # Re-identify ourselves over TLS connection
 
-        current_app.logger.info(f"Email sent successfully to {to_email} via Mailtrap")
-        print(f"Email successfully sent to {to_email} via Mailtrap")
+            # Login and send
+            server.login(smtp_username, smtp_password)
+            server.sendmail(sender_email, to_email, message.as_string())
+            server.quit()
+
+            current_app.logger.info(f"Email sent successfully to {to_email} via Mailtrap")
+            print(f"Email successfully sent to {to_email} via Mailtrap")
+        except smtplib.SMTPException as smtp_e:
+            current_app.logger.error(f"SMTP Error: {str(smtp_e)}")
+            print(f"SMTP Error: {str(smtp_e)}")
+            # Continue execution - we've already saved the email to file
 
         return True
     except Exception as e:
@@ -182,6 +192,44 @@ def send_password_reset_otp(user):
     print(f"\n====================")
     print(f"PASSWORD RESET OTP for {user.email}: {otp}")
     print(f"====================\n")
+
+    # Send email
+    return send_email(user.email, subject, html_content)
+
+def send_refund_notification(user, order):
+    """Send refund notification email for cancelled orders with online payments"""
+
+    # Create email content
+    subject = f"BhojanXpress - Refund Initiated for Order #{order.id}"
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #f9f9f9;">
+            <h2 style="color: #FF5722; text-align: center;">Refund Initiated</h2>
+            <p>Dear {user.username},</p>
+            <p>We're sorry to inform you that your order #{order.id} has been cancelled. A refund has been initiated for your payment.</p>
+            
+            <div style="background: #f0f0f0; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #333;">Refund Details</h3>
+                <p><strong>Order ID:</strong> #{order.id}</p>
+                <p><strong>Order Date:</strong> {order.created_at.strftime('%B %d, %Y at %I:%M %p')}</p>
+                <p><strong>Refund Amount:</strong> ₹{order.total_amount:.2f}</p>
+                <p><strong>Payment Method:</strong> {order.payment_method.replace('_', ' ').title()}</p>
+                <p><strong>Refund Status:</strong> Initiated</p>
+                <p><strong>Expected Refund Time:</strong> 5-7 business days</p>
+            </div>
+            
+            <p>The refund amount will be credited back to your original payment method. Please note that it may take 5-7 business days for the refund to reflect in your account, depending on your bank's processing time.</p>
+            <p>If you have any questions about your refund, please contact our customer support team.</p>
+            <p>Thank you for your understanding.</p>
+            
+            <p style="text-align: center; margin-top: 30px; font-size: 14px; color: #777;">
+                &copy; {datetime.utcnow().year} BhojanXpress. All rights reserved.
+            </p>
+        </div>
+    </body>
+    </html>
+    """
 
     # Send email
     return send_email(user.email, subject, html_content)

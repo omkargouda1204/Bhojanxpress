@@ -39,7 +39,37 @@
                                     {{ order.status.title() }}
                                 </span>
                             </p>
-                            <p><strong>Payment Method:</strong> {{ order.payment_method.title() }}</p>
+                            <div class="d-flex gap-2 mb-3">
+                                <!-- Invoice Download Button -->
+                                <a href="{{ url_for('admin.download_invoice', order_id=order.id) }}"
+                                   class="btn btn-success btn-sm">
+                                    <i class="fas fa-download"></i> Download Invoice
+                                </a>
+
+                                <!-- Print Invoice Button -->
+                                <button onclick="printInvoice()" class="btn btn-info btn-sm">
+                                    <i class="fas fa-print"></i> Print Invoice
+                                </button>
+
+                                <!-- Email Invoice Button -->
+                                <button onclick="emailInvoice()" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-envelope"></i> Email Invoice
+                                </button>
+                            </div>
+                            <p><strong>Payment Method:</strong>
+                                <span class="badge bg-{{ 'warning' if order.payment_method == 'cash_on_delivery' else 'success' }}">
+                                    {{ 'Cash on Delivery' if order.payment_method == 'cash_on_delivery' else 'Online Payment' }}
+                                </span>
+                                {% if order.payment_method == 'cash_on_delivery' %}
+                                    <br>
+                                    <small class="text-muted">
+                                        Payment Status: 
+                                        <span class="badge bg-{{ 'success' if order.payment_received else 'warning' }}">
+                                            {{ 'Received' if order.payment_received else 'Pending' }}
+                                        </span>
+                                    </small>
+                                {% endif %}
+                            </p>
                             <p><strong>Total Amount:</strong> ₹{{ "%.2f"|format(order.total_amount) }}</p>
                         </div>
                     </div>
@@ -83,8 +113,8 @@
                             <tbody>
                                 {% for item in order.order_items %}
                                 <tr>
-                                    <td>{{ item.food_item.name }}</td>
-                                    <td>{{ item.food_item.category if item.food_item.category else 'General' }}</td>
+                                    <td>{{ item.food_item.name if item.food_item else 'N/A' }}</td>
+                                    <td>{{ item.food_item.category_rel.name if item.food_item and item.food_item.category_rel else 'General' }}</td>
                                     <td>{{ item.quantity }}</td>
                                     <td>₹{{ "%.2f"|format(item.price) }}</td>
                                     <td>₹{{ "%.2f"|format(item.quantity * item.price) }}</td>
@@ -138,28 +168,100 @@
                         <span>Total:</span>
                         <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
                     </div>
+                    {% if order.delivery_boy_id %}
+                    <hr>
+                    <div class="d-flex justify-content-between text-info">
+                        <span><i class="fas fa-percent"></i> Delivery Commission ({{ order.commission_rate }}%):</span>
+                        <span>₹{{ "%.2f"|format(order.commission_amount or 0) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Commission Status:</span>
+                        <div>
+                            <span class="badge {{ 'bg-success' if order.commission_paid else 'bg-warning' }} me-2">
+                                {{ 'Paid' if order.commission_paid else 'Pending' }}
+                            </span>
+                            {% if order.status == 'delivered' and not order.commission_paid %}
+                            <form method="POST" action="{{ url_for('admin.pay_commission', order_id=order.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Mark commission as paid?')">
+                                    <i class="fas fa-money-check-alt"></i> Pay Commission
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if order.commission_paid_at %}
+                    <div class="d-flex justify-content-between">
+                        <span>Paid On:</span>
+                        <span class="text-muted">{{ order.commission_paid_at.strftime('%d %b %Y at %I:%M %p') }}</span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
                 </div>
             </div>
 
             <!-- Status Update -->
             <div class="card shadow mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-edit"></i> Update Status</h5>
+                    <h5 class="mb-0"><i class="fas fa-edit"></i> Update Status & Assignment</h5>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="mb-3">
-                            <label for="status" class="form-label">Order Status</label>
-                            <select class="form-select" id="status" name="status" required>
-                                <option value="pending" {{ 'selected' if order.status == 'pending' }}>Pending</option>
-                                <option value="confirmed" {{ 'selected' if order.status == 'confirmed' }}>Confirmed</option>
-                                <option value="preparing" {{ 'selected' if order.status == 'preparing' }}>Preparing</option>
-                                <option value="delivered" {{ 'selected' if order.status == 'delivered' }}>Delivered</option>
-                                <option value="cancelled" {{ 'selected' if order.status == 'cancelled' }}>Cancelled</option>
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="pending" {{ 'selected' if order.status == 'pending' else '' }}>Pending</option>
+                                <option value="confirmed" {{ 'selected' if order.status == 'confirmed' else '' }}>Confirmed</option>
+                                <option value="preparing" {{ 'selected' if order.status == 'preparing' else '' }}>Preparing</option>
+                                <option value="delivered" {{ 'selected' if order.status == 'delivered' else '' }}>Delivered</option>
+                                <option value="cancelled" {{ 'selected' if order.status == 'cancelled' else '' }}>Cancelled</option>
                             </select>
                         </div>
+                        
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-save"></i> Update Status
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Delivery Agent Assignment -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-motorcycle"></i> Assign Delivery Agent</h5>
+                </div>
+                <div class="card-body">
+                    {% if order.delivery_boy_id %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Assigned to:</strong> {{ order.delivery_boy.name if order.delivery_boy else 'Unknown Agent' }}
+                            <br><small>Phone: {{ order.delivery_boy.phone if order.delivery_boy else 'N/A' }}</small>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Not Assigned:</strong> This order needs a delivery agent.
+                        </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ url_for('admin.assign_delivery_agent', order_id=order.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            <label class="form-label">Select Delivery Agent</label>
+                            <select name="delivery_agent_id" class="form-select" required>
+                                <option value="">Choose a delivery agent...</option>
+                                {% for agent in active_delivery_agents %}
+                                <option value="{{ agent.id }}" {{ 'selected' if order.delivery_boy_id == agent.id else '' }}>
+                                    {{ agent.name }} - {{ agent.phone or 'No phone' }}
+                                    ({{ agent.pending_orders }} pending orders)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-user-plus"></i> {{ 'Reassign' if order.delivery_boy_id else 'Assign' }} Agent
                         </button>
                     </form>
                 </div>
@@ -172,6 +274,12 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
+                        {% if order.payment_method == 'cash_on_delivery' %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>COD Payment Status:</strong> Only delivery agents can update payment status for Cash on Delivery orders.
+                        </div>
+                        {% endif %}
                         <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-list"></i> View All Orders
                         </a>
@@ -195,4 +303,36 @@
     font-size: 0.875em;
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function printInvoice() {
+    // Open invoice in new window for printing
+    window.open('{{ url_for("admin.download_invoice", order_id=order.id) }}', '_blank');
+}
+
+function emailInvoice() {
+    if (confirm('Send invoice to customer email: {{ order.user.email if order.user else "No email available" }}?')) {
+        fetch('{{ url_for("admin.email_invoice", order_id=order.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Invoice sent successfully!');
+            } else {
+                alert('Failed to send invoice: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error sending invoice: ' + error);
+        });
+    }
+}
+</script>
 {% endblock %}

@@ -1,0 +1,280 @@
+{% extends "delivery/delivery_base.html" %}
+
+{% block title %}My Profile - Delivery Dashboard{% endblock %}
+
+{% block delivery_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-user"></i> My Profile</h2>
+    <a href="{{ url_for('delivery.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<!-- Profile Display Section -->
+<div class="row">
+    <!-- Personal Information Display -->
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Personal Information</h6>
+                <button class="btn btn-sm btn-primary" onclick="toggleEditMode()">
+                    <i class="fas fa-edit"></i> Edit Profile
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Display Mode -->
+                <div id="displayMode">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Username:</strong>
+                            <p class="text-muted">{{ current_user.username or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Email Address:</strong>
+                            <p class="text-muted">{{ current_user.email }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Phone Number:</strong>
+                            <p class="text-muted">{{ current_user.phone or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Account Status:</strong>
+                            <p class="text-muted">
+                                <span class="badge badge-{{ 'success' if current_user.is_delivery_boy else 'danger' }}">
+                                    {{ 'Active Delivery Agent' if current_user.is_delivery_boy else 'Inactive' }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <strong>Member Since:</strong>
+                            <p class="text-muted">{{ stats.member_since.strftime('%B %d, %Y') if stats.member_since else 'N/A' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Mode -->
+                <div id="editMode" style="display: none;">
+                    <form method="POST" action="{{ url_for('delivery.profile') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="username" name="username" value="{{ current_user.username }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email (Read-only)</label>
+                                    <input type="email" class="form-control" value="{{ current_user.email }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" value="{{ current_user.phone or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new_password" class="form-label">New Password (Optional)</label>
+                                    <input type="password" class="form-control" id="new_password" name="new_password" placeholder="Leave blank to keep current password">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Update Profile
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="toggleEditMode()">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Details Card -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-success">Account Details</h6>
+                <button class="btn btn-sm btn-success" onclick="toggleAccountEditMode()">
+                    <i class="fas fa-edit"></i> Update Account
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Account Display Mode -->
+                <div id="accountDisplayMode">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Bank Name:</strong>
+                            <p class="text-muted">{{ current_user.bank_name or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Account Number:</strong>
+                            <p class="text-muted">{{ current_user.account_number or 'Not provided' }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>IFSC Code:</strong>
+                            <p class="text-muted">{{ current_user.ifsc_code or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Account Holder Name:</strong>
+                            <p class="text-muted">{{ current_user.account_holder_name or 'Not provided' }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>UPI ID:</strong>
+                            <p class="text-muted">{{ current_user.upi_id or 'Not provided' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Edit Mode -->
+                <div id="accountEditMode" style="display: none;">
+                    <form method="POST" action="{{ url_for('delivery.update_account_details') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="bank_name" class="form-label">Bank Name</label>
+                                <input type="text" class="form-control" id="bank_name" name="bank_name" value="{{ current_user.bank_name or '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="account_number" class="form-label">Account Number</label>
+                                <input type="text" class="form-control" id="account_number" name="account_number" value="{{ current_user.account_number or '' }}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="ifsc_code" class="form-label">IFSC Code</label>
+                                <input type="text" class="form-control" id="ifsc_code" name="ifsc_code" value="{{ current_user.ifsc_code or '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="account_holder_name" class="form-label">Account Holder Name</label>
+                                <input type="text" class="form-control" id="account_holder_name" name="account_holder_name" value="{{ current_user.account_holder_name or '' }}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="upi_id" class="form-label">UPI ID</label>
+                                <input type="text" class="form-control" id="upi_id" name="upi_id" value="{{ current_user.upi_id or '' }}">
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Save Account Details
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="toggleAccountEditMode()">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Card -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">My Performance</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-12 mb-3">
+                        <h4 class="text-primary">{{ stats.total_deliveries or 0 }}</h4>
+                        <small class="text-muted">Total Deliveries</small>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <h4 class="text-success">₹{{ "%.2f"|format(stats.total_earnings or 0) }}</h4>
+                        <small class="text-muted">Total Earnings</small>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <h4 class="text-warning">₹{{ "%.2f"|format(stats.pending_commission or 0) }}</h4>
+                        <small class="text-muted">Pending Commission</small>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <h4 class="text-info">{{ stats.today_deliveries or 0 }}</h4>
+                        <small class="text-muted">Today's Deliveries</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Orders -->
+        {% if recent_orders %}
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Orders</h6>
+            </div>
+            <div class="card-body">
+                {% for order in recent_orders %}
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <div>
+                        <strong>#{{ order.id }}</strong><br>
+                        <small class="text-muted">{{ order.customer_name or order.user.username }}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-{{ 'success' if order.status == 'delivered' else 'primary' if order.status == 'out_for_delivery' else 'warning' }}">
+                            {{ order.status.replace('_', ' ').title() }}
+                        </span><br>
+                        <small class="text-muted">₹{{ "%.2f"|format(order.delivery_charge or 0) }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card shadow">
+            <div class="card-body text-center">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No recent orders found</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleEditMode() {
+    const displayMode = document.getElementById('displayMode');
+    const editMode = document.getElementById('editMode');
+
+    if (displayMode.style.display === 'none') {
+        displayMode.style.display = 'block';
+        editMode.style.display = 'none';
+    } else {
+        displayMode.style.display = 'none';
+        editMode.style.display = 'block';
+    }
+}
+
+function toggleAccountEditMode() {
+    const displayMode = document.getElementById('accountDisplayMode');
+    const editMode = document.getElementById('accountEditMode');
+
+    if (displayMode.style.display === 'none') {
+        displayMode.style.display = 'block';
+        editMode.style.display = 'none';
+    } else {
+        displayMode.style.display = 'none';
+        editMode.style.display = 'block';
+    }
+}
+</script>
+{% endblock %}

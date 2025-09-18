@@ -4,7 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login_manager
 from datetime import datetime
 
-__all__ = ['User', 'FoodItem', 'CartItem', 'Order', 'OrderItem', 'Coupon', 'UserProfile', 'Category', 'Rating', 'ContactMessage', 'ReviewImage']
+# Simple re-export of models to avoid circular imports
+# All actual model definitions are in the main models.py file
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -16,7 +17,8 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
     is_admin = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Add missing field
+    is_delivery_boy = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -52,11 +54,13 @@ class CartItem(db.Model):
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    delivery_boy_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     customer_name = db.Column(db.String(100), nullable=False)
     delivery_address = db.Column(db.Text, nullable=False)
     phone_number = db.Column(db.String(20), nullable=False)
     status = db.Column(db.String(20), default='pending')
     payment_method = db.Column(db.String(20), nullable=False)
+    payment_received = db.Column(db.Boolean, default=False)  # COD payment tracking
     subtotal = db.Column(db.Float, nullable=False)
     discount_amount = db.Column(db.Float, default=0)
     coupon_discount = db.Column(db.Float, default=0)
@@ -67,6 +71,42 @@ class Order(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     order_date = db.Column(db.DateTime, default=datetime.utcnow)  # Added this field
     estimated_delivery = db.Column(db.DateTime)
+    delivered_at = db.Column(db.DateTime, nullable=True)
+    
+    # Commission fields
+    commission_amount = db.Column(db.Float, default=0.0)
+    commission_rate = db.Column(db.Float, default=12.0)  # 12% commission
+    commission_paid = db.Column(db.Boolean, default=False)
+    commission_paid_at = db.Column(db.DateTime, nullable=True)
+    
+    # COD and Status tracking fields
+    cod_received = db.Column(db.Boolean, default=False)
+    cod_amount = db.Column(db.Float, default=0.0)
+    cod_collected = db.Column(db.Boolean, default=False)
+    cod_collection_time = db.Column(db.DateTime, nullable=True)
+    cancel_reason = db.Column(db.Text, nullable=True)
+    return_reason = db.Column(db.Text, nullable=True)
+
+    # Relationships
+    customer = db.relationship('User', foreign_keys=[user_id], backref='orders')
+    delivery_boy = db.relationship('User', foreign_keys=[delivery_boy_id], backref='assigned_orders')
+    
+    def calculate_commission(self):
+        """Calculate commission based on order total and commission rate"""
+        if self.total_amount and self.commission_rate:
+            # Commission is calculated per 100 rupees
+            commission_base = self.total_amount / 100
+            return round(commission_base * self.commission_rate, 2)
+        return 0.0
+    
+    def update_commission(self):
+        """Update commission amount based on current total and rate"""
+        self.commission_amount = self.calculate_commission()
+        
+    @property
+    def order_items(self):
+        """Provides compatibility with old code expecting order_items"""
+        return self.items.all()
 
 class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -75,7 +115,7 @@ class OrderItem(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
     
-    order = db.relationship('Order', backref='items')
+    order = db.relationship('Order', backref=db.backref('items', lazy='dynamic'))
     food_item = db.relationship('FoodItem')
 
 class Coupon(db.Model):
@@ -184,3 +224,34 @@ class ReviewImage(db.Model):
 
     def __repr__(self):
         return f'<ReviewImage {self.id} for Rating {self.rating_id}>'
+
+class Review(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)  # 1-5 stars
+    comment = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref='reviews')
+    food_item = db.relationship('FoodItem', backref='reviews')
+
+    def __repr__(self):
+        return f'<Review {self.id}: {self.rating}/5>'
+
+class NutritionalInfo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False)
+    serving_size = db.Column(db.String(50))
+    calories = db.Column(db.Float)
+    fat = db.Column(db.Float)
+    carbohydrates = db.Column(db.Float)
+    protein = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    food_item = db.relationship('FoodItem', backref='nutritional_info', uselist=False)
+
+    def __repr__(self):
+        return f'<NutritionalInfo for FoodItem {self.food_item_id}>'

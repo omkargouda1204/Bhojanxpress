@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{{ order.id }} - BhojanXpress</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .invoice-header {
+            background: #2874f0;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .invoice-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .invoice-header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .invoice-info {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        .invoice-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .invoice-info-block {
+            flex: 1;
+            margin-right: 20px;
+        }
+        .invoice-info-block:last-child {
+            margin-right: 0;
+        }
+        .invoice-info-block h3 {
+            margin: 0 0 10px 0;
+            color: #2874f0;
+            font-size: 16px;
+            border-bottom: 2px solid #2874f0;
+            padding-bottom: 5px;
+        }
+        .invoice-info-block p {
+            margin: 3px 0;
+            font-size: 14px;
+        }
+        .items-section {
+            padding: 20px;
+        }
+        .items-section h3 {
+            margin: 0 0 15px 0;
+            color: #2874f0;
+            font-size: 18px;
+            border-bottom: 2px solid #2874f0;
+            padding-bottom: 8px;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .items-table th {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: bold;
+            color: #333;
+        }
+        .items-table td {
+            border: 1px solid #ddd;
+            padding: 12px 8px;
+            vertical-align: top;
+        }
+        .items-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .amount-summary {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-top: 20px;
+            border-top: 2px solid #2874f0;
+        }
+        .amount-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+        }
+        .amount-row.total {
+            border-top: 1px solid #ddd;
+            margin-top: 10px;
+            padding-top: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            color: #2874f0;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-delivered { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-confirmed { background: #cce5ff; color: #004085; }
+        .status-preparing { background: #f8d7da; color: #721c24; }
+        .status-cancelled { background: #f5c6cb; color: #721c24; }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .company-info {
+            margin-top: 15px;
+            font-style: italic;
+        }
+        @media print {
+            body { margin: 0; padding: 0; }
+            .invoice-container { box-shadow: none; border: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="invoice-header">
+            <h1>BhojanXpress</h1>
+            <p>Tax Invoice - Order #{{ order.id }}</p>
+        </div>
+
+        <!-- Invoice Information -->
+        <div class="invoice-info">
+            <div class="invoice-info-row">
+                <div class="invoice-info-block">
+                    <h3>Bill To:</h3>
+                    <p><strong>{{ order.customer_name or order.user.name }}</strong></p>
+                    <p>{{ order.user.email }}</p>
+                    {% if order.phone_number or order.user.phone %}
+                    <p>Phone: {{ order.phone_number or order.user.phone }}</p>
+                    {% endif %}
+                </div>
+                <div class="invoice-info-block">
+                    <h3>Delivery Address:</h3>
+                    {% if order.delivery_address %}
+                    <p>{{ order.delivery_address }}</p>
+                    {% else %}
+                    <p>{{ order.user.address or 'Address not provided' }}</p>
+                    {% endif %}
+                </div>
+                <div class="invoice-info-block">
+                    <h3>Order Details:</h3>
+                    <p><strong>Order ID:</strong> #{{ order.id }}</p>
+                    <p><strong>Order Date:</strong> {{ order.created_at.strftime('%d %B, %Y %I:%M %p') }}</p>
+                    <p><strong>Status:</strong>
+                        <span class="status-badge status-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span>
+                    </p>
+                    {% if order.delivered_at %}
+                    <p><strong>Delivered:</strong> {{ order.delivered_at.strftime('%d %B, %Y %I:%M %p') }}</p>
+                    {% endif %}
+                    <p><strong>Payment Method:</strong> {{ order.payment_method.upper() if order.payment_method else 'COD' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Section -->
+        <div class="items-section">
+            <h3>Order Items</h3>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">Item Description</th>
+                        <th class="text-center" style="width: 15%;">Quantity</th>
+                        <th class="text-right" style="width: 15%;">Unit Price</th>
+                        <th class="text-right" style="width: 20%;">Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order_items %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.food_item.name if item.food_item else 'Item #' + item.food_item_id|string }}</strong>
+                            {% if item.food_item and item.food_item.description %}
+                            <br><small style="color: #666;">{{ item.food_item.description[:100] }}{% if item.food_item.description|length > 100 %}...{% endif %}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ item.quantity }}</td>
+                        <td class="text-right">₹{{ "%.2f"|format(item.price) }}</td>
+                        <td class="text-right"><strong>₹{{ "%.2f"|format(item.price * item.quantity) }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Amount Summary -->
+            <div class="amount-summary">
+                {% set subtotal = order.subtotal or (order_items|sum(attribute='price')|float * order_items|sum(attribute='quantity')|float) %}
+                <div class="amount-row">
+                    <span>Subtotal:</span>
+                    <span>₹{{ "%.2f"|format(subtotal) }}</span>
+                </div>
+                {% if order.delivery_charge and order.delivery_charge > 0 %}
+                <div class="amount-row">
+                    <span>Delivery Fee:</span>
+                    <span>₹{{ "%.2f"|format(order.delivery_charge) }}</span>
+                </div>
+                {% endif %}
+                {% if order.discount_amount and order.discount_amount > 0 %}
+                <div class="amount-row" style="color: #28a745;">
+                    <span>Discount Applied:</span>
+                    <span>-₹{{ "%.2f"|format(order.discount_amount) }}</span>
+                </div>
+                {% endif %}
+                {% if order.coupon_discount and order.coupon_discount > 0 %}
+                <div class="amount-row" style="color: #28a745;">
+                    <span>Coupon Discount:</span>
+                    <span>-₹{{ "%.2f"|format(order.coupon_discount) }}</span>
+                </div>
+                {% endif %}
+                {% if order.gst_amount and order.gst_amount > 0 %}
+                <div class="amount-row">
+                    <span>Tax (GST):</span>
+                    <span>₹{{ "%.2f"|format(order.gst_amount) }}</span>
+                </div>
+                {% endif %}
+                <div class="amount-row total">
+                    <span>Total Amount:</span>
+                    <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>Thank you for choosing BhojanXpress!</strong></p>
+            <p>For any queries, contact us at bhojanaxpress@gmail.com or call +91 84317 29319</p>
+            <div class="company-info">
+                <p>BhojanXpress Private Limited</p>
+                <p>This is a computer-generated invoice and does not require a signature.</p>
+                <p>Generated on: {{ current_date.strftime('%d %B, %Y %I:%M %p') }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

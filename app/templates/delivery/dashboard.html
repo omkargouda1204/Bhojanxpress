@@ -1,0 +1,226 @@
+{% extends "delivery/delivery_base.html" %}
+
+{% block title %}Delivery Dashboard - BhojanXpress{% endblock %}
+
+{% block delivery_content %}
+<div class="row">
+    <!-- Welcome Header with Status Toggle -->
+    <div class="col-12 mb-4">
+        <div class="card bg-gradient-primary text-white shadow">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h2 class="mb-0">Welcome back, {{ current_user.username }}! 🚀</h2>
+                        <p class="mb-0 opacity-75">Ready to deliver some delicious food today?</p>
+                    </div>
+                    <div class="col-auto">
+                        <!-- Agent Status Toggle -->
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="statusToggle"
+                                   {{ 'checked' if current_user.is_active else '' }}
+                                   onchange="toggleAgentStatus()">
+                            <label class="form-check-label text-white" for="statusToggle">
+                                <span id="statusLabel">{{ 'Active' if current_user.is_active else 'Inactive' }}</span>
+                            </label>
+                        </div>
+                        <a href="{{ url_for('user.home') }}" class="btn btn-light btn-sm" target="_blank">
+                            <i class="fas fa-globe"></i> Visit Website
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="text-primary mb-0">{{ stats.total_assigned }}</h3>
+                    <p class="text-muted mb-0">Total Assigned</p>
+                </div>
+                <div class="text-primary">
+                    <i class="fas fa-box fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="text-warning mb-0">{{ stats.pending_deliveries }}</h3>
+                    <p class="text-muted mb-0">Pending Deliveries</p>
+                </div>
+                <div class="text-warning">
+                    <i class="fas fa-clock fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="text-success mb-0">{{ stats.today_deliveries }}</h3>
+                    <p class="text-muted mb-0">Today's Deliveries</p>
+                </div>
+                <div class="text-success">
+                    <i class="fas fa-check-circle fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="text-info mb-0">₹{{ "%.0f"|format(stats.total_earnings) }}</h3>
+                    <p class="text-muted mb-0">Total Earnings</p>
+                </div>
+                <div class="text-info">
+                    <i class="fas fa-rupee-sign fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('delivery.my_orders') }}" class="btn btn-primary btn-block">
+                            <i class="fas fa-list"></i> View My Orders
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('delivery.earnings') }}" class="btn btn-success btn-block">
+                            <i class="fas fa-chart-line"></i> View Earnings
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('delivery.profile') }}" class="btn btn-info btn-block">
+                            <i class="fas fa-user-edit"></i> Edit Profile
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger btn-block">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assigned Orders and Available Orders -->
+<div class="row">
+    <!-- Assigned Orders -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-tasks"></i> My Assigned Orders</h5>
+                <a href="{{ url_for('delivery.my_orders') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if assigned_orders[:5] %}
+                    {% for order in assigned_orders[:5] %}
+                    <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                        <div>
+                            <strong>Order #{{ order.id }}</strong><br>
+                            <small class="text-muted">{{ order.customer_name or order.user.name }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-{{ 'success' if order.status == 'delivered' else 'primary' if order.status == 'out_for_delivery' else 'warning' }}">
+                                {{ order.status.replace('_', ' ').title() }}
+                            </span><br>
+                            <small class="text-muted">₹{{ "%.0f"|format(order.total_amount) }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">No orders assigned yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Orders -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-shopping-bag"></i> Available for Pickup</h5>
+            </div>
+            <div class="card-body">
+                {% if pending_orders %}
+                    {% for order in pending_orders[:5] %}
+                    <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                        <div>
+                            <strong>Order #{{ order.id }}</strong><br>
+                            <small class="text-muted">{{ order.customer_name or order.user.name }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-warning">Awaiting Admin Assignment</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-check-circle fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">No orders available right now</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleAgentStatus() {
+        const checkbox = document.getElementById('statusToggle');
+        const label = document.getElementById('statusLabel');
+        const isActive = checkbox.checked;
+
+        // Update label text
+        label.innerText = isActive ? 'Active' : 'Inactive';
+
+        // Send AJAX request to update status
+        fetch('{{ url_for('delivery.toggle_status') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ active: isActive })
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+        }).catch(error => {
+            console.error('There was a problem with the fetch operation:', error);
+            // Revert the checkbox state in case of error
+            checkbox.checked = !isActive;
+            label.innerText = isActive ? 'Inactive' : 'Active';
+        });
+    }
+</script>
+{% endblock %}

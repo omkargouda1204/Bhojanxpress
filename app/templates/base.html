@@ -16,7 +16,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/offers.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
-    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar-styles.css') }}">
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -60,6 +61,9 @@
 
     <!-- Load cart1.js for Add to Cart functionality -->
     <script src="{{ url_for('static', filename='js/cart1.js') }}"></script>
+
+    <!-- Load coupon.js for coupon functionality -->
+    <script src="{{ url_for('static', filename='js/coupon.js') }}"></script>
 
     <!-- Chatbot Float Button Styles -->
     <style>

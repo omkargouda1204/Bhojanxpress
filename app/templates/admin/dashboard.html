@@ -11,12 +11,12 @@
                     <i class="fas fa-tachometer-alt text-primary"></i> Admin Dashboard
                 </h1>
                 <div class="text-muted">
-                    Welcome back, {{ current_user.username }}!
+                    Welcome back, {{ current_user.username or current_user.name }}!
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
@@ -79,17 +79,17 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Contact Messages
+                                Delivery Agents
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ stats.unread_messages or 0 }}
-                                {% if stats.unread_messages > 0 %}
-                                    <span class="badge bg-danger ms-2">New</span>
-                                {% endif %}
+                                {{ stats.total_delivery_agents }}
+                                <a href="{{ url_for('admin.delivery_agents') }}" class="text-decoration-none ms-2">
+                                    <small><i class="fas fa-external-link-alt"></i></small>
+                                </a>
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-envelope fa-2x text-gray-300"></i>
+                            <i class="fas fa-motorcycle fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -114,6 +114,16 @@
                         <div class="col-md-6 mb-3">
                             <a href="{{ url_for('admin.pending_orders') }}" class="btn btn-warning w-100">
                                 <i class="fas fa-clock"></i> Pending Orders
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('admin.delivery_agents') }}" class="btn btn-dark w-100">
+                                <i class="fas fa-motorcycle"></i> Delivery Agents
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('admin.add_delivery_agent') }}" class="btn btn-secondary w-100">
+                                <i class="fas fa-user-plus"></i> Add Delivery Agent
                             </a>
                         </div>
                         <div class="col-md-6 mb-3">

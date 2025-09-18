@@ -30,7 +30,7 @@
                     <!-- Price Range Slider -->
                     <div class="price-slider-container my-3">
                         <div class="d-flex justify-content-between mt-2">
-                            <select class="form-select form-select-sm" id="minPriceSelect" style="width: 45%;">
+                            <select class="form-select form-select-sm" id="minPriceSelect" style="width: 45%;" onchange="autoApplyFilters()">
                                 <option value="">Min</option>
                                 <option value="0">₹0</option>
                                 <option value="50">₹50</option>
@@ -40,7 +40,7 @@
                                 <option value="500">₹500</option>
                             </select>
                             <span class="align-self-center mx-2">to</span>
-                            <select class="form-select form-select-sm" id="maxPriceSelect" style="width: 45%;">
+                            <select class="form-select form-select-sm" id="maxPriceSelect" style="width: 45%;" onchange="autoApplyFilters()">
                                 <option value="">Max</option>
                                 <option value="100">₹100</option>
                                 <option value="200">₹200</option>
@@ -58,7 +58,7 @@
                     <h5 class="filter-title">CATEGORY</h5>
                     <div class="category-filters">
                         <div class="form-check mb-2">
-                            <input class="form-check-input category-filter" type="radio" name="categoryFilter" id="categoryAll" value="all" {% if not current_category or current_category == 'all' %}checked{% endif %}>
+                            <input class="form-check-input category-filter" type="radio" name="categoryFilter" id="categoryAll" value="all" {% if not current_category or current_category == 'all' %}checked{% endif %} onchange="autoApplyFilters()">
                             <label class="form-check-label" for="categoryAll">
                                 All Categories
                             </label>
@@ -66,7 +66,7 @@
                         {% if categories %}
                         {% for category in categories %}
                         <div class="form-check mb-2">
-                            <input class="form-check-input category-filter" type="radio" name="categoryFilter" id="category{{ loop.index }}" value="{{ category.name }}" {% if current_category == category.name %}checked{% endif %}>
+                            <input class="form-check-input category-filter" type="radio" name="categoryFilter" id="category{{ loop.index }}" value="{{ category.name }}" {% if current_category == category.name %}checked{% endif %} onchange="autoApplyFilters()">
                             <label class="form-check-label" for="category{{ loop.index }}">
                                 {{ category.display_name }}
                             </label>
@@ -76,28 +76,8 @@
                     </div>
                 </div>
 
-                <!-- Availability Filter -->
-                <div class="filter-section mb-4">
-                    <h5 class="filter-title">AVAILABILITY</h5>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="availableOnly">
-                        <label class="form-check-label" for="availableOnly">
-                            Available Only
-                        </label>
-                    </div>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="includeOutOfStock">
-                        <label class="form-check-label" for="includeOutOfStock">
-                            Include Out of Stock
-                        </label>
-                    </div>
-                </div>
-
                 <!-- Filter Actions -->
                 <div class="filter-actions mt-4">
-                    <button class="btn btn-primary w-100 mb-2" onclick="applyFilters()">
-                        <i class="fas fa-filter me-2"></i>Apply Filters
-                    </button>
                     <button class="btn btn-outline-secondary w-100" onclick="clearAllFilters()">
                         <i class="fas fa-times me-2"></i>Clear All
                     </button>

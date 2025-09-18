@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{{ order.id }} - BhojanXpress</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+
+        .invoice-header {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .company-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .company-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .invoice-number {
+            font-size: 18px;
+            color: #666;
+        }
+
+        .invoice-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .items-table th,
+        .items-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .items-table th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .items-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .total-section {
+            margin-top: 30px;
+            text-align: right;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .total-final {
+            font-weight: bold;
+            font-size: 18px;
+            border-top: 2px solid #007bff;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-header">
+        <div class="company-info">
+            <div>
+                <div class="company-name">BhojanXpress</div>
+                <div style="color: #666;">Delicious Food Delivery</div>
+                <div style="color: #666; font-size: 14px;">
+                    📧 info@bhojanxpress.com | 📞 +91-9876543210
+                </div>
+            </div>
+            <div class="invoice-number">
+                <div>INVOICE #{{ order.id }}</div>
+                <div style="font-size: 14px; color: #666;">
+                    Date: {{ current_date.strftime('%d %b %Y') }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="invoice-details">
+        <div class="section">
+            <div class="section-title">📋 Order Information</div>
+            <div><strong>Order ID:</strong> #{{ order.id }}</div>
+            <div><strong>Order Date:</strong> {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</div>
+            <div><strong>Status:</strong> {{ order.status.replace('_', ' ').title() }}</div>
+            <div><strong>Payment Method:</strong> {{ 'Cash on Delivery' if order.payment_method == 'cash_on_delivery' else 'Online Payment' }}</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">👤 Customer Details</div>
+            <div><strong>Name:</strong> {{ order.customer_name or (order.user.username if order.user else 'N/A') }}</div>
+            <div><strong>Phone:</strong> {{ order.phone_number or (order.user.phone if order.user else 'N/A') }}</div>
+            <div><strong>Email:</strong> {{ order.user.email if order.user else 'N/A' }}</div>
+            <div><strong>Address:</strong> {{ order.delivery_address }}</div>
+        </div>
+    </div>
+
+    {% if order.delivery_boy_id %}
+    <div class="section" style="margin-bottom: 20px;">
+        <div class="section-title">🏍️ Delivery Agent</div>
+        <div><strong>Agent:</strong> {{ order.delivery_boy.username if order.delivery_boy else 'N/A' }}</div>
+        <div><strong>Phone:</strong> {{ order.delivery_boy.phone if order.delivery_boy else 'N/A' }}</div>
+        {% if order.delivered_at %}
+        <div><strong>Delivered At:</strong> {{ order.delivered_at.strftime('%d %b %Y, %I:%M %p') }}</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.order_items %}
+            <tr>
+                <td>{{ item.food_item.name if item.food_item else 'N/A' }}</td>
+                <td>{{ item.food_item.category.replace('_', ' ').title() if item.food_item else 'General' }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>₹{{ "%.2f"|format(item.price) }}</td>
+                <td>₹{{ "%.2f"|format(item.quantity * item.price) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="total-section">
+        <div style="max-width: 300px; margin-left: auto;">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span>₹{{ "%.2f"|format(order.subtotal) }}</span>
+            </div>
+
+            {% if order.discount_amount > 0 %}
+            <div class="total-row">
+                <span>Discount:</span>
+                <span style="color: green;">-₹{{ "%.2f"|format(order.discount_amount) }}</span>
+            </div>
+            {% endif %}
+
+            {% if order.coupon_discount > 0 %}
+            <div class="total-row">
+                <span>Coupon Discount:</span>
+                <span style="color: green;">-₹{{ "%.2f"|format(order.coupon_discount) }}</span>
+            </div>
+            {% endif %}
+
+            {% if order.delivery_charge > 0 %}
+            <div class="total-row">
+                <span>Delivery Charge:</span>
+                <span>₹{{ "%.2f"|format(order.delivery_charge) }}</span>
+            </div>
+            {% endif %}
+
+            {% if order.gst_amount > 0 %}
+            <div class="total-row">
+                <span>GST (18%):</span>
+                <span>₹{{ "%.2f"|format(order.gst_amount) }}</span>
+            </div>
+            {% endif %}
+
+            <div class="total-row total-final">
+                <span>Total Amount:</span>
+                <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if order.special_instructions %}
+    <div class="section" style="margin-top: 30px;">
+        <div class="section-title">📝 Special Instructions</div>
+        <p>{{ order.special_instructions }}</p>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p><strong>Thank you for choosing BhojanXpress!</strong></p>
+        <p>For any queries, please contact us at info@bhojanxpress.com or call +91-9876543210</p>
+        <p style="margin-top: 20px; font-size: 12px;">
+            This is a computer-generated invoice and does not require a signature.
+        </p>
+    </div>
+</body>
+</html>
+
