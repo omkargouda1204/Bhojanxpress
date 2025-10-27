@@ -1,5 +1,7 @@
-from flask import Blueprint, request, jsonify, render_template
-from app import csrf
+from flask import Blueprint, request, jsonify, render_template, current_app
+from flask_login import current_user
+from app import csrf, db
+from app.models import Order, FoodItem, Category, Coupon
 from datetime import datetime
 import re
 import random
@@ -20,119 +22,59 @@ class BhojanXpressChatbot:
                 "😊 Hey! Great to see you here. Let's find you something tasty today!"
             ],
 
-            # Menu related - More detailed and appetizing
-            'menu|food|items|what do you have|what food|dishes|cuisine|restaurant': [
-                "🍴 Our Amazing Menu Includes:\n\n🥗 **Appetizers** - Crispy samosas, fresh salads, spring rolls\n🍛 **Main Courses** - Aromatic biryanis, rich curries, sizzling Chinese\n🍰 **Desserts** - Creamy ice creams, traditional sweets, fresh fruits\n🥤 **Beverages** - Fresh juices, soft drinks, hot beverages\n🍕 **Special Items** - Pizzas, burgers, sandwiches\n\n✨ All made with fresh ingredients and lots of love! Browse our full menu to see mouth-watering photos! 📱"
+            # Order Cancellation FAQs
+            'can i cancel my order|cancel order|cancellation': [
+                "📋 **Order Cancellation Policy:**\n\n✅ **Yes, you can cancel your order within 5 minutes of placing it.**\n\n⏰ **After 5 minutes:** Cancellation is not allowed, except in emergencies.\n\n💰 **Cancellation Charges:**\n• Customer cancellation: 5% of order amount deducted\n• BhojanXpress cancellation: 100% refund\n• Emergency/mistake: No charges\n\n📞 **Cancel via:** App/Website or call +91 84317 29319\n\n💳 **Refund:** 3-5 working days for online payments"
             ],
 
-            # Order Status Queries - Enhanced with exact requested responses
-            'can you tell me the status of my order|status of my order': [
-                "Sure! Please provide your order number so I can check the status for you. You can find your order number in the confirmation email or SMS we sent you."
+            'cancellation fee|cancel charge': [
+                "💰 **Cancellation Charges:**\n\n• **Personal reasons:** 5% of order amount deducted\n• **Emergencies/Genuine mistakes:** No charges\n• **BhojanXpress cancellation:** 100% refund\n\nOnly applies if you cancel within 5 minutes of placing order!"
             ],
 
-            'when will my food arrive': [
-                "Our average delivery time is 30–45 minutes. Please share your order number for exact tracking. I'll be able to give you a precise ETA once I have your order details."
+            'refund|when will i get refund|refund time': [
+                "💳 **Refund Information:**\n\n⏰ **Processing Time:** 3-5 working days for online payments\n\n📧 **If refund delayed:** Contact us with:\n• Order reference number\n• Account holder name\n• Email: bhojanaxpress@gmail.com\n• Call/WhatsApp: +91 84317 29319\n\n✅ **Return orders:** Special cases (wrong/mistaken order) - 3-5 working days"
             ],
 
-            'has my order been picked up by the delivery partner': [
-                "Let me check! Please share your order number to confirm pickup status. This will allow me to see exactly where your order is in our delivery process."
+            # Delivery Information
+            'delivery charge|delivery fee|shipping cost': [
+                "🚚 **Delivery Charges:**\n\n💰 Orders below ₹200 → ₹30 delivery charge\n🆓 Orders ₹200 and above → Free delivery\n\n📍 We deliver in selected regions only. Check your pin code at checkout!"
             ],
 
-            'track my order|track order number': [
-                "Tracking your order: Please provide your order number (e.g. #12345), and I'll check its current status and estimated delivery time for you."
+            'delivery time|how long|when will food arrive': [
+                "⏰ **Delivery Information:**\n\n🕐 **Average delivery time:** 30-45 minutes\n📱 **Real-time tracking:** Available in app\n⚠️ **Delayed orders:** You'll be notified + can request cancellation\n\n📞 Share your order number for exact ETA: +91 84317 29319"
             ],
 
-            'where is my delivery person': [
-                "Your delivery partner's live location is available in the app's tracking section. Please share your order number, and I'll check their current location and ETA for you."
+            'track order|order status|where is my order': [
+                "📍 **Order Tracking:**\n\n🔍 **To track your order, please provide your order ID**\n\n📱 **Real-time status:**\n• Order Placed → Confirmed → Preparing → Out for Delivery → Delivered\n\n📞 **Need help?** Call/WhatsApp +91 84317 29319"
             ],
 
-            # Payment & Refund Issues - Using exact requested responses
-            'payment failed but money was deducted': [
-                "Sorry about that! Usually, refunds are processed automatically within 3–5 business days. If it's delayed, please share your transaction ID so we can check and expedite the process."
+            # Payment Information
+            'payment|pay|payment methods|cod|cash on delivery': [
+                "💳 **Payment Options:**\n\n✅ **Available methods:**\n• Cash on Delivery (COD)\n• UPI (Google Pay, Paytm, PhonePe)\n• Credit/Debit Cards\n• Net Banking\n• Digital Wallets\n\n🔒 **Safe & Secure** - We use encrypted payment gateways\n\n💰 **COD orders** can also be cancelled within 5 minutes"
             ],
 
-            'change payment method': [
-                "If your order hasn't been placed yet, you can change the payment method on the checkout page. If the order is confirmed, payment method cannot be changed. Would you like me to help with anything else?"
+            # Menu and Food Information
+            'menu|food|items|what do you have|dishes|cuisine': [
+                "🍴 **Browse Our Delicious Menu:**\n\n🏷️ **Categories Available:**\n• Appetizers & Starters\n• Main Courses & Curries\n• Biryani & Rice Items\n• Chinese & Continental\n• Desserts & Sweets\n• Beverages & Drinks\n• Special Combos\n\n🔍 **Search by:** Category, dish name, or restaurant\n📱 **Pro tip:** Use filters to find exactly what you're craving!"
             ],
 
-            'how do i use my coupon code': [
-                "Enter your coupon code at checkout in the 'Apply Coupon' box before payment. Discounts will be applied instantly. Make sure the coupon is valid for your order value and the items you've selected."
+            # Coupon and Offers
+            'coupon|promo|discount|offer|deals': [
+                "🎉 **Active Coupons & Offers:**\n\n💸 **Current Deals:**\n• First time users: Special discount\n• Weekend specials\n• Festival offers\n\n🏷️ **How to use:**\n1. Add items to cart\n2. Apply promo code at checkout\n3. Enjoy savings!\n\n📱 **Check app for latest active coupons!**"
             ],
 
-            'refund not received yet': [
-                "Refunds are typically credited within 3–5 business days. If it's been longer, please share your order number and payment receipt so we can escalate this with our finance team."
+            # Contact and Support
+            'contact|support|help|phone number|email': [
+                "📞 **Contact BhojanXpress Support:**\n\n🔥 **24/7 Support Available:**\n📱 **Call/WhatsApp:** +91 84317 29319\n📧 **Email:** bhojanaxpress@gmail.com\n\n🆘 **For urgent issues:** Call directly\n📝 **For detailed queries:** Email us\n\n⚡ **Fast response guaranteed!**"
             ],
 
-            'charged twice for the same order': [
-                "We're sorry for the inconvenience. Please share both payment receipts and your order details, and we'll initiate a refund for the duplicate transaction within 24 hours."
+            # General Ordering Questions
+            'minimum order|min order|order limit': [
+                "📦 **Order Information:**\n\n💰 **No minimum order value!**\n🚚 **But:** Orders below ₹200 have ₹30 delivery charge\n🆓 **Free delivery:** Orders ₹200+\n\n⏰ **Order scheduling:** Available (subject to restaurant timings)\n🏪 **Multiple restaurants:** One order per restaurant at a time"
             ],
 
-            # Food Quality Complaints - Using exact requested responses
-            'food is cold|food I received is cold': [
-                "We apologize for the experience. Please share your order number so we can investigate and arrange a replacement or refund. We take food quality very seriously and will address this immediately."
-            ],
-
-            'missing items|order is missing items': [
-                "Sorry about that! Please share details of the missing items and your order number, and we'll arrange for a refund or replacement. Our team will contact you within the next 30 minutes."
-            ],
-
-            'food was stale|food was spoiled': [
-                "That's not the standard we aim for. Please share photos of the food and your order details so we can resolve this immediately. Your health and satisfaction are our top priorities."
-            ],
-
-            'wrong order|got the wrong order': [
-                "We're sorry for the mix-up! Please share your order number and details, and we'll arrange a replacement right away. You can keep the wrong order at no charge while we deliver the correct one."
-            ],
-
-            'packaging damaged|packaging was damaged': [
-                "We regret this happened. Please share a photo of the packaging and your order details so we can resolve the issue. We'll ensure proper compensation for any affected food items."
-            ],
-
-            # App & Technical Problems - Using exact requested responses
-            'app not loading|app is not loading my past orders': [
-                "Try logging out and logging back in. If the issue persists, please share your device details and app version so our technical team can help resolve this promptly."
-            ],
-
-            'cant add items|can\'t add items to my cart': [
-                "This may be due to the restaurant being closed or the item being unavailable. Please try again later or choose another dish. You can also try clearing your app cache or reinstalling the app."
-            ],
-
-            'payment page is stuck': [
-                "Try refreshing the page or switching to a different browser. If still stuck, clear your cache and retry. If the problem persists, try using a different payment method or contact our support team."
-            ],
-
-            'coupon not applying|coupon is not applying': [
-                "Make sure the coupon is valid for your order value and items. Some coupons have minimum order amounts or category restrictions. Double-check the coupon code and ensure it hasn't expired."
-            ],
-
-            'address not saving|delivery address is not saving': [
-                "Ensure you've granted location access to the app. If the problem persists, try re-entering the address manually. Make sure you've provided all required fields including PIN code and landmark."
-            ],
-
-            # General Help - Using exact requested responses
-            'how do I place an order|how to place an order': [
-                "Browse the menu, add items to your cart, proceed to checkout, and complete payment. Your food will be on its way! Is there a specific part of the process you need help with?"
-            ],
-
-            'can i schedule a delivery for later': [
-                "Yes, you can choose a preferred delivery time at checkout. Simply select the 'Schedule for Later' option and pick your desired time slot. We offer time slots throughout the day."
-            ],
-
-            'what are your delivery charges': [
-                "Orders below ₹200 have a ₹30 delivery charge. Orders of ₹200 or above have free delivery. During peak hours or adverse weather, there might be a small additional surge charge."
-            ],
-
-            'do you deliver to my area': [
-                "Please share your PIN code, and I'll check if we deliver there. We're constantly expanding our delivery areas to serve more customers."
-            ],
-
-            'how can i contact my delivery partner': [
-                "Once your order is picked up, you'll see a 'Call Delivery Partner' button in your order tracking screen. This appears after the restaurant has handed over your order to the delivery person."
-            ],
-
-            # Enhanced cancellation policy with specific fee information
-            'cancel|cancellation|cancel order|stop order|dont want|change mind': [
-                "🚨 **Order Cancellation Policy:**\n\n✅ **FREE Cancellation (Within 10 minutes):**\n• No charges applied\n• Full refund guaranteed\n• Processed instantly\n\n⚠️ **After 10 minutes:**\n• 15% cancellation fee of the food amount\n• Remaining amount refunded to original payment method\n• Refund processing time: 3-5 business days\n\n📞 **Need to Cancel?**\nContact us immediately at: bhojanaxpress@gmail.com\n\n💡 **Note:** Once the food preparation begins, cancellation may not be possible. Thanks for understanding!"
+            'schedule order|book for later|advance booking': [
+                "⏰ **Schedule Your Order:**\n\n✅ **Yes! You can schedule orders for later**\n🕐 **How:** Select preferred delivery time at checkout\n📅 **Available:** Subject to restaurant timings\n\n📱 **Perfect for:** Parties, meetings, special occasions!"
             ],
 
             # Thank you greetings
@@ -149,24 +91,126 @@ class BhojanXpressChatbot:
                 "See you soon! 😊 Don't forget to check out our daily specials. Bye for now!",
                 "Take care! 🌟 Thank you for connecting with BhojanXpress. We're here 24/7 whenever you need us!",
                 "Bye! 🙏 It was great helping you today. Enjoy your BhojanXpress experience!"
-            ],
-
-            # Default response for unmatched queries
-            'default': [
-                "🤔 I didn't quite understand that. But I'm here to help!\n\n🍽️ **I can help you with:**\n• 📋 Menu information & ordering\n• 📦 Order tracking & status\n• 💳 Payment & refund issues\n• 🚚 Delivery information\n• 🔧 Technical support\n• 📞 Contact information\n\n💬 **Try asking:**\n• 'Show me the menu'\n• 'Track my order'\n• 'What are delivery charges?'\n• 'How to place an order?'\n\n😊 **What would you like to know?**"
             ]
         }
 
-    def get_response(self, user_message):
-        user_message = user_message.lower().strip()
+    def get_order_status(self, order_id):
+        """Get real order status from database"""
+        try:
+            order = Order.query.filter_by(id=order_id).first()
+            if order:
+                status_messages = {
+                    'pending': '⏳ Your order is pending confirmation',
+                    'confirmed': '✅ Order confirmed! Kitchen is preparing your food',
+                    'preparing': '👨‍🍳 Your delicious food is being prepared',
+                    'ready': '🍽️ Order is ready for pickup',
+                    'out_for_delivery': '🚚 Your order is out for delivery!',
+                    'delivered': '✅ Order delivered! Hope you enjoyed it!',
+                    'cancelled': '❌ Order was cancelled'
+                }
+                
+                return f"📋 **Order #{order.id} Status:**\n\n{status_messages.get(order.status, 'Unknown status')}\n\n📅 **Placed:** {order.created_at.strftime('%d %b %Y at %I:%M %p')}\n💰 **Total:** ₹{order.total_amount}\n\n📞 **Need help?** Call +91 84317 29319"
+            else:
+                return f"❌ Order #{order_id} not found. Please check your order number and try again."
+        except:
+            return "⚠️ Unable to fetch order status right now. Please try again or contact support at +91 84317 29319"
 
-        # Check each pattern in responses
+    def get_food_info(self, food_name):
+        """Get information about specific food items"""
+        try:
+            foods = FoodItem.query.filter(
+                FoodItem.name.contains(food_name.lower()),
+                FoodItem.is_available == True
+            ).limit(5).all()
+            
+            if foods:
+                result = f"🍽️ **Found {len(foods)} item(s) matching '{food_name}':**\n\n"
+                for food in foods:
+                    result += f"**{food.name}**\n"
+                    result += f"💰 ₹{food.price}\n"
+                    if food.description:
+                        result += f"📝 {food.description[:100]}...\n"
+                    result += f"⭐ Rating: {food.average_rating or 'New'}\n\n"
+                return result
+            else:
+                return f"❌ No items found matching '{food_name}'. Try browsing our categories or contact us for recommendations!"
+        except:
+            return "⚠️ Unable to fetch food information right now. Please browse our menu or contact support."
+
+    def get_categories(self):
+        """Get available food categories"""
+        try:
+            categories = Category.query.filter_by(is_active=True).all()
+            if categories:
+                result = "🏷️ **Available Food Categories:**\n\n"
+                for cat in categories:
+                    result += f"• {cat.name}\n"
+                result += "\n💡 **Browse by category to find your favorite dishes!**"
+                return result
+            else:
+                return "🍽️ **Popular Categories:** Appetizers, Main Course, Biryani, Chinese, Desserts, Beverages"
+        except:
+            return "🏷️ **Popular Categories:** Appetizers, Main Course, Biryani, Chinese, Desserts, Beverages"
+
+    def get_active_coupons(self):
+        """Get currently active coupons"""
+        try:
+            active_coupons = Coupon.query.filter(
+                Coupon.is_active == True,
+                Coupon.expiry_date >= datetime.utcnow()
+            ).limit(5).all()
+            
+            if active_coupons:
+                result = "🎉 **Active Coupons & Offers:**\n\n"
+                for coupon in active_coupons:
+                    result += f"🏷️ **{coupon.code}**\n"
+                    result += f"💸 {coupon.discount_percentage}% OFF "
+                    if coupon.min_order_amount:
+                        result += f"(Min order ₹{coupon.min_order_amount})"
+                    result += f"\n📅 Valid till: {coupon.expiry_date.strftime('%d %b %Y')}\n\n"
+                result += "💡 **Apply at checkout to save money!**"
+                return result
+            else:
+                return "🎉 **No active coupons right now, but check back soon for exciting offers!**"
+        except:
+            return "🎉 **Check our app for latest coupons and offers!**"
+
+    def get_response(self, user_input):
+        user_input_lower = user_input.lower().strip()
+        
+        # Check if user is asking for order status with order ID
+        order_id_match = re.search(r'(?:order\s*(?:id|number)?\s*[#:]?\s*)?(\d+)', user_input_lower)
+        if any(keyword in user_input_lower for keyword in ['status', 'track', 'where', 'order']) and order_id_match:
+            order_id = order_id_match.group(1)
+            return self.get_order_status(order_id)
+        
+        # Check for food information requests
+        food_match = re.search(r'(?:tell me about|info about|details of|what is)\s+(.+)', user_input_lower)
+        if food_match and any(keyword in user_input_lower for keyword in ['food', 'dish', 'item']):
+            food_name = food_match.group(1)
+            return self.get_food_info(food_name)
+        
+        # Check for category requests
+        if any(keyword in user_input_lower for keyword in ['categories', 'browse', 'types of food']):
+            return self.get_categories()
+        
+        # Check for coupon requests
+        if any(keyword in user_input_lower for keyword in ['coupon', 'offer', 'discount', 'promo']):
+            return self.get_active_coupons()
+        
+        # Pattern matching for predefined responses
         for pattern, responses in self.responses.items():
-            if pattern != 'default' and re.search(pattern, user_message):
+            if re.search(pattern, user_input_lower):
                 return random.choice(responses)
-
-        # Return default response if no pattern matches
-        return random.choice(self.responses['default'])
+        
+        # Enhanced default response with quick help
+        return "🤔 I'm not sure about that! Here's what I can help you with:\n\n" \
+               "📋 **Order Status:** Share your order number\n" \
+               "🍽️ **Menu Info:** Ask about specific dishes\n" \
+               "🏷️ **Categories:** Browse food types\n" \
+               "🎉 **Coupons:** Get active offers\n" \
+               "📞 **Support:** Call +91 84317 29319\n\n" \
+               "Just ask me anything! 😊"
 
     def end_conversation(self, session_id):
         """Add a thank you message at the end of a conversation"""

@@ -1,17 +1,30 @@
 import os
-from flask import Flask
-from app import create_app, db
-from app.models import User, FoodItem, Order, OrderItem, CartItem
+import sys
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Create Flask application with MySQL config only
-app = create_app()
+# Add project directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-@app.shell_context_processor
+# Import the create_app factory function
+from app import create_app, db
+
+# Create Flask application with MySQL config only
+flask_app = create_app()
+
+# This is needed for "flask run" command to work
+app = flask_app
+
+# Import models after app creation to avoid circular imports
+# Only import from models.py, not models directory
+import app.models
+
+@flask_app.shell_context_processor
 def make_shell_context():
+    # Import models inside function to avoid circular imports
+    from app.models import User, FoodItem, Order, OrderItem, CartItem
     return {
         'db': db,
         'User': User,
@@ -21,9 +34,12 @@ def make_shell_context():
         'CartItem': CartItem
     }
 
-@app.cli.command()
+@flask_app.cli.command()
 def create_admin():
     """Create admin user."""
+    # Import models inside function to avoid circular imports
+    from app.models import User
+    
     admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
     admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bhojanxpress.com')
     admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
@@ -50,9 +66,12 @@ def create_admin():
         db.session.rollback()
         print(f'Error creating admin user: {str(e)}')
 
-@app.cli.command()
+@flask_app.cli.command()
 def init_db():
     """Initialize database with sample data."""
+    # Import models inside function to avoid circular imports
+    from app.models import FoodItem
+    
     try:
         # Create tables
         db.create_all()
@@ -120,13 +139,16 @@ def init_db():
         print(f'Error initializing database: {str(e)}')
 
 if __name__ == '__main__':
-    with app.app_context():
-        # Ensure we're using MySQL and not SQLite
-        if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
-            app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:system@localhost/bhojanxpress'
+    with flask_app.app_context():
+        # Ensure we're using environment DATABASE_URL
+        if 'sqlite' in flask_app.config['SQLALCHEMY_DATABASE_URI']:
+            db_url = os.environ.get('DATABASE_URL')
+            if db_url:
+                flask_app.config['SQLALCHEMY_DATABASE_URI'] = db_url
             
-        # Print the database URI being used
-        print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        # Print the database type being used (without credentials)
+        db_type = flask_app.config['SQLALCHEMY_DATABASE_URI'].split(':')[0]
+        print(f"Using database type: {db_type}")
         
         try:
             # Create tables in MySQL database
@@ -146,10 +168,10 @@ if __name__ == '__main__':
             print("2. Log in to MySQL and create the database:")
             print("   CREATE DATABASE bhojanxpress;")
             print("3. Update the config_new.py with your actual credentials")
-            print("   Current URI: " + app.config['SQLALCHEMY_DATABASE_URI'])
+            print("   Current URI: " + flask_app.config['SQLALCHEMY_DATABASE_URI'])
             print("==================================\n\n")
             import sys
             sys.exit(1)
     
     # Run the application with debug mode
-    app.run(debug=True)
+    flask_app.run(debug=True)

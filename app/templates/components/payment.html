@@ -51,13 +51,6 @@
                                             <i class="fas fa-mobile-alt"></i> UPI Payment
                                         </label>
                                     </div>
-                                    <!-- New PayPal Option -->
-                                    <div class="form-check">
-                                        <input class="form-check-input payment-method" type="radio" name="payment_method" id="paypal" value="paypal">
-                                        <label class="form-check-label" for="paypal">
-                                            <i class="fab fa-paypal"></i> PayPal
-                                        </label>
-                                    </div>
                                 </div>
 
                                 <!-- Card Payment Details (hidden by default) -->
@@ -104,19 +97,6 @@
                                     </div>
                                 </div>
 
-                                <!-- PayPal Payment Details -->
-                                <div id="paypal-details" class="card mt-3" style="display: none;">
-                                    <div class="card-body">
-                                        <h6 class="card-title">PayPal Payment</h6>
-                                        <div class="text-center mb-3">
-                                            <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/checkout-logo-large.png" alt="PayPal Checkout" class="img-fluid" style="max-width: 200px;">
-                                        </div>
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-info-circle"></i> Click "Proceed to Payment" to be redirected to PayPal for secure payment.
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <div class="mt-4">
                                     <button type="submit" class="btn btn-success btn-lg w-100" id="proceed-payment-btn">
                                         <i class="fas fa-lock me-2"></i> Proceed to Payment
@@ -133,15 +113,12 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- PayPal SDK -->
-<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('input[name="csrf_token"]').value;
         const paymentMethods = document.querySelectorAll('.payment-method');
         const cardDetails = document.getElementById('card-details');
         const upiDetails = document.getElementById('upi-details');
-        const paypalDetails = document.getElementById('paypal-details');
         const proceedBtn = document.getElementById('proceed-payment-btn');
         const paymentForm = document.getElementById('payment-form');
 
@@ -151,15 +128,12 @@
                 // Hide all sections
                 cardDetails.style.display = 'none';
                 upiDetails.style.display = 'none';
-                paypalDetails.style.display = 'none';
 
                 // Show selected
                 if (this.id === 'card') {
                     cardDetails.style.display = 'block';
                 } else if (this.id === 'upi') {
                     upiDetails.style.display = 'block';
-                } else if (this.id === 'paypal') {
-                    paypalDetails.style.display = 'block';
                 }
             });
         });
@@ -208,25 +182,6 @@
                     alert('Please enter a valid UPI ID');
                     return false;
                 }
-            } else if (selected === 'paypal') {
-                // Handle PayPal option via AJAX
-                e.preventDefault();
-                fetch("{{ url_for('user.create_paypal_order', order_id=order.id) }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.approval_url) {
-                        window.location.href = data.approval_url;
-                    } else {
-                        alert(data.error || 'Failed to initiate PayPal payment.');
-                    }
-                });
-                return false;
             }
         });
 

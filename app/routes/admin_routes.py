@@ -1,15 +1,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
 from app import db, csrf
-from app.models import User, FoodItem, Order, OrderItem, Category, Coupon, ContactMessage
+from app.models import User, FoodItem, Order, OrderItem, Category, Coupon, ContactMessage, NutritionalInfo, Notification
 from app.forms import FoodItemForm, OrderStatusForm, CategoryForm
 from app.utils.decorators import admin_required
 from app.utils.helpers import format_currency, flash_errors, paginate_query
 from app.utils.image_utils import save_image, get_image_url_from_data
+from app.utils.notification_utils import create_order_status_notification, create_admin_message_notification, create_delivery_assignment_notification
 from datetime import datetime, timedelta
 from flask_mail import Message
 from flask import current_app
 import io
+import os
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -51,6 +53,13 @@ def dashboard():
     }
     
     return render_template('admin/dashboard.html', stats=stats, recent_orders=recent_orders)
+
+@admin_bp.route('/manage_reviews')
+@login_required
+@admin_required
+def manage_reviews():
+    """Redirect to review management"""
+    return redirect(url_for('reviews.admin_reviews'))
     
 @admin_bp.route('/pending_orders')
 @login_required
@@ -174,6 +183,46 @@ def categories():
     
     return render_template('admin/categories.html', form=form, categories=categories)
 
+@admin_bp.route('/categories/delete/<int:category_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_category(category_id):
+    """Delete a category and reassign its food items to General category"""
+    try:
+        category_to_delete = Category.query.get_or_404(category_id)
+        
+        # Prevent deletion of 'general' category
+        if category_to_delete.name == 'general':
+            flash('Cannot delete the General category as it serves as the default category.', 'error')
+            return redirect(url_for('admin.categories'))
+        
+        # Ensure 'general' category exists
+        general_category = Category.query.filter_by(name='general').first()
+        if not general_category:
+            general_category = Category(name='general', display_name='General')
+            db.session.add(general_category)
+            db.session.commit()
+        
+        # Get all food items in this category
+        food_items_to_reassign = FoodItem.query.filter_by(category_id=category_id).all()
+        
+        # Reassign food items to general category
+        for food_item in food_items_to_reassign:
+            food_item.category_id = general_category.id
+            food_item.category = 'general'  # Update string field too
+        
+        # Delete the category
+        db.session.delete(category_to_delete)
+        db.session.commit()
+        
+        flash(f'Category "{category_to_delete.display_name}" deleted successfully. {len(food_items_to_reassign)} food items moved to General category.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting category: {str(e)}', 'error')
+        
+    return redirect(url_for('admin.categories'))
+
 @admin_bp.route('/food_items')
 @login_required
 @admin_required
@@ -183,6 +232,9 @@ def food_items():
     
     query = FoodItem.query
     
+    # Exclude soft-deleted items (those with [DELETED] prefix)
+    query = query.filter(~FoodItem.name.like('[DELETED]%'))
+    
     if category != 'all':
         query = query.filter(FoodItem.category == category)
     
@@ -191,9 +243,17 @@ def food_items():
     )
     
     # Get all category names for filter dropdown
-    categories = ['all'] + [c.name for c in Category.query.all()]
+    categories_data = Category.query.order_by(Category.display_name).all()
+    categories = ['all'] + [{
+        'name': c.name, 
+        'display_name': c.display_name
+    } for c in categories_data]
     
-    return render_template('admin/food_items.html', food_items=food_items, categories=categories, current_category=category)
+    return render_template('admin/food_items.html', 
+                         food_items=food_items, 
+                         categories=categories, 
+                         current_category=category,
+                         current_category_display=Category.query.filter_by(name=category).first().display_name if category != 'all' else 'All Categories')
 
 @admin_bp.route('/add_food', methods=['GET', 'POST'])
 @login_required
@@ -233,6 +293,42 @@ def add_food():
             )
             
             db.session.add(food_item)
+            db.session.flush()  # Flush to get the food_item ID
+            
+            # Add nutritional information if provided
+            if form.add_nutrition.data and any([
+                form.calories_per_serving.data,
+                form.protein_g.data,
+                form.carbohydrates_g.data,
+                form.fat_g.data,
+                form.sugar_g.data
+            ]):
+                # Create basic nutritional info object
+                nutrition_info = NutritionalInfo(
+                    food_item_id=food_item.id,
+                    calories=form.calories_per_serving.data,
+                    protein=form.protein_g.data,
+                    carbohydrates=form.carbohydrates_g.data,
+                    fat=form.fat_g.data
+                )
+                
+                # Set additional fields
+                if form.fiber_g.data is not None:
+                    nutrition_info.fiber_g = form.fiber_g.data
+                if form.sugar_g.data is not None:
+                    nutrition_info.sugar_g = form.sugar_g.data
+                if form.sodium_mg.data is not None:
+                    nutrition_info.sodium_mg = form.sodium_mg.data
+                if form.cholesterol_mg.data is not None:
+                    nutrition_info.cholesterol_mg = form.cholesterol_mg.data
+                if form.serving_size.data:
+                    nutrition_info.serving_size = form.serving_size.data
+                if form.allergens.data:
+                    nutrition_info.allergens = form.allergens.data
+                if form.ingredients.data:
+                    nutrition_info.ingredients = form.ingredients.data
+                db.session.add(nutrition_info)
+            
             db.session.commit()
             
             flash(f'Food item "{food_item.name}" added successfully!', 'success')
@@ -265,6 +361,36 @@ def edit_food(food_id):
     food_item = FoodItem.query.get_or_404(food_id)
     form = FoodItemForm(obj=food_item)
     
+    # Populate nutritional information if it exists
+    try:
+        nutrition = food_item.nutritional_info
+        if nutrition:
+            # Handle case where it might be a list or single object
+            if isinstance(nutrition, list) and len(nutrition) > 0:
+                nutrition = nutrition[0]
+            elif not isinstance(nutrition, list):
+                # It's already a single object
+                pass
+            else:
+                nutrition = None
+                
+            if nutrition:
+                form.add_nutrition.data = True
+                form.calories_per_serving.data = nutrition.calories
+                form.protein_g.data = nutrition.protein
+                form.carbohydrates_g.data = nutrition.carbohydrates
+                form.fat_g.data = nutrition.fat
+                form.fiber_g.data = nutrition.fiber_g
+                form.sugar_g.data = nutrition.sugar_g
+                form.sodium_mg.data = nutrition.sodium_mg
+                form.cholesterol_mg.data = nutrition.cholesterol_mg
+                form.serving_size.data = nutrition.serving_size
+                form.allergens.data = nutrition.allergens
+                form.ingredients.data = nutrition.ingredients
+    except Exception as e:
+        print(f"Error loading nutritional info: {e}")
+        # Continue without nutritional info
+    
     # Get all categories for the dropdown
     categories = Category.query.all()
     form.category.choices = [(cat.name, cat.display_name) for cat in categories]
@@ -289,6 +415,49 @@ def edit_food(food_id):
             elif form.image_url.data and form.image_url.data != food_item.image_url:
                 food_item.image_url = form.image_url.data
             
+            # Handle nutritional information
+            if form.add_nutrition.data and any([
+                form.calories_per_serving.data,
+                form.protein_g.data,
+                form.carbohydrates_g.data,
+                form.fat_g.data,
+                form.sugar_g.data
+            ]):
+                # Update existing nutrition info or create new one
+                nutrition_info = food_item.nutritional_info
+                
+                # Handle case where nutritional_info might be a list
+                if isinstance(nutrition_info, list):
+                    if len(nutrition_info) > 0:
+                        nutrition_info = nutrition_info[0]
+                    else:
+                        nutrition_info = None
+                
+                if not nutrition_info:
+                    nutrition_info = NutritionalInfo(food_item_id=food_item.id)
+                    db.session.add(nutrition_info)
+                
+                nutrition_info.calories = form.calories_per_serving.data
+                nutrition_info.protein = form.protein_g.data
+                nutrition_info.carbohydrates = form.carbohydrates_g.data
+                nutrition_info.fat = form.fat_g.data
+                nutrition_info.fiber_g = form.fiber_g.data
+                nutrition_info.sugar_g = form.sugar_g.data
+                nutrition_info.sodium_mg = form.sodium_mg.data
+                nutrition_info.cholesterol_mg = form.cholesterol_mg.data
+                nutrition_info.serving_size = form.serving_size.data
+                nutrition_info.allergens = form.allergens.data
+                nutrition_info.ingredients = form.ingredients.data
+                nutrition_info.updated_at = datetime.utcnow()
+            elif not form.add_nutrition.data and food_item.nutritional_info:
+                # Remove nutritional info if unchecked
+                nutrition_info = food_item.nutritional_info
+                if isinstance(nutrition_info, list):
+                    for info in nutrition_info:
+                        db.session.delete(info)
+                else:
+                    db.session.delete(nutrition_info)
+            
             db.session.commit()
             
             flash(f'Food item "{food_item.name}" updated successfully!', 'success')
@@ -306,16 +475,66 @@ def edit_food(food_id):
 @admin_required
 def delete_food(food_id):
     food_item = FoodItem.query.get_or_404(food_id)
+    food_name = food_item.name
     
     try:
+        # Force delete all related data in proper order to handle cascades properly
+        from app.models import CartItem, OrderItem, NutritionalInfo
+        
+        # 1. Delete nutritional info
+        nutritional_info = NutritionalInfo.query.filter_by(food_item_id=food_id).first()
+        if nutritional_info:
+            db.session.delete(nutritional_info)
+        
+        # 2. Remove cart items with this food item
+        cart_items = CartItem.query.filter_by(food_item_id=food_id).all()
+        for cart_item in cart_items:
+            db.session.delete(cart_item)
+        
+        # 3. Handle order items - these cannot be deleted as they're part of order history
+        order_items = OrderItem.query.filter_by(food_item_id=food_id).all()
+        if order_items:
+            # If food item is in existing orders, perform soft delete to preserve order history
+            food_item.is_available = False
+            food_item.name = f"[DELETED] {food_item.name}" if not food_item.name.startswith("[DELETED]") else food_item.name
+            food_item.description = "This item has been removed from the menu."
+            food_item.price = 0.0  # Set price to 0
+            db.session.commit()
+            flash(f'Food item "{food_name}" has been permanently removed from menu but preserved in order history.', 'success')
+            return redirect(url_for('admin.food_items', deleted='success'))
+        
+        # 7. If no orders contain this item, safe to completely delete the food item
         db.session.delete(food_item)
         db.session.commit()
-        flash(f'Food item "{food_item.name}" deleted successfully!', 'success')
+        
+        flash(f'Food item "{food_name}" and all related data deleted permanently!', 'success')
+        return redirect(url_for('admin.food_items', deleted='success'))
+        
     except Exception as e:
         db.session.rollback()
-        flash('Error deleting food item. Please try again.', 'error')
-    
-    return redirect(url_for('admin.food_items'))
+        error_msg = str(e)
+        print(f"Error deleting food item: {error_msg}")  # For debugging
+        
+        # Enhanced error handling with specific messages
+        if 'foreign key constraint' in error_msg.lower() or 'cannot delete' in error_msg.lower():
+            flash(f'Cannot delete "{food_name}" - it has dependencies. The item has been disabled instead.', 'warning')
+            # Fallback: disable the item
+            try:
+                food_item.is_available = False
+                db.session.commit()
+            except:
+                pass
+        elif 'IntegrityError' in error_msg:
+            flash(f'Cannot delete "{food_name}" due to database constraints. Item has been disabled.', 'warning')
+            try:
+                food_item.is_available = False
+                db.session.commit()
+            except:
+                pass
+        else:
+            flash(f'Error deleting food item: {error_msg}', 'error')
+        
+        return redirect(url_for('admin.food_items'))
 
 @admin_bp.route('/orders')
 @login_required
@@ -371,6 +590,11 @@ def orders():
 def order_details(order_id):
     order = Order.query.get_or_404(order_id)
 
+    # Mark order as viewed by admin
+    if not order.is_viewed_by_admin:
+        order.is_viewed_by_admin = True
+        db.session.commit()
+
     # Get only active delivery agents for assignment
     active_delivery_agents = User.query.filter_by(
         is_delivery_boy=True,
@@ -401,10 +625,25 @@ def update_order_status(order_id):
     else:
         new_status = request.form.get('status')
 
-    if new_status in ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'cancelled']:
+    if new_status in ['confirmed', 'preparing', 'out_for_delivery', 'cancelled']:
         try:
+            old_status = order.status
             order.status = new_status
             db.session.commit()
+
+            # Create order status notification
+            try:
+                if order.user:
+                    create_order_status_notification(order.user, order, new_status)
+            except Exception as e:
+                print(f"Error creating order status notification: {str(e)}")
+
+            # If order is assigned to delivery boy, notify them too
+            if new_status == 'out_for_delivery' and order.delivery_boy_id and order.delivery_boy:
+                try:
+                    create_delivery_assignment_notification(order.delivery_boy, order)
+                except Exception as e:
+                    print(f"Error creating delivery assignment notification: {str(e)}")
 
             if request.is_json:
                 return jsonify({'success': True, 'message': f'Order #{order.id} status updated to {new_status.title()}.'})
@@ -429,32 +668,14 @@ def update_order_status(order_id):
 @admin_required
 def users():
     page = request.args.get('page', 1, type=int)
-    users = User.query.filter_by(is_admin=False).order_by(User.created_at.desc()).paginate(
+    # Filter out both admins and delivery agents to show only regular users
+    users = User.query.filter_by(is_admin=False, is_delivery_boy=False).order_by(User.created_at.desc()).paginate(
         page=page, per_page=15, error_out=False
     )
 
     return render_template('admin/users.html', users=users)
 
-@admin_bp.route('/user/<int:user_id>')
-@login_required
-@admin_required
-def user_details(user_id):
-    user = User.query.get_or_404(user_id)
-    user_orders = Order.query.filter_by(user_id=user_id).order_by(Order.created_at.desc()).limit(10).all()
 
-    # Calculate user statistics
-    total_orders = Order.query.filter_by(user_id=user_id).count()
-    total_spent = db.session.query(db.func.sum(Order.total_amount)).filter(
-        Order.user_id == user_id,
-        Order.status != 'cancelled'
-    ).scalar() or 0
-    
-    user_stats = {
-        'total_orders': total_orders,
-        'total_spent': format_currency(total_spent)
-    }
-
-    return render_template('admin/user_details.html', user=user, user_orders=user_orders, user_stats=user_stats)
 
 @admin_bp.route('/reports_dashboard')
 @login_required
@@ -691,8 +912,13 @@ def contact_message_detail(message_id):
     if not message.is_read:
         message.is_read = True
         db.session.commit()
+    
+    # Check if the customer is a registered user
+    customer_user = User.query.filter_by(email=message.email).first()
 
-    return render_template('admin/contact_message_detail.html', message=message)
+    return render_template('admin/contact_message_detail.html', 
+                         message=message, 
+                         customer_user=customer_user)
 
 @admin_bp.route('/reply-contact-message/<int:message_id>', methods=['POST'])
 @login_required
@@ -701,7 +927,7 @@ def reply_contact_message(message_id):
     message = ContactMessage.query.get_or_404(message_id)
 
     reply_text = request.form.get('reply')
-    send_email = request.form.get('send_email') == 'on'
+    send_notification = request.form.get('send_notification') == 'on'
 
     if not reply_text:
         flash('Reply text is required.', 'error')
@@ -715,37 +941,30 @@ def reply_contact_message(message_id):
 
         db.session.commit()
 
-        # Send email notification if requested
-        if send_email:
+        # Send notification to user (notifications only, no email)
+        if send_notification:
             try:
-                from flask_mail import Message as MailMessage
-                from flask import current_app
-
-                msg = MailMessage(
-                    subject=f'Re: {message.subject_type.title()} - BhojanXpress',
-                    sender=current_app.config.get('MAIL_DEFAULT_SENDER'),
-                    recipients=[message.email]
-                )
-
-                msg.body = f"""
-Dear {message.name},
-
-Thank you for contacting BhojanXpress. Here's our response to your message:
-
-{reply_text}
-
-If you have any further questions, please don't hesitate to contact us.
-
-Best regards,
-BhojanXpress Team
-                """
-
-                # mail.send(msg)
-                flash('Reply sent and email notification delivered successfully!', 'success')
+                # Check if the contact message email belongs to a registered user
+                user = User.query.filter_by(email=message.email).first()
+                if user:
+                    # Create notification for registered user
+                    notification = Notification(
+                        user_id=user.id,
+                        title=f'Response to your {message.subject_type.title()} inquiry',
+                        content=f'Admin has replied to your message: "{message.message[:50]}..." \n\nReply: {reply_text}',
+                        notification_type='admin_message',
+                        reference_id=message.id
+                    )
+                    db.session.add(notification)
+                    db.session.commit()
+                    flash('Reply sent and notification delivered to user successfully!', 'success')
+                else:
+                    # User not registered, cannot send notification
+                    flash('Reply saved. Note: User is not registered, so notification cannot be sent. They can view your reply by contacting support.', 'warning')
             except Exception as e:
-                flash(f'Reply saved but email notification failed: {str(e)}', 'warning')
+                flash(f'Reply saved but notification failed: {str(e)}', 'warning')
         else:
-            flash('Reply sent successfully!', 'success')
+            flash('Reply saved successfully! Notification was not sent as requested.', 'success')
 
     except Exception as e:
         db.session.rollback()
@@ -780,15 +999,18 @@ def delivery_agents():
         page=page, per_page=20, error_out=False
     )
 
-    # Get comprehensive statistics for each agent
-    agent_stats = {}
+    # Get comprehensive statistics for each agent and enhance agent objects with additional attributes
     for agent in agents.items:
+        # Add name attribute using username
+        agent.name = agent.username
+        
+        # Get delivery statistics
         total_deliveries = Order.query.filter_by(
             delivery_boy_id=agent.id,
             status='delivered'
         ).count()
 
-        pending_deliveries = Order.query.filter(
+        pending_orders = Order.query.filter(
             Order.delivery_boy_id == agent.id,
             Order.status.in_(['confirmed', 'preparing', 'out_for_delivery'])
         ).count()
@@ -798,15 +1020,44 @@ def delivery_agents():
             Order.status == 'delivered'
         ).scalar() or 0
 
-        agent_stats[agent.id] = {
-            'total_deliveries': total_deliveries,
-            'pending_deliveries': pending_deliveries,
-            'total_earnings': total_earnings
-        }
+        # Add statistics directly to agent object for easier template access
+        agent.total_deliveries = total_deliveries
+        agent.pending_orders = pending_orders
+        agent.total_earnings = total_earnings
 
     return render_template('admin/delivery_agents.html',
-                         delivery_agents=agents,
-                         agent_stats=agent_stats)
+                         delivery_agents=agents)
+
+@admin_bp.route('/delivery_agents/<int:agent_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_delivery_agent(agent_id):
+    """Delete a delivery agent"""
+    agent = User.query.get_or_404(agent_id)
+
+    if not agent.is_delivery_boy:
+        flash('User is not a delivery agent.', 'error')
+        return redirect(url_for('admin.delivery_agents'))
+        
+    try:
+        # Check if agent has any assigned orders
+        assigned_orders = Order.query.filter_by(delivery_boy_id=agent_id).count()
+        if assigned_orders > 0:
+            flash(f'Cannot delete: This agent has {assigned_orders} order(s) assigned. Reassign the orders first.', 'error')
+            return redirect(url_for('admin.delivery_agent_profile', agent_id=agent_id))
+            
+        # Proceed with deletion
+        username = agent.username
+        db.session.delete(agent)
+        db.session.commit()
+        
+        flash(f'Delivery agent "{username}" has been deleted successfully.', 'success')
+        return redirect(url_for('admin.delivery_agents'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting delivery agent: {str(e)}', 'error')
+        return redirect(url_for('admin.delivery_agent_profile', agent_id=agent_id))
 
 @admin_bp.route('/delivery_agents/<int:agent_id>/toggle_status', methods=['POST'])
 @login_required
@@ -814,23 +1065,43 @@ def delivery_agents():
 def toggle_delivery_agent_status(agent_id):
     """Toggle delivery agent active status"""
     agent = User.query.get_or_404(agent_id)
+    is_ajax_request = request.headers.get('Content-Type') == 'application/json'
 
     if not agent.is_delivery_boy:
+        if is_ajax_request:
+            return jsonify({'success': False, 'error': 'User is not a delivery agent.'}), 400
         flash('User is not a delivery agent.', 'error')
         return redirect(url_for('admin.delivery_agents'))
 
     try:
-        # Toggle the agent's active status
-        new_status = not agent.is_active
+        # If it's an AJAX request, get the status from the request body
+        if is_ajax_request and request.json:
+            new_status = request.json.get('active', False)
+        else:
+            # Traditional form submission - toggle the current status
+            new_status = not agent.is_active
+            
         agent.is_active = new_status
         db.session.commit()
         
         status_text = "activated" if new_status else "deactivated"
+        
+        if is_ajax_request:
+            return jsonify({
+                'success': True, 
+                'is_active': new_status,
+                'message': f'Delivery agent {agent.username} has been {status_text}.'
+            })
+            
         flash(f'Delivery agent {agent.username} has been {status_text}.', 'success')
         
     except Exception as e:
         db.session.rollback()
         print(f"Error toggling agent status: {str(e)}")  # For debugging
+        
+        if is_ajax_request:
+            return jsonify({'success': False, 'error': str(e)}), 500
+            
         flash(f'Error updating delivery agent status: {str(e)}', 'error')
 
     return redirect(url_for('admin.delivery_agents'))
@@ -847,8 +1118,22 @@ def pay_commission(order_id):
         return redirect(request.referrer or url_for('admin.delivery_agents'))
     
     try:
+        # Check if payment method requires reference
+        payment_method = request.form.get('payment_method', 'cash')
+        reference_id = request.form.get('reference_id', '').strip()
+        
+        if payment_method == 'online' and not reference_id:
+            flash('Reference ID is required for online payments.', 'error')
+            return redirect(request.referrer or url_for('admin.delivery_agents'))
+        
         order.commission_paid = True
         order.commission_paid_at = datetime.utcnow()
+        
+        # Store payment method and reference if provided
+        order.commission_payment_method = payment_method
+        if reference_id:
+            order.commission_reference_id = reference_id
+            
         db.session.commit()
         
         flash(f'Commission marked as paid for Order #{order.id}', 'success')
@@ -858,23 +1143,135 @@ def pay_commission(order_id):
     
     return redirect(request.referrer or url_for('admin.delivery_agents'))
 
+@admin_bp.route('/pay_all_commission/<int:agent_id>', methods=['POST'])
+@login_required
+@admin_required
+def pay_all_commission(agent_id):
+    """Mark all pending commissions as paid for a specific agent"""
+    payment_method = request.form.get('payment_method', 'cash')
+    reference_id = request.form.get('reference_id', '').strip()
+    
+    # Check if payment method requires reference
+    if payment_method == 'online' and not reference_id:
+        flash('Reference ID is required for online payments.', 'error')
+        return redirect(url_for('admin.delivery_agent_profile', agent_id=agent_id))
+    
+    try:
+        # Get all pending commission orders for this agent
+        pending_orders = Order.query.filter_by(
+            delivery_boy_id=agent_id,
+            status='delivered',
+            commission_paid=False
+        ).all()
+        
+        if not pending_orders:
+            flash('No pending commissions found for this agent.', 'warning')
+            return redirect(url_for('admin.delivery_agent_profile', agent_id=agent_id))
+        
+        # Mark all as paid
+        for order in pending_orders:
+            order.commission_paid = True
+            order.commission_paid_at = datetime.utcnow()
+            
+            # Store payment method and reference
+            order.commission_payment_method = payment_method
+            if reference_id:
+                order.commission_reference_id = reference_id
+        
+        db.session.commit()
+        
+        flash(f'All commissions paid successfully for {len(pending_orders)} orders.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error updating commission status.', 'error')
+    
+    return redirect(url_for('admin.delivery_agent_profile', agent_id=agent_id))
+
+@admin_bp.route('/pay_bulk_commission', methods=['POST'])
+@login_required
+@admin_required
+def pay_bulk_commission():
+    """Mark all pending commissions as paid for a specific agent"""
+    agent_id = request.form.get('agent_id')
+    payment_method = request.form.get('payment_method', 'cash')
+    reference_id = request.form.get('reference_id', '').strip()
+    
+    if not agent_id:
+        flash('Agent ID is required.', 'error')
+        return redirect(request.referrer or url_for('admin.delivery_agents'))
+    
+    # Check if payment method requires reference
+    if payment_method == 'online' and not reference_id:
+        flash('Reference ID is required for online payments.', 'error')
+        return redirect(request.referrer or url_for('admin.delivery_agent_profile', agent_id=agent_id))
+    
+    try:
+        # Get all pending commission orders for this agent
+        pending_orders = Order.query.filter_by(
+            delivery_boy_id=agent_id,
+            status='delivered',
+            commission_paid=False
+        ).all()
+        
+        if not pending_orders:
+            flash('No pending commissions found for this agent.', 'warning')
+            return redirect(url_for('admin.delivery_agent_profile', agent_id=agent_id))
+        
+        # Mark all as paid
+        for order in pending_orders:
+            order.commission_paid = True
+            order.commission_paid_at = datetime.utcnow()
+            
+            # Store payment method and reference
+            order.commission_payment_method = payment_method
+            if reference_id:
+                order.commission_reference_id = reference_id
+        
+        db.session.commit()
+        
+        flash(f'Bulk commission payment completed for {len(pending_orders)} orders.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error processing bulk commission payment.', 'error')
+    
+    return redirect(url_for('admin.delivery_agent_profile', agent_id=agent_id))
+
 @admin_bp.route('/download_invoice/<int:order_id>')
 @login_required
 @admin_required
 def download_invoice(order_id):
-    """Download invoice in Flipkart-style format"""
+    """Download invoice in properly formatted HTML"""
     order = Order.query.get_or_404(order_id)
     order_items = OrderItem.query.filter_by(order_id=order_id).all()
 
-    # Create invoice HTML content
+    # Create invoice HTML content with improved formatting
     invoice_html = render_template('admin/invoice_template.html',
                                  order=order,
                                  order_items=order_items,
                                  current_date=datetime.now())
 
-    # Create a file-like object
+    # Create a properly formatted HTML file
     invoice_io = io.BytesIO()
-    invoice_io.write(invoice_html.encode('utf-8'))
+    # Add proper HTML document structure for better rendering
+    formatted_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{order.id} - BhojanXpress</title>
+    <style>
+        @media print {{
+            body {{ margin: 0; }}
+            .invoice-container {{ box-shadow: none; border: none; }}
+        }}
+    </style>
+</head>
+<body>
+{invoice_html}
+</body>
+</html>"""
+    
+    invoice_io.write(formatted_html.encode('utf-8'))
     invoice_io.seek(0)
 
     filename = f"BhojanXpress_Invoice_{order.id}_{datetime.now().strftime('%Y%m%d')}.html"
@@ -933,10 +1330,18 @@ def add_delivery_agent():
             email = request.form.get('email')
             phone = request.form.get('phone')
             password = request.form.get('password')
+            address = request.form.get('address')
+            
+            # Bank details
+            bank_name = request.form.get('bank_name')
+            account_number = request.form.get('account_number')
+            ifsc_code = request.form.get('ifsc_code')
+            account_holder_name = request.form.get('account_holder_name')
+            upi_id = request.form.get('upi_id')
 
             # Validate required fields
-            if not all([name, email, password]):
-                flash('Name, email, and password are required.', 'error')
+            if not all([name, email, password, phone]):
+                flash('Name, email, phone, and password are required.', 'error')
                 return render_template('admin/add_delivery_agent.html')
 
             # Check if email already exists
@@ -949,12 +1354,17 @@ def add_delivery_agent():
             delivery_agent = User(
                 username=name,
                 email=email,
-                phone=phone,
-                password_hash=generate_password_hash(password),
                 is_delivery_boy=True,
-                is_active=True,
-                is_admin=False
+                is_admin=False,
+                phone=phone,
+                address=address,
+                bank_name=bank_name,
+                account_number=account_number,
+                ifsc_code=ifsc_code,
+                account_holder_name=account_holder_name,
+                upi_id=upi_id
             )
+            delivery_agent.set_password(password)
 
             db.session.add(delivery_agent)
             db.session.commit()
@@ -985,20 +1395,36 @@ def delivery_agent_profile(agent_id):
         delivery_boy_id=agent.id
     ).filter(Order.status.in_(['confirmed', 'preparing', 'out_for_delivery'])).count()
 
-    # Calculate commission details
-    delivered_orders = Order.query.filter_by(
-        delivery_boy_id=agent.id,
-        status='delivered'
+    # Calculate commission details using proper formula
+    def calculate_order_commission(order):
+        """Calculate commission as percentage of order amount"""
+        if order.status == 'delivered':
+            commission = order.total_amount * 0.12  # 12% of order amount
+        elif order.status in ['returned', 'cancelled']:
+            commission = order.total_amount * 0.06  # 6% of order amount
+        else:
+            commission = 0
+        return commission
+
+    # Get all commission eligible orders (delivered, returned, cancelled)
+    commission_eligible_orders = Order.query.filter(
+        Order.delivery_boy_id == agent.id,
+        Order.status.in_(['delivered', 'returned', 'cancelled'])
     ).all()
 
-    total_commission_earned = sum((order.delivery_charge or 0) * 0.1 for order in delivered_orders)
+    total_commission_earned = sum(calculate_order_commission(order) for order in commission_eligible_orders)
 
+    # All unpaid commission orders for display (including cancelled/returned for reference)
     pending_commission_orders = Order.query.filter(
         Order.delivery_boy_id == agent.id,
-        Order.status == 'delivered',
+        Order.status.in_(['delivered', 'returned', 'cancelled']),
         Order.commission_paid == False
     ).all()
-    pending_commission = sum((order.delivery_charge or 0) * 0.1 for order in pending_commission_orders)
+    
+    # Only delivered orders eligible for commission payment
+    payable_commission_orders = [order for order in pending_commission_orders if order.status == 'delivered']
+    
+    pending_commission = sum(calculate_order_commission(order) for order in pending_commission_orders)
 
     paid_commission = total_commission_earned - pending_commission
 
@@ -1007,20 +1433,87 @@ def delivery_agent_profile(agent_id):
         delivery_boy_id=agent.id
     ).order_by(Order.created_at.desc()).limit(10).all()
 
+    # Paid commission orders for history
+    paid_commission_orders = Order.query.filter(
+        Order.delivery_boy_id == agent.id,
+        Order.commission_paid == True
+    ).order_by(Order.commission_paid_at.desc()).limit(20).all()
+
+    # Get delivered orders for earnings calculation
+    delivered_orders = [order for order in commission_eligible_orders if order.status == 'delivered']
+    
+    # Calculate daily statistics for the current month
+    from datetime import datetime, timedelta
+    from sqlalchemy import func, and_, extract
+    
+    current_date = datetime.now()
+    start_of_month = current_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Monthly earnings by payment method
+    monthly_cash_orders = Order.query.filter(
+        Order.delivery_boy_id == agent.id,
+        Order.status == 'delivered',
+        Order.payment_method == 'cash_on_delivery',
+        Order.delivered_at >= start_of_month
+    ).all()
+    
+    monthly_online_orders = Order.query.filter(
+        Order.delivery_boy_id == agent.id,
+        Order.status == 'delivered',
+        Order.payment_method == 'online',
+        Order.delivered_at >= start_of_month
+    ).all()
+    
+    monthly_cash_commission = sum(calculate_order_commission(order) for order in monthly_cash_orders)
+    monthly_online_commission = sum(calculate_order_commission(order) for order in monthly_online_orders)
+    
+    # Daily statistics for the current month
+    daily_stats = []
+    for i in range((current_date - start_of_month).days + 1):
+        day = start_of_month + timedelta(days=i)
+        day_orders = Order.query.filter(
+            Order.delivery_boy_id == agent.id,
+            Order.status == 'delivered',
+            func.date(Order.delivered_at) == day.date()
+        ).all()
+        
+        if day_orders:
+            daily_stats.append({
+                'date': day.strftime('%d %b %Y'),
+                'orders': len(day_orders),
+                'commission': sum(calculate_order_commission(order) for order in day_orders),
+                'cash_orders': sum(calculate_order_commission(order) for order in day_orders if order.payment_method == 'cash_on_delivery'),
+                'online_orders': sum(calculate_order_commission(order) for order in day_orders if order.payment_method == 'online')
+            })
+    
     stats = {
         'total_deliveries': total_deliveries,
         'pending_orders': pending_orders,
         'total_commission_earned': total_commission_earned,
         'pending_commission': pending_commission,
         'paid_commission': paid_commission,
-        'total_earnings': sum(order.delivery_charge or 0 for order in delivered_orders)
+        'total_earnings': sum(order.delivery_charge or 0 for order in delivered_orders),
+        'monthly_cash_commission': monthly_cash_commission,
+        'monthly_online_commission': monthly_online_commission,
+        'daily_stats': daily_stats
     }
 
-    return render_template('admin/delivery_agent_profile.html',
+    # Calculate total orders and success rate for display
+    total_orders = Order.query.filter_by(delivery_boy_id=agent.id).count()
+    completed_orders = total_deliveries  # Same as delivered orders
+    success_rate = round((completed_orders / total_orders * 100) if total_orders > 0 else 0, 1)
+
+    return render_template('admin/delivery_agent_details.html',
                          agent=agent,
                          stats=stats,
+                         total_orders=total_orders,
+                         completed_orders=completed_orders,
+                         success_rate=success_rate,
+                         total_earnings=stats['total_earnings'],  # Pass total_earnings explicitly
                          recent_orders=recent_orders,
-                         pending_commission_orders=pending_commission_orders)
+                         pending_commission_orders=pending_commission_orders,
+                         unpaid_commissions=payable_commission_orders,
+                         paid_commission_orders=paid_commission_orders)
 
 @admin_bp.route('/edit_delivery_agent/<int:agent_id>', methods=['GET', 'POST'])
 @login_required
@@ -1034,9 +1527,39 @@ def edit_delivery_agent(agent_id):
             # Validate CSRF token
             csrf.protect()
 
-            # Update agent information
-            agent.username = request.form.get('name', agent.username)
-            agent.phone = request.form.get('phone', agent.phone)
+            # Get form data
+            new_name = request.form.get('name', '').strip()
+            new_username = new_name  # Use name as username for consistency
+            
+            # Check for duplicate username if it's being changed
+            if new_username and new_username != agent.username:
+                existing_user = User.query.filter(
+                    User.username == new_username,
+                    User.id != agent.id
+                ).first()
+                if existing_user:
+                    flash(f'Username "{new_username}" is already taken. Please choose a different username.', 'error')
+                    return render_template('admin/edit_delivery_agent.html', agent=agent)
+                agent.username = new_username
+                agent.name = new_name  # Update both username and name
+            
+            # Update other agent information
+            if request.form.get('phone'):
+                agent.phone = request.form.get('phone', '')
+            if request.form.get('address'):
+                agent.address = request.form.get('address', '')
+            
+            # Update bank details
+            if request.form.get('bank_name'):
+                agent.bank_name = request.form.get('bank_name', '')
+            if request.form.get('account_number'):
+                agent.account_number = request.form.get('account_number', '')
+            if request.form.get('ifsc_code'):
+                agent.ifsc_code = request.form.get('ifsc_code', '')
+            if request.form.get('account_holder_name'):
+                agent.account_holder_name = request.form.get('account_holder_name', '')
+            if request.form.get('upi_id'):
+                agent.upi_id = request.form.get('upi_id', '')
 
             # Update password if provided
             new_password = request.form.get('new_password')
@@ -1066,27 +1589,717 @@ def assign_delivery_agent(order_id):
     # Only allow assignment for orders with 'preparing' status
     if order.status != 'preparing':
         flash('Only orders with "Preparing" status can be assigned to delivery agents', 'error')
-        return redirect(url_for('admin.pending_orders'))
+        return redirect(url_for('admin.order_details', order_id=order_id))
 
     if request.method == 'POST':
-        agent_id = request.form.get('agent_id')
+        agent_id = request.form.get('delivery_agent_id')  # Changed from agent_id to delivery_agent_id to match form field
         if agent_id:
             agent = User.query.filter_by(id=agent_id, is_delivery_boy=True, is_active=True).first()
             if agent:
                 order.delivery_boy_id = agent_id
                 order.status = 'out_for_delivery'  # Update status to out for delivery when agent is assigned
+                
+                # Create notification for the delivery agent
+                try:
+                    create_delivery_assignment_notification(agent, order)
+                except Exception as ne:
+                    print(f"Could not create delivery agent notification: {str(ne)}")
+                
                 db.session.commit()
                 flash(f'Order #{order.id} has been assigned to {agent.username} and status updated to "Out for Delivery"', 'success')
             else:
                 flash('Invalid delivery agent selected', 'error')
-        return redirect(url_for('admin.pending_orders'))
+        return redirect(url_for('admin.order_details', order_id=order_id))
 
     # Get available delivery agents (active agents only)
     available_agents = User.query.filter_by(
         is_delivery_boy=True,
         is_active=True
     ).all()
+    
+    # Add name attribute and pending orders count for each agent
+    for agent in available_agents:
+        agent.name = agent.username
+        agent.pending_orders = Order.query.filter(
+            Order.delivery_boy_id == agent.id,
+            Order.status.in_(['confirmed', 'preparing', 'out_for_delivery'])
+        ).count()
 
     return render_template('admin/assign_agent.html',
                          order=order,
                          available_agents=available_agents)
+
+@admin_bp.route('/notifications/api/get')
+@login_required
+@admin_required
+def get_admin_notifications():
+    """API endpoint to get admin notifications"""
+    try:
+        # Get new orders (created in the last 24 hours and not viewed by admin)
+        new_orders = Order.query.filter(
+            Order.created_at >= (datetime.utcnow() - timedelta(hours=24)),
+            Order.is_viewed_by_admin == False
+        ).count()
+
+        # Get unread contact messages
+        new_messages = ContactMessage.query.filter_by(is_read=False).count()
+
+        # Get recent notifications for display
+        notifications = []
+
+        # Add recent orders
+        recent_orders = Order.query.filter(
+            Order.created_at >= (datetime.utcnow() - timedelta(hours=24))
+        ).order_by(Order.created_at.desc()).limit(3).all()
+        
+        for order in recent_orders:
+            notifications.append({
+                'type': 'order',
+                'title': f'New Order #{order.id}',
+                'content': f'{order.user.username if order.user else "Guest"} placed an order for ₹{order.total_amount:.2f}',
+                'time_ago': (datetime.utcnow() - order.created_at).total_seconds() // 60,
+                'url': url_for('admin.order_details', order_id=order.id)
+            })
+
+        # Add recent messages
+        recent_messages = ContactMessage.query.filter_by(is_read=False).order_by(
+            ContactMessage.created_at.desc()
+        ).limit(3).all()
+        
+        for message in recent_messages:
+            notifications.append({
+                'type': 'message',
+                'title': f'Message: {message.subject_type}',
+                'content': f'From {message.name}: {message.message[:50]}...',
+                'time_ago': (datetime.utcnow() - message.created_at).total_seconds() // 60,
+                'url': url_for('admin.contact_message_detail', message_id=message.id)
+            })
+
+        # Sort by recency
+        notifications.sort(key=lambda x: x['time_ago'])
+        
+        # Format time ago
+        for notification in notifications:
+            minutes = notification['time_ago']
+            if minutes < 60:
+                notification['time_ago'] = f"{int(minutes)}m ago"
+            elif minutes < 1440:  # less than 24 hours
+                notification['time_ago'] = f"{int(minutes // 60)}h ago"
+            else:
+                notification['time_ago'] = f"{int(minutes // 1440)}d ago"
+
+        return jsonify({
+            'new_orders': new_orders,
+            'new_messages': new_messages,
+            'notifications': notifications
+        })
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'new_orders': 0,
+            'new_messages': 0,
+            'notifications': []
+        })
+        
+@admin_bp.route('/notifications/api/mark-all-read', methods=['POST'])
+@login_required
+@admin_required
+def mark_all_admin_notifications_read():
+    """Mark all admin notifications as read"""
+    try:
+        # Mark all recent orders as viewed
+        recent_orders = Order.query.filter(
+            Order.created_at >= (datetime.utcnow() - timedelta(hours=24)),
+            Order.is_viewed_by_admin == False
+        ).all()
+        
+        for order in recent_orders:
+            order.is_viewed_by_admin = True
+        
+        # Mark all contact messages as read
+        unread_messages = ContactMessage.query.filter_by(is_read=False).all()
+        for message in unread_messages:
+            message.is_read = True
+        
+        # Mark all general notifications as read (if any admin-related ones exist)
+        admin_notifications = Notification.query.filter(
+            Notification.notification_type.in_(['admin_message', 'system_alert']),
+            Notification.is_read == False
+        ).all()
+        
+        for notification in admin_notifications:
+            notification.is_read = True
+            
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'All notifications marked as read'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+@admin_bp.route('/notifications')
+@login_required
+@admin_required
+def notifications():
+    """View for admin notifications dashboard"""
+    # Get recent notifications for display
+    all_notifications = []
+    order_notifications = []
+    message_notifications = []
+    
+    # Add recent orders
+    recent_orders = Order.query.filter(
+        Order.created_at >= (datetime.utcnow() - timedelta(days=7))
+    ).order_by(Order.created_at.desc()).limit(10).all()
+    
+    for order in recent_orders:
+        notification = {
+            'type': 'order',
+            'title': f'Order #{order.id} - {order.status.capitalize()}',
+            'message': f'{order.customer.username} placed an order for ₹{order.total_amount:.2f}',
+            'timestamp': order.created_at.strftime('%d %b %Y, %I:%M %p'),
+            'link': url_for('admin.order_details', order_id=order.id)
+        }
+        all_notifications.append(notification)
+        order_notifications.append(notification)
+    
+    # Add unread contact messages
+    contact_messages = ContactMessage.query.filter_by().order_by(
+        ContactMessage.created_at.desc()
+    ).limit(10).all()
+    
+    for message in contact_messages:
+        read_status = "" if message.is_read else "(Unread)"
+        notification = {
+            'type': 'message',
+            'title': f'Contact Message {read_status}',
+            'message': f'From {message.name}: {message.message[:50]}{"..." if len(message.message) > 50 else ""}',
+            'timestamp': message.created_at.strftime('%d %b %Y, %I:%M %p'),
+            'link': url_for('admin.contact_messages')
+        }
+        all_notifications.append(notification)
+        message_notifications.append(notification)
+    
+    # Sort all notifications by timestamp (most recent first)
+    all_notifications.sort(key=lambda x: datetime.strptime(x['timestamp'], '%d %b %Y, %I:%M %p'), reverse=True)
+    
+    return render_template('admin/notifications.html', 
+                           all_notifications=all_notifications,
+                           order_notifications=order_notifications,
+                           message_notifications=message_notifications)
+
+@admin_bp.route('/mark_notification_read/<int:notification_id>', methods=['POST'])
+@login_required
+@admin_required
+def mark_notification_read(notification_id):
+    """Mark a specific notification as read"""
+    try:
+        notification = Notification.query.get_or_404(notification_id)
+        notification.is_read = True
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Notification marked as read'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/delete_notification/<int:notification_id>', methods=['DELETE', 'POST'])
+@login_required
+@admin_required
+def delete_notification(notification_id):
+    """Delete a specific notification"""
+    try:
+        notification = Notification.query.get_or_404(notification_id)
+        db.session.delete(notification)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Notification deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+
+# Admin Messaging Routes
+@admin_bp.route('/send_message', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def send_message():
+    """Send a message to specific users or all users."""
+    if request.method == 'POST':
+        try:
+            title = request.form.get('title', '').strip()
+            message = request.form.get('message', '').strip()
+            recipient_type = request.form.get('recipient_type', 'all')
+            user_ids = request.form.getlist('user_ids')
+
+            if not title or not message:
+                flash('Title and message are required.', 'error')
+                return redirect(url_for('admin.send_message'))
+
+            recipients = []
+            
+            if recipient_type == 'all':
+                # Send to all regular users (not admins or delivery boys)
+                recipients = User.query.filter_by(is_admin=False, is_delivery_boy=False).all()
+            elif recipient_type == 'specific' and user_ids:
+                recipients = User.query.filter(User.id.in_(user_ids)).all()
+            elif recipient_type == 'customers':
+                recipients = User.query.filter_by(is_admin=False, is_delivery_boy=False).all()
+            elif recipient_type == 'delivery_boys':
+                recipients = User.query.filter_by(is_delivery_boy=True).all()
+            
+            if not recipients:
+                flash('No recipients selected or found.', 'error')
+                return redirect(url_for('admin.send_message'))
+
+            # Create notifications for all recipients
+            sent_count = 0
+            for user in recipients:
+                try:
+                    create_admin_message_notification(user, title, message, current_user)
+                    sent_count += 1
+                except Exception as e:
+                    print(f"Error sending message to user {user.id}: {str(e)}")
+
+            flash(f'Message sent successfully to {sent_count} users.', 'success')
+            return redirect(url_for('admin.send_message'))
+
+        except Exception as e:
+            flash(f'Error sending message: {str(e)}', 'error')
+            return redirect(url_for('admin.send_message'))
+
+    # GET request - show form
+    users = User.query.filter_by(is_admin=False).order_by(User.username).all()
+    regular_users = [u for u in users if not u.is_delivery_boy]
+    delivery_users = [u for u in users if u.is_delivery_boy]
+    
+    return render_template('admin/send_message.html', 
+                         regular_users=regular_users,
+                         delivery_users=delivery_users)
+
+
+@admin_bp.route('/user_notifications/<int:user_id>')
+@login_required
+@admin_required
+def user_notifications(user_id):
+    """View all notifications for a specific user."""
+    user = User.query.get_or_404(user_id)
+    page = request.args.get('page', 1, type=int)
+    
+    notifications = Notification.query.filter_by(user_id=user_id)\
+        .order_by(Notification.created_at.desc())\
+        .paginate(page=page, per_page=20, error_out=False)
+    
+    return render_template('admin/user_notifications.html', 
+                         user=user,
+                         notifications=notifications)
+
+
+@admin_bp.route('/bulk_message', methods=['POST'])
+@login_required
+@admin_required
+def bulk_message():
+    """Send bulk message via AJAX."""
+    try:
+        data = request.get_json()
+        title = data.get('title', '').strip()
+        message = data.get('message', '').strip()
+        user_ids = data.get('user_ids', [])
+
+        if not title or not message:
+            return jsonify({'success': False, 'error': 'Title and message are required.'})
+
+        if not user_ids:
+            return jsonify({'success': False, 'error': 'No users selected.'})
+
+        recipients = User.query.filter(User.id.in_(user_ids)).all()
+        
+        if not recipients:
+            return jsonify({'success': False, 'error': 'No valid recipients found.'})
+
+        # Create notifications for all recipients
+        sent_count = 0
+        for user in recipients:
+            try:
+                create_admin_message_notification(user, title, message, current_user)
+                sent_count += 1
+            except Exception as e:
+                print(f"Error sending message to user {user.id}: {str(e)}")
+
+        return jsonify({
+            'success': True, 
+            'message': f'Message sent successfully to {sent_count} users.'
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'error': f'Error sending message: {str(e)}'
+        })
+
+
+@admin_bp.route('/notification_stats')
+@login_required
+@admin_required
+def notification_stats():
+    """Show notification statistics."""
+    try:
+        # Total notifications
+        total_notifications = Notification.query.count()
+        
+        # Unread notifications
+        unread_notifications = Notification.query.filter_by(is_read=False).count()
+        
+        # Notifications by type
+        notification_types = db.session.query(
+            Notification.notification_type,
+            db.func.count(Notification.id).label('count')
+        ).group_by(Notification.notification_type).all()
+        
+        # Recent notifications (last 7 days)
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        recent_notifications = Notification.query.filter(
+            Notification.created_at >= seven_days_ago
+        ).count()
+        
+        # Most active users (by notification count)
+        active_users = db.session.query(
+            User.id,
+            User.username,
+            db.func.count(Notification.id).label('notification_count')
+        ).join(Notification, User.id == Notification.user_id)\
+        .group_by(User.id, User.username)\
+        .order_by(db.func.count(Notification.id).desc())\
+        .limit(10).all()
+
+        stats = {
+            'total_notifications': total_notifications,
+            'unread_notifications': unread_notifications,
+            'read_notifications': total_notifications - unread_notifications,
+            'recent_notifications': recent_notifications,
+            'notification_types': notification_types,
+            'active_users': active_users
+        }
+
+        return render_template('admin/notification_stats.html', stats=stats)
+
+    except Exception as e:
+        flash(f'Error loading notification statistics: {str(e)}', 'error')
+        return redirect(url_for('admin.dashboard'))
+
+# Slider Management Routes
+@admin_bp.route('/slider-management')
+@login_required
+@admin_required
+def slider_management():
+    """Manage homepage slider images using database storage"""
+    from app.models import SliderImage
+    
+    # Get ALL slider images from database (both active and inactive)
+    all_sliders = SliderImage.query.order_by(SliderImage.display_order).all()
+    
+    # Convert to expected format for template
+    slider_data = []
+    for slider in all_sliders:
+        slider_data.append({
+            'id': slider.id,
+            'filename': slider.image_filename,
+            'title': slider.title,
+            'subtitle': slider.subtitle,
+            'path': f'uploads/sliders/{slider.image_filename}',
+            'url': url_for('static', filename=f'uploads/sliders/{slider.image_filename}'),
+            'exists': True,  # Since it's in DB, we assume it exists
+            'size': 0,  # Can be calculated if needed
+            'display_order': slider.display_order,
+            'is_active': slider.is_active,
+            'button_text': slider.button_text,
+            'button_link': slider.button_link,
+            'button_color': slider.button_color
+        })
+    
+    return render_template('admin/slider_management.html', slider_images=slider_data)
+
+@admin_bp.route('/slider-management/upload', methods=['POST'])
+@login_required
+@admin_required
+def upload_slider_image():
+    """Upload a new slider image"""
+    """Upload a new slider image"""
+    from app.models import SliderImage
+    import os
+    from werkzeug.utils import secure_filename
+    
+    if 'slider_image' not in request.files:
+        flash('No image file provided', 'error')
+        return redirect(url_for('admin.slider_management'))
+    
+    file = request.files['slider_image']
+    title = request.form.get('title', 'Slider Image')
+    subtitle = request.form.get('subtitle', '')
+    button_text = request.form.get('button_text', 'ORDER NOW')
+    button_link = request.form.get('button_link', '/menu')
+    button_color = request.form.get('button_color', 'warning')
+    offer_text = request.form.get('offer_text', '')
+    display_order = request.form.get('display_order', type=int) or (SliderImage.query.count() + 1)
+    is_active = 'is_active' in request.form
+    
+    if file.filename == '':
+        flash('No file selected', 'error')
+        return redirect(url_for('admin.slider_management'))
+    
+    if file and allowed_file(file.filename):
+        try:
+            # Generate secure filename
+            filename = secure_filename(file.filename)
+            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S_')
+            filename = f"{timestamp}{filename}"
+            
+            # Create sliders directory if it doesn't exist
+            sliders_path = os.path.join(current_app.static_folder, 'uploads', 'sliders')
+            os.makedirs(sliders_path, exist_ok=True)
+            
+            file_path = os.path.join(sliders_path, filename)
+            file.save(file_path)
+            
+            # Save to database
+            new_slider = SliderImage(
+                title=title,
+                subtitle=subtitle if subtitle else None,
+                image_filename=filename,
+                button_text=button_text,
+                button_link=button_link,
+                button_color=button_color,
+                offer_text=offer_text if offer_text else None,
+                display_order=display_order,
+                is_active=is_active
+            )
+            db.session.add(new_slider)
+            db.session.commit()
+            
+            flash(f'Slider image "{title}" uploaded successfully!', 'success')
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error uploading image: {str(e)}', 'error')
+    else:
+        flash('Invalid file type. Please upload a JPG, PNG, or GIF image.', 'error')
+    
+    return redirect(url_for('admin.slider_management'))
+
+@admin_bp.route('/slider-management/delete/<int:slider_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_slider_image(slider_id):
+    """Delete a slider image"""
+    from app.models import SliderImage
+    import os
+    
+    try:
+        slider = SliderImage.query.get_or_404(slider_id)
+        
+        # Delete file from filesystem
+        file_path = os.path.join(current_app.static_folder, 'uploads', 'sliders', slider.image_filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        # Mark as inactive in database instead of deleting
+        slider.is_active = False
+        db.session.commit()
+        
+        flash(f'Slider image "{slider.title}" deleted successfully!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting image: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.slider_management'))
+
+@admin_bp.route('/slider-management/toggle/<int:slider_id>', methods=['POST'])
+@login_required
+@admin_required
+def toggle_slider(slider_id):
+    """Toggle slider active status"""
+    from app.models import SliderImage
+    import json
+    
+    try:
+        slider = SliderImage.query.get_or_404(slider_id)
+        data = request.get_json()
+        new_status = data.get('active', not slider.is_active)
+        
+        slider.is_active = new_status
+        db.session.commit()
+        
+        status_text = 'activated' if new_status else 'deactivated'
+        return jsonify({
+            'success': True, 
+            'message': f'Slider "{slider.title}" {status_text} successfully!'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False, 
+            'message': f'Error updating slider: {str(e)}'
+        }), 500
+
+@admin_bp.route('/slider-management/edit/<int:slider_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_slider(slider_id):
+    """Edit slider details"""
+    from app.models import SliderImage
+    
+    slider = SliderImage.query.get_or_404(slider_id)
+    
+    if request.method == 'POST':
+        try:
+            # Update slider details
+            slider.title = request.form.get('title', slider.title)
+            slider.subtitle = request.form.get('subtitle', slider.subtitle)
+            slider.button_text = request.form.get('button_text', slider.button_text)
+            slider.button_link = request.form.get('button_link', slider.button_link)
+            slider.button_color = request.form.get('button_color', slider.button_color or 'warning')
+            slider.offer_text = request.form.get('offer_text', slider.offer_text)
+            slider.display_order = int(request.form.get('display_order', slider.display_order))
+            slider.is_active = 'is_active' in request.form
+            slider.updated_at = datetime.utcnow()
+            
+            # Handle image replacement if new image is uploaded
+            if 'slider_image' in request.files:
+                file = request.files['slider_image']
+                if file and file.filename and allowed_file(file.filename):
+                    # Delete old image file
+                    if slider.image_filename:
+                        old_image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'sliders', slider.image_filename)
+                        if os.path.exists(old_image_path):
+                            os.remove(old_image_path)
+                    
+                    # Save new image
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                    
+                    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'sliders')
+                    os.makedirs(upload_dir, exist_ok=True)
+                    
+                    file_path = os.path.join(upload_dir, unique_filename)
+                    file.save(file_path)
+                    
+                    slider.image_filename = unique_filename
+            
+            db.session.commit()
+            flash(f'Slider "{slider.title}" updated successfully!', 'success')
+            return redirect(url_for('admin.slider_management'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating slider: {str(e)}', 'error')
+            return redirect(url_for('admin.slider_management'))
+    
+    # GET request - return slider data for modal/edit form
+    if request.headers.get('Content-Type') == 'application/json':
+        return jsonify({
+            'success': True,
+            'slider': {
+                'id': slider.id,
+                'title': slider.title,
+                'subtitle': slider.subtitle or '',
+                'button_text': slider.button_text or 'ORDER NOW',
+                'button_link': slider.button_link or '/menu',
+                'offer_text': slider.offer_text or '',
+                'display_order': slider.display_order,
+                'is_active': slider.is_active,
+                'image_filename': slider.image_filename
+            }
+        })
+    
+    return redirect(url_for('admin.slider_management'))
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@admin_bp.route('/users/<int:user_id>')
+@login_required
+@admin_required
+def user_details(user_id):
+    """View detailed information about a specific user"""
+    user = User.query.get_or_404(user_id)
+    
+    # Get user's orders
+    orders = Order.query.filter_by(user_id=user_id).order_by(Order.created_at.desc()).limit(10).all()
+    
+    # Get user's reviews
+    reviews = Review.query.filter_by(user_id=user_id).order_by(Review.created_at.desc()).limit(10).all()
+    
+    # Calculate user statistics
+    total_orders = Order.query.filter_by(user_id=user_id).count()
+    total_spent = db.session.query(func.sum(Order.total_amount)).filter_by(user_id=user_id).scalar() or 0
+    total_reviews = Review.query.filter_by(user_id=user_id).count()
+    avg_rating_given = db.session.query(func.avg(Review.rating)).filter_by(user_id=user_id).scalar() or 0
+    
+    user_stats = {
+        'total_orders': total_orders,
+        'total_spent': float(total_spent),
+        'total_reviews': total_reviews,
+        'avg_rating_given': round(float(avg_rating_given), 1) if avg_rating_given else 0,
+        'member_since': user.created_at.strftime('%B %Y') if user.created_at else 'Unknown'
+    }
+    
+    return render_template('admin/user_details.html', 
+                         user=user, 
+                         orders=orders, 
+                         reviews=reviews,
+                         user_stats=user_stats)
+
+@admin_bp.route('/food-items/<int:food_id>')
+@login_required
+@admin_required
+def food_item_details(food_id):
+    """View detailed information about a specific food item"""
+    food_item = FoodItem.query.get_or_404(food_id)
+    
+    # Get food item reviews
+    reviews = Review.query.filter_by(food_item_id=food_id).order_by(Review.created_at.desc()).limit(10).all()
+    
+    # Get recent orders containing this food item
+    recent_orders = db.session.query(Order).join(OrderItem).filter(
+        OrderItem.food_item_id == food_id
+    ).order_by(Order.created_at.desc()).limit(10).all()
+    
+    # Calculate food item statistics
+    total_reviews = Review.query.filter_by(food_item_id=food_id).count()
+    avg_rating = db.session.query(func.avg(Review.rating)).filter_by(food_item_id=food_id).scalar() or 0
+    
+    # Count sales
+    total_sold = db.session.query(func.sum(OrderItem.quantity)).filter(
+        OrderItem.food_item_id == food_id
+    ).scalar() or 0
+    
+    # Revenue generated
+    total_revenue = db.session.query(func.sum(OrderItem.quantity * OrderItem.unit_price)).filter(
+        OrderItem.food_item_id == food_id
+    ).scalar() or 0
+    
+    food_stats = {
+        'total_reviews': total_reviews,
+        'avg_rating': round(float(avg_rating), 1) if avg_rating else 0,
+        'total_sold': int(total_sold),
+        'total_revenue': float(total_revenue),
+        'created_date': food_item.created_at.strftime('%B %d, %Y') if food_item.created_at else 'Unknown'
+    }
+    
+    return render_template('admin/food_item_details.html', 
+                         food_item=food_item, 
+                         reviews=reviews, 
+                         recent_orders=recent_orders,
+                         food_stats=food_stats)
+
+

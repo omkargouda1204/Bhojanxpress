@@ -97,6 +97,8 @@
         </div>
     </div>
 
+    
+
     <!-- Quick Actions -->
     <div class="row mb-4">
         <div class="col-lg-6">
@@ -112,7 +114,7 @@
                             </a>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <a href="{{ url_for('admin.pending_orders') }}" class="btn btn-warning w-100">
+                            <a href="{{ url_for('admin.orders', status='pending') }}" class="btn btn-warning w-100">
                                 <i class="fas fa-clock"></i> Pending Orders
                             </a>
                         </div>
@@ -126,6 +128,11 @@
                                 <i class="fas fa-user-plus"></i> Add Delivery Agent
                             </a>
                         </div>
+                        <div class="col-md-6 mb-3" >
+                            <a href="{{ url_for('admin.manage_reviews') }}" class="btn btn-primary w-100" >
+                                <i class="fas fa-star"></i> Manage Reviews
+                            </a>
+                        </div>
                         <div class="col-md-6 mb-3">
                             <a href="{{ url_for('admin.contact_messages') }}" class="btn btn-info w-100">
                                 <i class="fas fa-envelope"></i> Contact Messages
@@ -136,6 +143,11 @@
                                 <i class="fas fa-chart-bar"></i> View Reports
                             </a>
                         </div>
+                        <!-- <div class="col-md-6 mb-3">
+                            <a href="#" class="btn btn-purple w-100" data-bs-toggle="modal" data-bs-target="#notificationModal">
+                                <i class="fas fa-bell"></i> Notifications
+                            </a>
+                        </div> -->
                     </div>
                 </div>
             </div>
@@ -188,6 +200,42 @@
         </div>
     </div>
 </div>
+
+<!-- Notification Modal -->
+<div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notificationModalLabel">
+                    <i class="fas fa-bell"></i> Notifications
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Coming Soon!</h6>
+                    <p class="mb-0">The notification system will include:</p>
+                    <ul class="mt-2 mb-0">
+                        <li>Order status updates</li>
+                        <li>Review notifications when customers submit reviews</li>
+                        <li>Admin reply notifications</li>
+                        <li>Order-related messages</li>
+                        <li>System alerts and updates</li>
+                    </ul>
+                </div>
+                
+                <!-- Placeholder for future notifications -->
+                <div class="text-center text-muted py-3">
+                    <i class="fas fa-bell-slash fa-3x mb-3"></i>
+                    <p>No notifications at the moment</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_css %}
@@ -198,6 +246,40 @@
 .border-left-warning { border-left: 0.25rem solid #f6c23e !important; }
 .text-gray-800 { color: #5a5c69 !important; }
 .text-gray-300 { color: #dddfeb !important; }
+
+.btn-primary {
+  background-color: #28a745 !important; /* green */
+  border-color: #28a745 !important;
+}
+.btn-primary:hover {
+  background-color: #218838 !important;
+  border-color: #1e7e34 !important;
+}
+
+
+
+/* Additional button colors */
+.btn-orange {
+    background-color: #dd7b2a;
+    border-color: #fd7e14;
+    color: rgb(140, 54, 131);
+}
+.btn-orange:hover {
+    background-color: #197716;
+    border-color: #e66300;
+    color: rgb(70, 174, 41);
+}
+
+.btn-purple {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
+}
+.btn-purple:hover {
+    background-color: #5a2b9a;
+    border-color: #5a2b9a;
+    color: white;
+}
 .badge-pending { background-color: #f6c23e; }
 .badge-confirmed { background-color: #36b9cc; }
 .badge-preparing { background-color: #fd7e14; }

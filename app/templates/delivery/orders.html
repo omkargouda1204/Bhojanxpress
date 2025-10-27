@@ -2,71 +2,81 @@
 
 {% block title %}My Orders - Delivery Dashboard{% endblock %}
 
-{% block content %}
+{% block page_title %}My Orders{% endblock %}
+
+{% block delivery_content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">My Orders</h1>
-        <div class="dropdown">
-            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                Filter: {{ status_filter.title() if status_filter != 'all' else 'All Orders' }}
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='all') }}">All Orders</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='confirmed') }}">Confirmed</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='preparing') }}">Preparing</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='out_for_delivery') }}">Out for Delivery</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='delivered') }}">Delivered</a></li>
-            </ul>
+        <h1 class="h3 mb-0">My Orders</h1>
+        <div>
+            <div class="dropdown d-inline-block">
+                <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" 
+                        style="background: linear-gradient(135deg, #007bff, #0056b3); border: none; color: white;">
+                    Filter: {{ status_filter.title() if status_filter != 'all' else 'All Orders' }}
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='all') }}">All Orders</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='confirmed') }}">Confirmed</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='preparing') }}">Preparing</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='out_for_delivery') }}">Out for Delivery</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('delivery.my_orders', status='delivered') }}">Delivered</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 
     <div class="row">
         <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Order List</h6>
+            <div class="card shadow mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                <div class="card-header py-3" style="background: rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.2);">
+                    <h6 class="m-0 font-weight-bold text-white">Order List</h6>
                 </div>
                 <div class="card-body">
                     {% if orders %}
                         <div class="table-responsive">
-                            <table class="table table-bordered" width="100%" cellspacing="0">
-                                <thead>
+                            <table class="table table-bordered" width="100%" cellspacing="0" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                                <thead style="background: rgba(255,255,255,0.2);">
                                     <tr>
-                                        <th>Order ID</th>
-                                        <th>Customer</th>
-                                        <th>Items</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                        <th>Order Time</th>
-                                        <th>Actions</th>
+                                        <th class="text-white">Order ID</th>
+                                        <th class="text-white">Customer</th>
+                                        <th class="text-white">Items</th>
+                                        <th class="text-white">Amount</th>
+                                        <th class="text-white">Status</th>
+                                        <th class="text-white">Order Time</th>
+                                        <th class="text-white">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for order in orders %}
-                                    <tr>
-                                        <td>#{{ order.id }}</td>
-                                        <td>
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                        <td class="text-white">#{{ order.id }}</td>
+                                        <td class="text-white">
                                             {{ order.customer_name or order.user.name }}
-                                            <br><small class="text-muted">{{ order.phone_number or order.user.phone }}</small>
+                                            <br><small style="color: rgba(255,255,255,0.7);">{{ order.phone_number or order.user.phone }}</small>
                                         </td>
-                                        <td>
+                                        <td class="text-white">
                                             {% for item in order.order_items[:2] %}
                                                 {{ item.food_item.name if item.food_item else 'Unknown Item' }} ({{ item.quantity }})<br>
                                             {% endfor %}
                                             {% if order.order_items|length > 2 %}
-                                                <small class="text-muted">+{{ order.order_items|length - 2 }} more items</small>
+                                                <small style="color: rgba(255,255,255,0.7);">+{{ order.order_items|length - 2 }} more items</small>
                                             {% endif %}
                                         </td>
-                                        <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+                                        <td class="text-white">₹{{ "%.2f"|format(order.total_amount) }}</td>
                                         <td>
                                             <span class="badge bg-{{ 'warning' if order.status == 'confirmed' else 'info' if order.status == 'preparing' else 'primary' if order.status == 'out_for_delivery' else 'success' if order.status == 'delivered' else 'secondary' }}">
                                                 {{ order.status.replace('_', ' ').title() }}
                                             </span>
                                         </td>
-                                        <td>{{ order.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                        <td class="text-white">{{ order.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                         <td>
-                                            <a href="{{ url_for('delivery.order_details', order_id=order.id) }}" class="btn btn-sm btn-primary">
+                                            <a href="{{ url_for('delivery.order_details', order_id=order.id) }}" class="btn btn-sm" 
+                                               style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none;">
                                                 <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <a href="{{ url_for('delivery.download_invoice', order_id=order.id) }}" target="_blank" class="btn btn-sm" 
+                                               style="background: linear-gradient(135deg, #28a745, #1e7e34); color: white; border: none;">
+                                                <i class="fas fa-download"></i> Download Invoice
                                             </a>
                                         </td>
                                     </tr>
@@ -76,9 +86,9 @@
                         </div>
                     {% else %}
                         <div class="text-center py-4">
-                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                            <h5 class="text-muted">No orders found</h5>
-                            <p class="text-muted">You don't have any orders assigned yet.</p>
+                            <i class="fas fa-inbox fa-3x mb-3" style="color: rgba(255,255,255,0.6);"></i>
+                            <h5 style="color: rgba(255,255,255,0.9);">No orders found</h5>
+                            <p style="color: rgba(255,255,255,0.7);">You don't have any orders assigned yet.</p>
                         </div>
                     {% endif %}
                 </div>

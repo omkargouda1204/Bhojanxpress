@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "admin/base.html" %}
 
 {% block title %}Add Food Item - Admin{% endblock %}
 
@@ -97,7 +97,7 @@
                         
                         <div class="mb-3">
                             {{ form.image.label(class="form-label") }}
-                            {{ form.image(class="form-control" + (" is-invalid" if form.image.errors else "")) }}
+                            {{ form.image(class="form-control" + (" is-invalid" if form.image.errors else ""), id="imageInput") }}
                             {% if form.image.errors %}
                             <div class="invalid-feedback">
                                 {% for error in form.image.errors %}
@@ -106,6 +106,95 @@
                             </div>
                             {% endif %}
                             <div class="form-text">Upload a JPG, JPEG or PNG image file</div>
+                            
+                            <!-- Image Preview -->
+                            <div id="imagePreviewContainer" style="display: none;" class="mt-3">
+                                <label class="form-label">Preview:</label>
+                                <div class="border rounded p-2">
+                                    <img id="imagePreview" src="" alt="Image Preview" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                                    <div class="mt-2">
+                                        <small id="imageInfo" class="text-muted"></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Nutritional Information Section -->
+                        <div class="mb-4">
+                            <div class="form-check mb-3">
+                                {{ form.add_nutrition(class="form-check-input", id="addNutrition") }}
+                                {{ form.add_nutrition.label(class="form-check-label") }}
+                            </div>
+                            
+                            <div id="nutritionFields" style="display: none;">
+                                <h5 class="text-info mb-3">
+                                    <i class="fas fa-apple-alt"></i> Nutritional Information
+                                </h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        {{ form.calories_per_serving.label(class="form-label") }}
+                                        {{ form.calories_per_serving(class="form-control", step="0.1", min="0") }}
+                                        <div class="form-text">Calories per serving</div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        {{ form.serving_size.label(class="form-label") }}
+                                        {{ form.serving_size(class="form-control", placeholder="e.g., 1 plate, 250g") }}
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        {{ form.protein_g.label(class="form-label") }}
+                                        {{ form.protein_g(class="form-control", step="0.1", min="0") }}
+                                        <div class="form-text">grams</div>
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        {{ form.carbohydrates_g.label(class="form-label") }}
+                                        {{ form.carbohydrates_g(class="form-control", step="0.1", min="0") }}
+                                        <div class="form-text">grams</div>
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        {{ form.fat_g.label(class="form-label") }}
+                                        {{ form.fat_g(class="form-control", step="0.1", min="0") }}
+                                        <div class="form-text">grams</div>
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        {{ form.sugar_g.label(class="form-label") }}
+                                        {{ form.sugar_g(class="form-control") }}
+                                        <div class="form-text">grams</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        {{ form.fiber_g.label(class="form-label") }}
+                                        {{ form.fiber_g(class="form-control") }}
+                                        <div class="form-text">grams</div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        {{ form.sodium_mg.label(class="form-label") }}
+                                        {{ form.sodium_mg(class="form-control") }}
+                                        <div class="form-text">milligrams</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.allergens.label(class="form-label") }}
+                                    {{ form.allergens(class="form-control", rows="2", placeholder="e.g., Contains nuts, dairy, gluten") }}
+                                    <div class="form-text">Separate multiple allergens with commas</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.ingredients.label(class="form-label") }}
+                                    {{ form.ingredients(class="form-control", rows="3", placeholder="List main ingredients") }}
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="mb-4">
@@ -130,4 +219,60 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addNutritionCheckbox = document.getElementById('addNutrition');
+    const nutritionFields = document.getElementById('nutritionFields');
+    
+    function toggleNutritionFields() {
+        if (addNutritionCheckbox.checked) {
+            nutritionFields.style.display = 'block';
+        } else {
+            nutritionFields.style.display = 'none';
+        }
+    }
+    
+    // Initial state
+    toggleNutritionFields();
+    
+    // Toggle on change
+    addNutritionCheckbox.addEventListener('change', toggleNutritionFields);
+    
+    // Image preview functionality
+    const imageInput = document.getElementById('imageInput');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageInfo = document.getElementById('imageInfo');
+    
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        
+        if (file) {
+            // Check if it's an image
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = 'block';
+                    
+                    // Show file info
+                    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                    imageInfo.textContent = `File: ${file.name} (${fileSize} MB)`;
+                };
+                
+                reader.readAsDataURL(file);
+            } else {
+                // Hide preview if not an image
+                imagePreviewContainer.style.display = 'none';
+                alert('Please select a valid image file (JPG, JPEG, or PNG).');
+            }
+        } else {
+            // Hide preview if no file selected
+            imagePreviewContainer.style.display = 'none';
+        }
+    });
+});
+</script>
 {% endblock %}

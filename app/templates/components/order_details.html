@@ -2,6 +2,15 @@
 
 {% block title %}Order #{{ order.id }} Details - BhojanXpress{% endblock %}
 
+{% block contact_buttons %}
+    <!-- Contact Support Button -->
+    <div class="contact-support-float">
+        <button class="btn btn-primary contact-support-btn" onclick="openContactModal()" title="Contact Support">
+            <i class="fas fa-headset"></i> Support
+        </button>
+    </div>
+{% endblock %}
+
 {% block content %}
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -261,22 +270,21 @@
                     <!-- Action Buttons -->
                     <div class="mt-3 d-grid gap-2">
                         {% if order.status in ['pending', 'confirmed'] %}
-                            <button class="btn btn-danger" onclick="cancelOrder({{ order.id }})">
+                            <button id="cancelBtn" class="btn btn-danger" onclick="cancelOrder({{ order.id }})">
                                 <i class="fas fa-times"></i> Cancel Order
                             </button>
+                            <small id="cancelTimer" class="text-muted">
+                                <i class="fas fa-clock"></i> 
+                                <span id="timeRemaining">Calculating...</span>
+                            </small>
                         {% endif %}
 
-                        {% if order.status == 'delivered' %}
-                            <button class="btn btn-success">
-                                <i class="fas fa-redo"></i> Reorder
-                            </button>
-                        {% endif %}
 
                         <a href="{{ url_for('user.receipt', order_id=order.id, download=1) }}" class="btn btn-outline-primary">
                             <i class="fas fa-download"></i> Download Invoice
                         </a>
 
-                        <button class="btn btn-outline-info">
+                        <button class="btn btn-outline-info" onclick="window.location.href='tel:+918431729319'">
                             <i class="fas fa-phone"></i> Contact Support
                         </button>
                     </div>
@@ -337,13 +345,46 @@
 </style>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 5-minute cancellation timer
+    const orderCreatedAt = new Date('{{ order.created_at.isoformat() }}');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const timeRemaining = document.getElementById('timeRemaining');
+    const cancelTimer = document.getElementById('cancelTimer');
+    
+    if (cancelBtn && timeRemaining) {
+        function updateTimer() {
+            const now = new Date();
+            const timeDiff = now - orderCreatedAt;
+            const minutesElapsed = timeDiff / (1000 * 60);
+            const minutesRemaining = Math.max(0, 5 - minutesElapsed);
+            
+            if (minutesRemaining > 0) {
+                const minutes = Math.floor(minutesRemaining);
+                const seconds = Math.floor((minutesRemaining - minutes) * 60);
+                timeRemaining.textContent = `Cancellation allowed for ${minutes}:${seconds.toString().padStart(2, '0')} more minutes`;
+                cancelBtn.disabled = false;
+                cancelBtn.className = 'btn btn-danger';
+            } else {
+                timeRemaining.textContent = 'Cancellation time expired (5 minutes)';
+                cancelBtn.disabled = true;
+                cancelBtn.className = 'btn btn-secondary';
+                cancelTimer.className = 'text-danger';
+            }
+        }
+        
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    }
+});
+
 function cancelOrder(orderId) {
     if (confirm('Are you sure you want to cancel this order?')) {
         // Create form data with CSRF token
         const formData = new FormData();
         formData.append('csrf_token', '{{ csrf_token() }}');
 
-        fetch(`/cancel-order/${orderId}`, {
+        fetch(`/user/cancel-order/${orderId}`, {
             method: 'POST',
             body: formData,
             headers: {

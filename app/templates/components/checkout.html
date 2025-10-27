@@ -30,7 +30,7 @@
             </div>
             
             <!-- Delivery Address Form -->
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Delivery Details</h5>
                 </div>
@@ -52,113 +52,105 @@
                             </div>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Alternate Phone</label>
-                                <input type="tel" name="alternate_phone" class="form-control" 
-                                       value="{{ user_profile.alternate_phone if user_profile else '' }}" 
-                                       pattern="[0-9]{10}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" name="email" class="form-control" 
-                                       value="{{ current_user.email }}" readonly>
-                            </div>
-                        </div>
-                        
                         <div class="mb-3">
-                            <label class="form-label">Address Line 1 *</label>
-                            <input type="text" name="delivery_address" class="form-control" 
-                                   value="{{ user_profile.address_line1 if user_profile else current_user.address }}" 
-                                   placeholder="House/Flat No., Building Name" required>
+                            <label class="form-label">Delivery Address *</label>
+                            <textarea name="delivery_address" class="form-control" rows="3" required>{{ user_profile.address_line1 + ', ' + (user_profile.address_line2 or '') + ', ' + (user_profile.city or '') if user_profile else current_user.address or '' }}</textarea>
                         </div>
-                        
+
                         <div class="mb-3">
-                            <label class="form-label">Address Line 2</label>
-                            <input type="text" name="address_line2" class="form-control" 
-                                   value="{{ user_profile.address_line2 if user_profile else '' }}" 
-                                   placeholder="Street, Area, Landmark">
+                            <label class="form-label">Special Instructions (Optional)</label>
+                            <textarea name="special_instructions" class="form-control" rows="2"
+                                      placeholder="Any specific delivery instructions, allergies, or preferences..."></textarea>
                         </div>
-                        
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">City *</label>
-                                <input type="text" name="city" class="form-control" 
-                                       value="{{ user_profile.city if user_profile else '' }}" required>
+
+                        <!-- Payment Method Selection -->
+                        <div class="card mt-4">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="fas fa-credit-card"></i> Payment Method</h5>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">State *</label>
-                                <input type="text" name="state" class="form-control" 
-                                       value="{{ user_profile.state if user_profile else '' }}" required>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">ZIP Code *</label>
-                                <input type="text" name="zip_code" class="form-control" 
-                                       value="{{ user_profile.zip_code if user_profile else '' }}" 
-                                       pattern="[0-9]{6}" required>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Special Instructions</label>
-                            <textarea name="special_instructions" class="form-control" rows="3" 
-                                      placeholder="Any special instructions for delivery..."></textarea>
-                        </div>
-                        
-                        <!-- Single Payment Method Selection -->
-                        <div class="mb-4">
-                            <label class="form-label">Payment Method *</label>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-check p-3 border rounded mb-3">
-                                        <input class="form-check-input" type="radio" name="payment_method"
-                                               id="cash_on_delivery" value="cash_on_delivery" checked>
-                                        <label class="form-check-label" for="cash_on_delivery">
-                                            <i class="fas fa-money-bill text-success"></i>
-                                            <strong>Cash on Delivery</strong>
-                                            <br><small class="text-muted">Pay when your order arrives</small>
-                                        </label>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> Choose your preferred payment method
+                                </div>
+
+                                <div class="row">
+                                    {% for method in payment_methods %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 payment-method-card" data-method="{{ method.id }}">
+                                            <div class="card-body text-center">
+                                                <input type="radio" name="payment_method" value="{{ method.id }}"
+                                                       id="payment_{{ method.id }}" class="d-none payment-radio"
+                                                       {% if method.id == 'cod' %}checked{% endif %}>
+                                                <label for="payment_{{ method.id }}" class="w-100 h-100 d-flex flex-column justify-content-center" style="cursor: pointer;">
+                                                    <i class="{{ method.icon }} fa-3x text-primary mb-3"></i>
+                                                    <h5 class="card-title">{{ method.name }}</h5>
+                                                    <p class="card-text text-muted">{{ method.description }}</p>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <!-- Payment Details Section (Initially Hidden) -->
+                                <div id="paymentDetails" style="display: none;">
+                                    <hr>
+                                    <div id="cardDetails" class="payment-details" style="display: none;">
+                                        <h6><i class="fas fa-credit-card"></i> Card Details</h6>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Card Number</label>
+                                                <input type="text" name="card_number" class="form-control"
+                                                       placeholder="1234 5678 9012 3456" maxlength="19">
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">Expiry</label>
+                                                <input type="text" name="expiry_date" class="form-control"
+                                                       placeholder="MM/YY" maxlength="5">
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">CVV</label>
+                                                <input type="text" name="cvv" class="form-control"
+                                                       placeholder="123" maxlength="4">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Cardholder Name</label>
+                                            <input type="text" name="card_name" class="form-control"
+                                                   placeholder="John Doe">
+                                        </div>
+                                    </div>
+
+                                    <div id="upiDetails" class="payment-details" style="display: none;">
+                                        <h6><i class="fas fa-mobile-alt"></i> UPI Details</h6>
+                                        <div class="mb-3">
+                                            <label class="form-label">UPI ID</label>
+                                            <input type="text" name="upi_id" class="form-control"
+                                                   placeholder="your-upi-id@paytm">
+                                        </div>
+                                    </div>
+
+                                    <div id="walletDetails" class="payment-details" style="display: none;">
+                                        <h6><i class="fas fa-wallet"></i> Digital Wallet</h6>
+                                        <div class="mb-3">
+                                            <label class="form-label">Select Wallet</label>
+                                            <select name="wallet_type" class="form-control">
+                                                <option value="paytm">Paytm Wallet</option>
+                                                <option value="phonepe">PhonePe</option>
+                                                <option value="googlepay">Google Pay</option>
+                                                <option value="amazonpay">Amazon Pay</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="form-check p-3 border rounded mb-3">
-                                        <input class="form-check-input" type="radio" name="payment_method"
-                                               id="card_payment" value="card_payment">
-                                        <label class="form-check-label" for="card_payment">
-                                            <i class="fas fa-credit-card text-info"></i>
-                                            <strong>Card Payment</strong>
-                                            <br><small class="text-muted">Debit/Credit card</small>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check p-3 border rounded mb-3">
-                                        <input class="form-check-input" type="radio" name="payment_method"
-                                               id="upi_payment" value="upi_payment">
-                                        <label class="form-check-label" for="upi_payment">
-                                            <i class="fas fa-mobile-alt text-warning"></i>
-                                            <strong>UPI Payment</strong>
-                                            <br><small class="text-muted">Pay via UPI ID</small>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check p-3 border rounded mb-3">
-                                        <input class="form-check-input" type="radio" name="payment_method"
-                                               id="paypal" value="paypal">
-                                        <label class="form-check-label" for="paypal">
-                                            <i class="fab fa-paypal text-primary"></i>
-                                            <strong>PayPal</strong>
-                                            <br><small class="text-muted">Secure online payment</small>
-                                        </label>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                         
-                        <button type="submit" class="btn btn-success btn-lg w-100">
-                            <i class="fas fa-check-circle"></i> Place Order
-                        </button>
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-success btn-lg px-5" id="placeOrderBtn">
+                                <i class="fas fa-check-circle"></i> Place Order - ₹{{ "%.2f"|format(checkout_summary.total_amount) }}
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -166,62 +158,278 @@
         
         <!-- Order Summary -->
         <div class="col-lg-4">
-            <div class="card sticky-top">
-                <div class="card-header bg-success text-white">
+            <div class="card position-sticky" style="top: 100px;">
+                <div class="card-header bg-dark text-white">
                     <h5 class="mb-0"><i class="fas fa-receipt"></i> Order Summary</h5>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <span>Subtotal ({{ checkout_summary.item_count }} items):</span>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal ({{ checkout_summary.item_count }} items)</span>
                         <span>₹{{ "%.2f"|format(checkout_summary.subtotal) }}</span>
                     </div>
                     
-                    <div class="d-flex justify-content-between text-success">
-                        <span>Special Discount ({{ checkout_summary.discount_rate }}%):</span>
+                    {% if checkout_summary.discount_amount > 0 %}
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span>Discount ({{ "%.1f"|format(checkout_summary.discount_rate) }}%)</span>
                         <span>-₹{{ "%.2f"|format(checkout_summary.discount_amount) }}</span>
                     </div>
-                    
+                    {% endif %}
+
                     {% if checkout_summary.applied_coupon %}
-                    <div class="d-flex justify-content-between text-info">
-                        <span>Coupon ({{ checkout_summary.applied_coupon.code }}):</span>
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span>Coupon: {{ checkout_summary.applied_coupon.code }}</span>
                         <span>-₹{{ "%.2f"|format(checkout_summary.coupon_discount) }}</span>
                     </div>
                     {% endif %}
                     
-                    <div class="d-flex justify-content-between">
-                        <span>GST (5%):</span>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>GST (5%)</span>
                         <span>₹{{ "%.2f"|format(checkout_summary.gst_amount) }}</span>
                     </div>
                     
-                    <div class="d-flex justify-content-between">
-                        <span>Delivery Charges:</span>
-                        <span>
-                            {% if checkout_summary.delivery_charge == 0 %}
-                                <span class="text-success">FREE</span>
-                            {% else %}
-                                ₹{{ "%.2f"|format(checkout_summary.delivery_charge) }}
-                            {% endif %}
-                        </span>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span>Delivery Charges</span>
+                        {% if checkout_summary.delivery_charge == 0 %}
+                        <span class="text-success">FREE</span>
+                        {% else %}
+                        <span>₹{{ "%.2f"|format(checkout_summary.delivery_charge) }}</span>
+                        {% endif %}
                     </div>
                     
                     <hr>
                     
-                    <div class="d-flex justify-content-between fw-bold h5">
-                        <span>Total Amount:</span>
+                    <div class="d-flex justify-content-between fw-bold fs-5">
+                        <span>Total Amount</span>
                         <span class="text-success">₹{{ "%.2f"|format(checkout_summary.total_amount) }}</span>
                     </div>
                     
-                    <div class="mt-3 p-3 bg-light rounded">
-                        <h6><i class="fas fa-clock"></i> Estimated Delivery</h6>
-                        <p class="mb-0 text-muted">45-60 minutes</p>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Your order will be confirmed by the restaurant and delivered within 30-45 minutes.
+                        </small>
                     </div>
-                    
-                    <a href="{{ url_for('user.cart') }}" class="btn btn-outline-secondary w-100 mt-3">
-                        <i class="fas fa-arrow-left"></i> Back to Cart
-                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Payment method selection
+    const paymentCards = document.querySelectorAll('.payment-method-card');
+    const paymentRadios = document.querySelectorAll('.payment-radio');
+    const paymentDetails = document.getElementById('paymentDetails');
+    const allPaymentDetails = document.querySelectorAll('.payment-details');
+
+    // Handle payment method selection
+    paymentCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const method = this.dataset.method;
+            const radio = this.querySelector('.payment-radio');
+
+            // Remove active class from all cards
+            paymentCards.forEach(c => c.classList.remove('active'));
+
+            // Add active class to selected card
+            this.classList.add('active');
+
+            // Check the radio button
+            radio.checked = true;
+
+            // Show/hide payment details
+            showPaymentDetails(method);
+        });
+    });
+
+    function showPaymentDetails(method) {
+        // Hide all payment details first
+        allPaymentDetails.forEach(detail => detail.style.display = 'none');
+
+        if (method === 'card') {
+            paymentDetails.style.display = 'block';
+            document.getElementById('cardDetails').style.display = 'block';
+        } else if (method === 'upi') {
+            paymentDetails.style.display = 'block';
+            document.getElementById('upiDetails').style.display = 'block';
+        } else if (method === 'wallet') {
+            paymentDetails.style.display = 'block';
+            document.getElementById('walletDetails').style.display = 'block';
+        } else {
+            paymentDetails.style.display = 'none';
+        }
+    }
+
+    // Initialize with COD selected
+    const codCard = document.querySelector('[data-method="cod"]');
+    if (codCard) {
+        codCard.classList.add('active');
+    }
+
+    // Form validation
+    document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+        const selectedPayment = document.querySelector('input[name="payment_method"]:checked');
+
+        if (!selectedPayment) {
+            e.preventDefault();
+            alert('Please select a payment method');
+            return;
+        }
+
+        // Validate payment-specific fields
+        const paymentMethod = selectedPayment.value;
+
+        if (paymentMethod === 'card') {
+            const cardNumber = document.querySelector('input[name="card_number"]').value;
+            const expiryDate = document.querySelector('input[name="expiry_date"]').value;
+            const cvv = document.querySelector('input[name="cvv"]').value;
+            const cardName = document.querySelector('input[name="card_name"]').value;
+
+            if (!cardNumber || !expiryDate || !cvv || !cardName) {
+                e.preventDefault();
+                alert('Please fill in all card details');
+                return;
+            }
+        } else if (paymentMethod === 'upi') {
+            const upiId = document.querySelector('input[name="upi_id"]').value;
+            if (!upiId) {
+                e.preventDefault();
+                alert('Please enter your UPI ID');
+                return;
+            }
+        }
+
+        // Show loading state
+        const submitBtn = document.getElementById('placeOrderBtn');
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing Order...';
+        submitBtn.disabled = true;
+    });
+
+    // Format card number input
+    const cardNumberInput = document.querySelector('input[name="card_number"]');
+    if (cardNumberInput) {
+        cardNumberInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            let formattedValue = value.replace(/(.{4})/g, '$1 ').trim();
+            if (formattedValue.length > 19) formattedValue = formattedValue.substring(0, 19);
+            e.target.value = formattedValue;
+        });
+    }
+
+    // Format expiry date input
+    const expiryInput = document.querySelector('input[name="expiry_date"]');
+    if (expiryInput) {
+        expiryInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 2) {
+                value = value.substring(0, 2) + '/' + value.substring(2, 4);
+            }
+            e.target.value = value;
+        });
+    }
+
+    // Only allow numbers for CVV
+    const cvvInput = document.querySelector('input[name="cvv"]');
+    if (cvvInput) {
+        cvvInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+    }
+});
+</script>
+
+<style>
+.payment-method-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid #dee2e6;
+    position: relative;
+    overflow: hidden;
+}
+
+.payment-method-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.payment-method-card:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+}
+
+.payment-method-card:hover::before {
+    left: 100%;
+}
+
+.payment-method-card.active {
+    border: 2px solid transparent;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.payment-method-card.active .card-title,
+.payment-method-card.active .card-text,
+.payment-method-card.active i {
+    color: white !important;
+}
+
+.card-title {
+    color: #333;
+    font-weight: 600;
+}
+
+.payment-details {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+    border: 1px solid rgba(102, 126, 234, 0.1);
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 15px;
+    backdrop-filter: blur(10px);
+}
+
+#placeOrderBtn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+#placeOrderBtn::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    animation: shimmer 3s infinite linear;
+}
+
+#placeOrderBtn:hover::before {
+    opacity: 1;
+}
+
+#placeOrderBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+</style>
 {% endblock %}

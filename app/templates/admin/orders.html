@@ -139,13 +139,13 @@
                                         <small class="text-muted">{{ order.created_at.strftime('%H:%M') }}</small>
                                     </td>
                                     <td>
-                                        {{ order.items.count() }} items
+                                        {{ order.order_items|length }} items
                                         <small class="d-block text-truncate" style="max-width: 150px;">
-                                            {% set item_list = order.items.limit(2).all() %}
+                                            {% set item_list = order.order_items[:2] %}
                                             {% for item in item_list %}
                                                 {{ item.food_item.name if item.food_item else 'Unknown Item' }}{% if not loop.last %}, {% endif %}
                                             {% endfor %}
-                                            {% if order.items.count() > 2 %}...{% endif %}
+                                            {% if order.order_items|length > 2 %}...{% endif %}
                                         </small>
                                     </td>
                                     <td>

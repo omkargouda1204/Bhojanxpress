@@ -107,7 +107,7 @@
 
 /* Add to Cart Button */
 .add-to-cart-btn {
-    background: linear-gradient(135deg, #FF5E3A, #FD7E14);
+    background: linear-gradient(135deg, #28a745, #20c997);
     border: none;
     color: white;
     font-size: 0.8rem;
@@ -119,9 +119,10 @@
 }
 
 .add-to-cart-btn:hover {
-    background: linear-gradient(135deg, #E5542F, #E06B0A);
+    background: linear-gradient(135deg, #218838, #17a2b8);
     transform: translateY(-1px);
     color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* No Results Section */

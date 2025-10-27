@@ -40,6 +40,15 @@
                                         <div class="col-sm-3"><strong>Email:</strong></div>
                                         <div class="col-sm-9">
                                             <a href="mailto:{{ message.email }}">{{ message.email }}</a>
+                                            {% if customer_user %}
+                                                <span class="badge bg-success ms-2">
+                                                    <i class="fas fa-user-check"></i> Registered User
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary ms-2">
+                                                    <i class="fas fa-user-times"></i> Guest User
+                                                </span>
+                                            {% endif %}
                                         </div>
                                     </div>
                                     {% if message.phone %}
@@ -119,10 +128,11 @@
                                                       placeholder="Write your reply to {{ message.name }}..." required></textarea>
                                         </div>
                                         <div class="mb-3">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="send_email" name="send_email" checked>
-                                                <label class="form-check-label" for="send_email">
-                                                    Send email notification to customer
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="send_notification" name="send_notification" checked>
+                                                <label class="form-check-label" for="send_notification">
+                                                    <i class="fas fa-bell text-primary"></i> Send notification to customer
+                                                    <small class="d-block text-muted">Customer will receive this reply in their notifications section</small>
                                                 </label>
                                             </div>
                                         </div>

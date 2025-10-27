@@ -1,93 +1,141 @@
 {% extends "base.html" %}
 
-{% block title %}Add Review - {{ food_item.name }} - BhojanXpress{% endblock %}
+{% block title %}Write Review - {{ food_item.name }} - BhojanXpress{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h4><i class="fas fa-star"></i> Write a Review for {{ food_item.name }}</h4>
-                </div>
+        <div class="col-lg-8">
+            <!-- Food Item Info -->
+            <div class="card mb-4">
                 <div class="card-body">
-                    <!-- Food Item Info -->
-                    <div class="row mb-4">
+                    <div class="row align-items-center">
                         <div class="col-md-3">
                             {% if food_item.image_url %}
-                                <img src="{{ food_item.image_url }}" alt="{{ food_item.name }}" class="img-fluid rounded">
+                                <img src="{{ url_for('static', filename=food_item.image_url) }}" 
+                                     alt="{{ food_item.name }}" 
+                                     class="img-fluid rounded">
                             {% else %}
-                                <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 120px;">
-                                    <i class="fas fa-utensils fa-3x text-muted"></i>
+                                <div class="bg-secondary rounded d-flex align-items-center justify-content-center" 
+                                     style="height: 120px;">
+                                    <i class="fas fa-utensils text-white fs-2"></i>
                                 </div>
                             {% endif %}
                         </div>
                         <div class="col-md-9">
-                            <h5>{{ food_item.name }}</h5>
-                            <p class="text-muted">{{ food_item.description }}</p>
-                            <span class="badge badge-primary">{{ food_item.category.replace('_', ' ').title() }}</span>
-                            <span class="h5 text-success ml-2">₹{{ "%.2f"|format(food_item.price) }}</span>
-                            {% if verified_purchase %}
-                                <span class="badge badge-success ml-2">
-                                    <i class="fas fa-check-circle"></i> Verified Purchase
+                            <h3 class="mb-2">{{ food_item.name }}</h3>
+                            <p class="text-muted mb-2">{{ food_item.description or 'No description available' }}</p>
+                            <h4 class="text-primary mb-0">${{ "%.2f"|format(food_item.price) }}</h4>
+                            {% if has_ordered %}
+                                <span class="badge bg-success mt-2">
+                                    <i class="fas fa-check-circle me-1"></i>Verified Purchase
                                 </span>
                             {% endif %}
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Review Form -->
-                    <form method="POST" action="{{ url_for('reviews.submit_review') }}" enctype="multipart/form-data">
+            <!-- Review Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-star text-warning me-2"></i>Write Your Review
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" id="reviewForm">
                         {{ form.hidden_tag() }}
-
-                        <!-- Rating -->
-                        <div class="form-group">
-                            <label for="{{ form.rating.id }}" class="form-label">{{ form.rating.label.text }} *</label>
-                            <div class="rating-input">
-                                {% for value, label in form.rating.choices %}
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="rating" id="rating{{ value }}" value="{{ value }}" required>
-                                    <label class="form-check-label" for="rating{{ value }}">
-                                        <div class="star-rating">
-                                            {% for i in range(1, 6) %}
-                                                <i class="{% if i <= value|int %}fas{% else %}far{% endif %} fa-star text-warning"></i>
-                                            {% endfor %}
-                                        </div>
-                                        {{ label }}
-                                    </label>
+                        {{ form.food_item_id(value=food_item.id) }}
+                        
+                        <!-- Rating Selection -->
+                        <div class="mb-4">
+                            {{ form.rating.label(class="form-label h5") }}
+                            <div class="rating-input-container">
+                                <div class="star-rating" id="starRating">
+                                    {% for i in range(1, 6) %}
+                                        <i class="fas fa-star star-input" 
+                                           data-rating="{{ i }}" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="{{ ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][i-1] }}"></i>
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
+                                <div class="rating-text mt-2">
+                                    <span id="ratingText" class="text-muted">Click stars to rate</span>
+                                </div>
                             </div>
+                            {{ form.rating(style="display: none;") }}
+                            {% for error in form.rating.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
                         </div>
 
-                        <!-- Title -->
-                        <div class="form-group">
-                            <label for="{{ form.title.id }}" class="form-label">{{ form.title.label.text }}</label>
-                            {{ form.title(class="form-control", placeholder="Give your review a title (optional)") }}
+                        <!-- Review Comment -->
+                        <div class="mb-4">
+                            {{ form.comment.label(class="form-label h5") }}
+                            {{ form.comment(class="form-control", rows="5", id="reviewComment") }}
+                            <div class="form-text">
+                                <small class="text-muted">
+                                    <span id="charCount">0</span>/1000 characters
+                                </small>
+                            </div>
+                            {% for error in form.comment.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
                         </div>
 
-                        <!-- Comment -->
-                        <div class="form-group">
-                            <label for="{{ form.comment.id }}" class="form-label">{{ form.comment.label.text }}</label>
-                            {{ form.comment(class="form-control", rows="4", placeholder="Share your experience with this food item...") }}
+                        <!-- Image Upload -->
+                        <div class="mb-4">
+                            {{ form.images.label(class="form-label h5") }}
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-placeholder text-center p-4">
+                                    <i class="fas fa-cloud-upload-alt fs-2 text-muted mb-2"></i>
+                                    <p class="text-muted mb-2">Drag and drop images here or click to browse</p>
+                                    <p class="small text-muted mb-0">Maximum 5 images, 16MB each (JPG, PNG, WEBP)</p>
+                                </div>
+                                {{ form.images(class="form-control d-none", id="imageInput") }}
+                            </div>
+                            
+                            <!-- Image Preview Container -->
+                            <div id="imagePreviewContainer" class="mt-3" style="display: none;">
+                                <h6>Selected Images:</h6>
+                                <div class="row g-2" id="imagePreviews"></div>
+                            </div>
+                            
+                            {% for error in form.images.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
                         </div>
 
-                        <!-- Images -->
-                        <div class="form-group">
-                            <label for="{{ form.images.id }}" class="form-label">{{ form.images.label.text }}</label>
-                            {{ form.images(class="form-control-file", multiple=true, accept="image/*") }}
-                            <small class="form-text text-muted">
-                                You can upload multiple photos (JPG, JPEG, PNG only). Maximum 5 images.
-                            </small>
+                        <!-- Privacy Notice -->
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Review Guidelines:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Reviews are public and will be visible to all users</li>
+                                <li>Please be honest and constructive in your feedback</li>
+                                <li>Avoid inappropriate language or personal attacks</li>
+                                {% if has_ordered %}
+                                    <li>Your review will be marked as "Verified Purchase"</li>
+                                {% endif %}
+                            </ul>
                         </div>
 
-                        <!-- Submit Button -->
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-paper-plane"></i> Submit Review
-                            </button>
-                            <a href="{{ url_for('user.food_item_details', id=food_item.id) }}" class="btn btn-secondary ml-2">
-                                <i class="fas fa-arrow-left"></i> Cancel
+                        <!-- Submit Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('review.view_reviews', food_item_id=food_item.id) }}" 
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Reviews
                             </a>
+                            <div>
+                                <button type="button" class="btn btn-outline-primary me-2" id="previewBtn">
+                                    <i class="fas fa-eye me-2"></i>Preview
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                    <i class="fas fa-paper-plane me-2"></i>Submit Review
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -96,34 +144,417 @@
     </div>
 </div>
 
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Review Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="review-preview">
+                    <!-- Preview content will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('reviewForm').submit();">
+                    Submit Review
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
-.rating-input .form-check {
-    margin-bottom: 10px;
-}
-
+/* Star Rating Input Styles */
 .star-rating {
-    display: inline-block;
-    margin-right: 10px;
+    font-size: 2rem;
+    cursor: pointer;
+    user-select: none;
 }
 
-.star-rating i {
-    font-size: 1.2em;
+.star-input {
+    color: #ddd;
+    transition: color 0.2s ease;
+    margin: 0 2px;
+}
+
+.star-input:hover,
+.star-input.active {
+    color: #ffc107;
+}
+
+.star-input:hover ~ .star-input {
+    color: #ddd;
+}
+
+/* Upload Area Styles */
+.upload-area {
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.upload-area.dragover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+/* Image Preview Styles */
+.image-preview {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 1;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-preview .remove-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #dc3545;
+}
+
+.image-preview .remove-btn:hover {
+    background: white;
+    color: #dc3545;
+}
+
+/* Character Counter */
+#charCount {
+    font-weight: 500;
+}
+
+/* Form Validation Styles */
+.form-control.is-invalid {
+    border-color: #dc3545;
+}
+
+.form-control.is-valid {
+    border-color: #28a745;
+}
+
+/* Loading States */
+.btn.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.btn.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Preview selected images
-    document.getElementById('images').addEventListener('change', function(e) {
-        const files = e.target.files;
-        if (files.length > 5) {
-            alert('You can only upload up to 5 images.');
-            e.target.value = '';
-            return;
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Star Rating Functionality
+    const starRating = document.getElementById('starRating');
+    const ratingInput = document.getElementById('rating');
+    const ratingText = document.getElementById('ratingText');
+    const stars = starRating.querySelectorAll('.star-input');
+    
+    const ratingTexts = {
+        1: 'Poor - Not recommended',
+        2: 'Fair - Could be better',
+        3: 'Good - Satisfactory',
+        4: 'Very Good - Recommended',
+        5: 'Excellent - Highly recommended!'
+    };
+
+    let currentRating = 0;
+
+    stars.forEach((star, index) => {
+        star.addEventListener('mouseover', () => {
+            highlightStars(index + 1);
+            ratingText.textContent = ratingTexts[index + 1];
+        });
+
+        star.addEventListener('click', () => {
+            currentRating = index + 1;
+            ratingInput.value = currentRating;
+            setRating(currentRating);
+            ratingText.textContent = ratingTexts[currentRating];
+            ratingText.style.color = '#28a745';
+            ratingText.style.fontWeight = 'bold';
+        });
+    });
+
+    starRating.addEventListener('mouseleave', () => {
+        if (currentRating > 0) {
+            setRating(currentRating);
+            ratingText.textContent = ratingTexts[currentRating];
+            ratingText.style.color = '#28a745';
+        } else {
+            highlightStars(0);
+            ratingText.textContent = 'Click stars to rate';
+            ratingText.style.color = '';
+            ratingText.style.fontWeight = '';
+        }
+    });
+
+    function highlightStars(rating) {
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('active');
+            } else {
+                star.classList.remove('active');
+            }
+        });
+    }
+
+    function setRating(rating) {
+        highlightStars(rating);
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.style.color = '#ffc107';
+            } else {
+                star.style.color = '#ddd';
+            }
+        });
+    }
+
+    // Character Counter
+    const reviewComment = document.getElementById('reviewComment');
+    const charCount = document.getElementById('charCount');
+    
+    reviewComment.addEventListener('input', function() {
+        const length = this.value.length;
+        charCount.textContent = length;
+        
+        if (length > 1000) {
+            charCount.style.color = '#dc3545';
+        } else if (length > 800) {
+            charCount.style.color = '#ffc107';
+        } else {
+            charCount.style.color = '#6c757d';
+        }
+    });
+
+    // Image Upload Functionality
+    const uploadArea = document.getElementById('uploadArea');
+    const imageInput = document.getElementById('imageInput');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreviews = document.getElementById('imagePreviews');
+    
+    let selectedFiles = [];
+
+    // Handle drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    uploadArea.addEventListener('click', () => {
+        imageInput.click();
+    });
+
+    imageInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+        const maxFiles = 5;
+        const maxSize = 16 * 1024 * 1024; // 16MB
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        
+        const validFiles = Array.from(files).filter(file => {
+            if (!allowedTypes.includes(file.type)) {
+                alert(`Invalid file type: ${file.name}. Only JPG, PNG, and WEBP files are allowed.`);
+                return false;
+            }
+            if (file.size > maxSize) {
+                alert(`File too large: ${file.name}. Maximum size is 16MB.`);
+                return false;
+            }
+            return true;
+        });
+
+        // Limit total number of files
+        const totalFiles = selectedFiles.length + validFiles.length;
+        if (totalFiles > maxFiles) {
+            alert(`Maximum ${maxFiles} images allowed. ${totalFiles - maxFiles} files will be ignored.`);
+            validFiles.splice(maxFiles - selectedFiles.length);
         }
 
-        // Show image previews (optional enhancement)
-        console.log('Selected', files.length, 'files');
+        selectedFiles = selectedFiles.concat(validFiles);
+        updateImagePreviews();
+        updateFileInput();
+    }
+
+    function updateImagePreviews() {
+        imagePreviews.innerHTML = '';
+        
+        if (selectedFiles.length > 0) {
+            imagePreviewContainer.style.display = 'block';
+            
+            selectedFiles.forEach((file, index) => {
+                const col = document.createElement('div');
+                col.className = 'col-6 col-md-3';
+                
+                const preview = document.createElement('div');
+                preview.className = 'image-preview';
+                
+                const img = document.createElement('img');
+                img.className = 'img-fluid';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = (e) => {
+                    e.preventDefault();
+                    removeImage(index);
+                };
+                
+                preview.appendChild(img);
+                preview.appendChild(removeBtn);
+                col.appendChild(preview);
+                imagePreviews.appendChild(col);
+                
+                // Create image preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        } else {
+            imagePreviewContainer.style.display = 'none';
+        }
+    }
+
+    function removeImage(index) {
+        selectedFiles.splice(index, 1);
+        updateImagePreviews();
+        updateFileInput();
+    }
+
+    function updateFileInput() {
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => dt.items.add(file));
+        imageInput.files = dt.files;
+    }
+
+    // Preview Functionality
+    const previewBtn = document.getElementById('previewBtn');
+    const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+    
+    previewBtn.addEventListener('click', () => {
+        generatePreview();
+        previewModal.show();
+    });
+
+    function generatePreview() {
+        const rating = currentRating;
+        const comment = reviewComment.value.trim();
+        const ratingStars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        
+        const previewContent = `
+            <div class="d-flex align-items-center mb-3">
+                <div class="me-3">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                         style="width: 40px; height: 40px;">
+                        {{ current_user.username[0].upper() }}
+                    </div>
+                </div>
+                <div>
+                    <h6 class="mb-0">{{ current_user.username }}</h6>
+                    <small class="text-muted">Just now</small>
+                </div>
+            </div>
+            <div class="mb-2">
+                <span style="color: #ffc107; font-size: 1.2rem;">${ratingStars}</span>
+            </div>
+            ${comment ? `<p class="mb-3">${comment.replace(/\n/g, '<br>')}</p>` : '<p class="text-muted mb-3">No comment provided</p>'}
+            ${selectedFiles.length > 0 ? `<div class="text-muted"><i class="fas fa-images me-2"></i>${selectedFiles.length} image(s) attached</div>` : ''}
+        `;
+        
+        document.querySelector('.review-preview').innerHTML = previewContent;
+    }
+
+    // Form Validation
+    const form = document.getElementById('reviewForm');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    form.addEventListener('submit', (e) => {
+        let isValid = true;
+        
+        // Validate rating
+        if (currentRating === 0) {
+            isValid = false;
+            ratingText.textContent = 'Please select a rating';
+            ratingText.style.color = '#dc3545';
+            ratingText.style.fontWeight = 'bold';
+        }
+        
+        // Validate comment length
+        if (reviewComment.value.length > 1000) {
+            isValid = false;
+            reviewComment.classList.add('is-invalid');
+        } else {
+            reviewComment.classList.remove('is-invalid');
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
     });
 });
 </script>

@@ -17,7 +17,7 @@ class User(UserMixin, db.Model):
     address = db.Column(db.Text, nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     is_delivery_boy = db.Column(db.Boolean, default=False)
-    is_active = db.Column(db.Boolean, default=True)  # Agent status toggle
+    is_active = db.Column(db.Boolean, default=True)
     is_verified = db.Column(db.Boolean, default=False)
     verification_otp = db.Column(db.String(6), nullable=True)
     otp_expiry = db.Column(db.DateTime, nullable=True)
@@ -33,19 +33,46 @@ class User(UserMixin, db.Model):
     upi_id = db.Column(db.String(50), nullable=True)
 
     # Relationships
-    orders = db.relationship('Order', backref='user', lazy=True)
-    cart_items = db.relationship('CartItem', backref='user', lazy=True)
-    reviews = db.relationship('Review', backref='user', lazy=True)
+    orders = db.relationship('Order', foreign_keys='Order.user_id', backref='customer', lazy=True)
+    cart_items = db.relationship('CartItem', foreign_keys='CartItem.user_id', backref='user', lazy=True)
     delivery_assignments = db.relationship('Order', foreign_keys='Order.delivery_boy_id', backref='delivery_boy', lazy=True)
+    
+    def __init__(self, **kwargs):
+        # Handle all standard fields
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+        
+    @property
+    def active(self):
+        """Property for backward compatibility"""
+        return self.is_active
+        
+    @active.setter
+    def active(self, value):
+        """Setter for backward compatibility"""
+        self.is_active = value
+        
+    # Additional explicit property for is_active to ensure it works
+    # This helps fix the error: property 'is_active' of 'User' object has no setter
+    @property
+    def is_active_prop(self):
+        """Explicit property for is_active"""
+        return self.is_active
+        
+    @is_active_prop.setter
+    def is_active_prop(self, value):
+        """Explicit setter for is_active"""
+        self.is_active = value
 
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f'<User {self.username}>' 
 
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,10 +88,10 @@ class Category(db.Model):
 class NutritionalInfo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False, unique=True)
-    calories_per_serving = db.Column(db.Float, nullable=True)
-    protein_g = db.Column(db.Float, nullable=True)
-    carbohydrates_g = db.Column(db.Float, nullable=True)
-    fat_g = db.Column(db.Float, nullable=True)
+    calories = db.Column(db.Float, nullable=True)  # Match existing DB column
+    protein = db.Column(db.Float, nullable=True)   # Match existing DB column
+    carbohydrates = db.Column(db.Float, nullable=True)  # Match existing DB column
+    fat = db.Column(db.Float, nullable=True)       # Match existing DB column
     fiber_g = db.Column(db.Float, nullable=True)
     sugar_g = db.Column(db.Float, nullable=True)
     sodium_mg = db.Column(db.Float, nullable=True)
@@ -74,6 +101,39 @@ class NutritionalInfo(db.Model):
     ingredients = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Properties for backward compatibility with form field names
+    @property
+    def calories_per_serving(self):
+        return self.calories
+    
+    @calories_per_serving.setter
+    def calories_per_serving(self, value):
+        self.calories = value
+        
+    @property
+    def protein_g(self):
+        return self.protein
+    
+    @protein_g.setter
+    def protein_g(self, value):
+        self.protein = value
+        
+    @property
+    def carbohydrates_g(self):
+        return self.carbohydrates
+    
+    @carbohydrates_g.setter
+    def carbohydrates_g(self, value):
+        self.carbohydrates = value
+        
+    @property
+    def fat_g(self):
+        return self.fat
+    
+    @fat_g.setter
+    def fat_g(self, value):
+        self.fat = value
 
     def __repr__(self):
         return f'<NutritionalInfo for FoodItem {self.food_item_id}>'
@@ -95,7 +155,6 @@ class FoodItem(db.Model):
     order_items = db.relationship('OrderItem', backref='food_item', lazy=True)
     cart_items = db.relationship('CartItem', backref='food_item', lazy=True)
     nutritional_info = db.relationship('NutritionalInfo', backref='food_item', uselist=False, cascade='all, delete-orphan')
-    reviews = db.relationship('Review', backref='food_item', lazy=True)
 
     def __repr__(self):
         return f'<FoodItem {self.name}>'
@@ -123,6 +182,15 @@ class Order(db.Model):
     delivered_at = db.Column(db.DateTime, nullable=True)
     commission_paid = db.Column(db.Boolean, default=False)
     commission_paid_at = db.Column(db.DateTime, nullable=True)
+    commission_payment_method = db.Column(db.String(20), nullable=True)  # cash, online
+    commission_reference_id = db.Column(db.String(100), nullable=True)  # for online payments
+    is_viewed_by_admin = db.Column(db.Boolean, default=False)  # Flag to track if admin has viewed this order
+    
+    # COD tracking fields
+    payment_received = db.Column(db.Boolean, default=False)  # Whether cash payment was received
+    cod_received = db.Column(db.Boolean, default=False)  # COD amount collected flag
+    cod_collected = db.Column(db.Boolean, default=False)  # COD collection status
+    cod_collection_time = db.Column(db.DateTime, nullable=True)  # When COD was collected
 
     # Relationships
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
@@ -139,35 +207,6 @@ class OrderItem(db.Model):
 
     def __repr__(self):
         return f'<OrderItem {self.id}>'
-
-class Review(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True)  # Optional link to order
-    rating = db.Column(db.Integer, nullable=False)  # 1-5 stars
-    title = db.Column(db.String(200), nullable=True)
-    comment = db.Column(db.Text, nullable=True)
-    is_verified_purchase = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    review_images = db.relationship('ReviewImage', backref='review', lazy=True, cascade='all, delete-orphan')
-
-    def __repr__(self):
-        return f'<Review {self.id} - {self.rating} stars>'
-
-class ReviewImage(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    review_id = db.Column(db.Integer, db.ForeignKey('review.id'), nullable=False)
-    image_data = db.Column(db.LargeBinary, nullable=True)
-    image_url = db.Column(db.String(255), nullable=True)
-    image_filename = db.Column(db.String(255), nullable=True)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<ReviewImage {self.id} for Review {self.review_id}>'
 
 class CartItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -218,7 +257,7 @@ class UserProfile(db.Model):
     country = db.Column(db.String(50), default='India')
 
     # Relationship
-    user = db.relationship('User', backref=db.backref('profile', uselist=False), lazy=True)
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('profile', uselist=False), lazy=True)
 
     def __repr__(self):
         return f'<UserProfile {self.user_id}>'
@@ -234,12 +273,15 @@ class Rating(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = db.relationship('User', backref='ratings')
+    user = db.relationship('User', foreign_keys=[user_id], backref='ratings')
 
     def __repr__(self):
         return f'<Rating {self.id}: {self.rating}/5>'
 
-class ReviewImage(db.Model):
+# This duplicate ReviewImage class was removed and merged with the one above
+# Related to Rating model - replaced with RatingImage model
+
+class RatingImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     rating_id = db.Column(db.Integer, db.ForeignKey('rating.id'), nullable=False)
     image_url = db.Column(db.String(255), nullable=True)  # URL for uploaded images
@@ -250,7 +292,7 @@ class ReviewImage(db.Model):
     rating = db.relationship('Rating', backref=db.backref('images', lazy=True, cascade='all, delete-orphan'))
 
     def __repr__(self):
-        return f'<ReviewImage {self.id} for Rating {self.rating_id}>'
+        return f'<RatingImage {self.id} for Rating {self.rating_id}>'
 
 class ContactMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -266,7 +308,178 @@ class ContactMessage(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationship
-    admin_user = db.relationship('User', backref='contact_replies')
+    admin_user = db.relationship('User', foreign_keys=[replied_by], backref='contact_replies')
 
     def __repr__(self):
         return f'<ContactMessage {self.id}: {self.subject_type}>'
+        
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    notification_type = db.Column(db.String(50), nullable=False)  # review_reply, order_update, admin_message, etc.
+    reference_id = db.Column(db.Integer, nullable=True)  # ID of referenced item (review_id, order_id, etc.)
+    image_url = db.Column(db.String(255), nullable=True)  # For notifications with images
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('notifications', lazy=True))
+
+    def __repr__(self):
+        return f'<Notification {self.id}: {self.notification_type} for User {self.user_id}>'
+
+# Special offers model - moved from models/special_offers.py
+class SpecialOffer(db.Model):
+    __tablename__ = 'special_offers'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(255))
+    discount_type = db.Column(db.String(20), nullable=False)  # percentage, fixed, or coupon
+    discount_value = db.Column(db.Float, nullable=False)
+    min_order_value = db.Column(db.Float, default=0)
+    max_discount_value = db.Column(db.Float)
+    coupon_code = db.Column(db.String(20))
+    image_path = db.Column(db.String(255))
+    is_active = db.Column(db.Boolean, default=True)
+    applies_to_category = db.Column(db.String(50))  # specific category or None for all
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    valid_until = db.Column(db.DateTime)
+
+    def __repr__(self):
+        return f'<SpecialOffer {self.id}: {self.title}>'
+
+# Banner model - moved from models/banner.py
+class Banner(db.Model):
+    __tablename__ = 'banners'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    image_path = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(100))
+    subtitle = db.Column(db.String(200))
+    is_active = db.Column(db.Boolean, default=True)
+    order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Banner {self.id}: {self.title}>'
+
+class SiteImage(db.Model):
+    __tablename__ = 'site_images'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    image_path = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(100), nullable=True)
+    category = db.Column(db.String(50), nullable=True)  # logo, favicon, etc.
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<SiteImage {self.id}: {self.category or "Uncategorized"}>'
+
+
+class Review(db.Model):
+    __tablename__ = 'reviews'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    food_item_id = db.Column(db.Integer, db.ForeignKey('food_item.id'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)  # 1-5 stars
+    comment = db.Column(db.Text, nullable=True)
+    is_approved = db.Column(db.Boolean, default=True)  # Admin can moderate reviews
+    admin_reply = db.Column(db.Text, nullable=True)  # Admin response to review
+    admin_reply_at = db.Column(db.DateTime, nullable=True)
+    helpful_count = db.Column(db.Integer, default=0)  # Number of helpful votes
+    is_verified_purchase = db.Column(db.Boolean, default=False)  # User bought this item
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('reviews', lazy=True))
+    food_item = db.relationship('FoodItem', backref=db.backref('reviews', lazy=True))
+    images = db.relationship('ReviewImage', backref='review', lazy=True, cascade='all, delete-orphan')
+    helpful_votes = db.relationship('ReviewHelpful', backref='review', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def average_rating(self):
+        """Calculate average rating for this review's food item"""
+        reviews = Review.query.filter_by(food_item_id=self.food_item_id, is_approved=True).all()
+        if not reviews:
+            return 0
+        return sum(r.rating for r in reviews) / len(reviews)
+    
+    @property
+    def total_reviews_count(self):
+        """Get total number of approved reviews for this food item"""
+        return Review.query.filter_by(food_item_id=self.food_item_id, is_approved=True).count()
+    
+    def is_helpful_by_user(self, user_id):
+        """Check if current user marked this review as helpful"""
+        return ReviewHelpful.query.filter_by(review_id=self.id, user_id=user_id).first() is not None
+    
+    def __repr__(self):
+        return f'<Review {self.id}: {self.rating} stars by User {self.user_id}>'
+
+
+class ReviewImage(db.Model):
+    __tablename__ = 'review_images'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('reviews.id'), nullable=False)
+    # Legacy columns (for backward compatibility)
+    image_path = db.Column(db.String(255), nullable=False, default='')
+    image_name = db.Column(db.String(255), nullable=True)
+    image_size = db.Column(db.Integer, nullable=True)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # New columns
+    filename = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=True)
+    file_size = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def image_url(self):
+        """Generate the URL for the review image"""
+        return f"/static/uploads/reviews/{self.filename}"
+
+    def __repr__(self):
+        return f'<ReviewImage {self.id} for Review {self.review_id}>'
+
+
+class ReviewHelpful(db.Model):
+    __tablename__ = 'review_helpful'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('reviews.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    is_helpful = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Composite unique constraint to prevent duplicate helpful votes
+    __table_args__ = (db.UniqueConstraint('review_id', 'user_id', name='unique_review_helpful'),)
+    
+    user = db.relationship('User', backref=db.backref('helpful_votes', lazy=True))
+    
+    def __repr__(self):
+        return f'<ReviewHelpful: User {self.user_id} found Review {self.review_id} helpful>'
+
+class SliderImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    subtitle = db.Column(db.String(200), nullable=True)  # New field for subtitle
+    image_filename = db.Column(db.String(255), nullable=False)
+    image_url = db.Column(db.String(500), nullable=True)  # For external URLs if needed
+    button_text = db.Column(db.String(50), nullable=True, default='ORDER NOW')  # New field for button text
+    button_link = db.Column(db.String(200), nullable=True, default='/menu')  # New field for button link
+    button_color = db.Column(db.String(20), nullable=True, default='warning')  # New field for button color
+    offer_text = db.Column(db.String(50), nullable=True)  # New field for offer/discount text
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<SliderImage {self.id}: {self.title}>'

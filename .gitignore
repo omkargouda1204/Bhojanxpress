@@ -25,6 +25,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+scripts/
+migrations/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -98,6 +100,51 @@ ipython_config.py
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.flaskenv
+
+# Sensitive data
+*.pem
+*.key
+*.cert
+*.crt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development emails
+dev_emails/
+
+# Database
+*.sql
+*.db
+
+# Uploads
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Documentation (optional - remove if you want to track them)
+ALL_FIXES_COMPLETED.md
+THEME_UPDATE_SUMMARY.md
+OTP_PAGE_TRANSFORMATION.md
+QUICK_START_GUIDE.md
+PROJECT_DOCUMENTATION_2PAGE.md
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
 #poetry.lock
 

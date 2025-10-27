@@ -2,22 +2,164 @@
 
 {% block title %}My Profile - Delivery Dashboard{% endblock %}
 
+{% block page_title %}My Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+.delivery-nav {
+    background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.1);
+    padding: 1rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(10px);
+}
+
+.delivery-nav .btn {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .col-md-6 {
+        margin-bottom: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .d-flex.justify-content-between .btn {
+        width: auto;
+    }
+    
+    .row.text-center .col-12 {
+        margin-bottom: 1.5rem;
+    }
+    
+    .row.text-center .col-12 h4 {
+        font-size: 1.5rem;
+    }
+    
+    .row.text-center .col-12 small {
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.5rem;
+    }
+    
+    .card-header .btn {
+        width: 100%;
+    }
+    
+    .form-control {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .mb-3 {
+        margin-bottom: 1rem !important;
+    }
+    
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 0.5rem !important;
+    }
+    
+    .d-flex.gap-2 .btn {
+        width: 100%;
+    }
+}
+
+/* Improved card layout */
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Performance stats styling */
+.performance-stat {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.performance-stat h4 {
+    margin-bottom: 0.25rem;
+    font-weight: bold;
+}
+
+.performance-stat small {
+    color: #6c757d;
+    font-weight: 500;
+}
+</style>
+{% endblock %}
+
 {% block delivery_content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="fas fa-user"></i> My Profile</h2>
-    <a href="{{ url_for('delivery.dashboard') }}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left"></i> Back to Dashboard
-    </a>
-</div>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white"><i class="fas fa-user"></i> My Profile</h2>
+        <a href="{{ url_for('delivery.dashboard') }}" class="btn" 
+           style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
 
 <!-- Profile Display Section -->
-<div class="row">
+<div class="row g-4">
     <!-- Personal Information Display -->
-    <div class="col-lg-8">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-primary">Personal Information</h6>
-                <button class="btn btn-sm btn-primary" onclick="toggleEditMode()">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center" 
+                 style="background: rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.2);">
+                <h6 class="m-0 font-weight-bold text-white">Personal Information</h6>
+                <button class="btn btn-sm" onclick="toggleEditMode()" 
+                        style="background: linear-gradient(135deg, #007bff, #0056b3); border: none; color: white;">
                     <i class="fas fa-edit"></i> Edit Profile
                 </button>
             </div>
@@ -26,32 +168,33 @@
                 <div id="displayMode">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <strong>Username:</strong>
-                            <p class="text-muted">{{ current_user.username or 'Not provided' }}</p>
+                            <strong class="text-white">Username:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ current_user.username or 'Not provided' }}</p>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <strong>Email Address:</strong>
-                            <p class="text-muted">{{ current_user.email }}</p>
+                            <strong class="text-white">Email Address:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ current_user.email }}</p>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <strong>Phone Number:</strong>
-                            <p class="text-muted">{{ current_user.phone or 'Not provided' }}</p>
+                            <strong class="text-white">Phone Number:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ current_user.phone or 'Not provided' }}</p>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <strong>Account Status:</strong>
-                            <p class="text-muted">
-                                <span class="badge badge-{{ 'success' if current_user.is_delivery_boy else 'danger' }}">
-                                    {{ 'Active Delivery Agent' if current_user.is_delivery_boy else 'Inactive' }}
+                            <strong class="text-white">Account Status:</strong>
+                            <div class="d-flex align-items-center">
+                                <span id="agent-status-pill" class="badge badge-{{ 'success' if current_user.is_active else 'danger' }} me-2">
+                                    {{ 'Active' if current_user.is_active else 'Inactive' }}
                                 </span>
-                            </p>
+                                <small style="color: rgba(255,255,255,0.6);">Status controlled by admin</small>
+                            </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-12 mb-3">
-                            <strong>Member Since:</strong>
-                            <p class="text-muted">{{ stats.member_since.strftime('%B %d, %Y') if stats.member_since else 'N/A' }}</p>
+                            <strong class="text-white">Member Since:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ stats.member_since.strftime('%B %d, %Y') if stats.member_since else 'N/A' }}</p>
                         </div>
                     </div>
                 </div>
@@ -92,12 +235,14 @@
 
                         <div class="row">
                             <div class="col-12">
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-save"></i> Update Profile
-                                </button>
-                                <button type="button" class="btn btn-secondary" onclick="toggleEditMode()">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
+                                <div class="d-flex flex-column flex-sm-row gap-2">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save"></i> Update Profile
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="toggleEditMode()">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -106,10 +251,12 @@
         </div>
 
         <!-- Account Details Card -->
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-success">Account Details</h6>
-                <button class="btn btn-sm btn-success" onclick="toggleAccountEditMode()">
+        <div class="card shadow mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center" 
+                 style="background: rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.2);">
+                <h6 class="m-0 font-weight-bold text-white">Account Details</h6>
+                <button class="btn btn-sm" onclick="toggleAccountEditMode()" 
+                        style="background: linear-gradient(135deg, #28a745, #1e7e34); border: none; color: white;">
                     <i class="fas fa-edit"></i> Update Account
                 </button>
             </div>
@@ -118,28 +265,28 @@
                 <div id="accountDisplayMode">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <strong>Bank Name:</strong>
-                            <p class="text-muted">{{ current_user.bank_name or 'Not provided' }}</p>
+                            <strong class="text-white">Bank Name:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ current_user.bank_name or 'Not provided' }}</p>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <strong>Account Number:</strong>
-                            <p class="text-muted">{{ current_user.account_number or 'Not provided' }}</p>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <strong>IFSC Code:</strong>
-                            <p class="text-muted">{{ current_user.ifsc_code or 'Not provided' }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong>Account Holder Name:</strong>
-                            <p class="text-muted">{{ current_user.account_holder_name or 'Not provided' }}</p>
+                            <strong class="text-white">Account Number:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ current_user.account_number or 'Not provided' }}</p>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <strong>UPI ID:</strong>
-                            <p class="text-muted">{{ current_user.upi_id or 'Not provided' }}</p>
+                            <strong class="text-white">IFSC Code:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ current_user.ifsc_code or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong class="text-white">Account Holder Name:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ current_user.account_holder_name or 'Not provided' }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong class="text-white">UPI ID:</strong>
+                            <p style="color: rgba(255,255,255,0.8);">{{ current_user.upi_id or 'Not provided' }}</p>
                         </div>
                     </div>
                 </div>
@@ -150,12 +297,12 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="bank_name" class="form-label">Bank Name</label>
-                                <input type="text" class="form-control" id="bank_name" name="bank_name" value="{{ current_user.bank_name or '' }}">
+                                <label for="bank_name" class="form-label text-white">Bank Name</label>
+                                <input type="text" class="form-control" id="bank_name" name="bank_name" value="{{ current_user.bank_name or '' }}" style="background: rgba(255,255,255,0.9);">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="account_number" class="form-label">Account Number</label>
-                                <input type="text" class="form-control" id="account_number" name="account_number" value="{{ current_user.account_number or '' }}">
+                                <label for="account_number" class="form-label text-white">Account Number</label>
+                                <input type="text" class="form-control" id="account_number" name="account_number" value="{{ current_user.account_number or '' }}" style="background: rgba(255,255,255,0.9);">
                             </div>
                         </div>
                         <div class="row">
@@ -189,28 +336,36 @@
     </div>
 
     <!-- Statistics Card -->
-    <div class="col-lg-4">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-success">My Performance</h6>
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <div class="card-header py-3" style="background: rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.2);">
+                <h6 class="m-0 font-weight-bold text-white">My Performance</h6>
             </div>
             <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-12 mb-3">
-                        <h4 class="text-primary">{{ stats.total_deliveries or 0 }}</h4>
-                        <small class="text-muted">Total Deliveries</small>
+                <div class="row g-3">
+                    <div class="col-6 col-lg-12">
+                        <div class="performance-stat" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);">
+                            <h4 class="text-white">{{ stats.total_deliveries or 0 }}</h4>
+                            <small style="color: rgba(255,255,255,0.8);">Total Deliveries</small>
+                        </div>
                     </div>
-                    <div class="col-12 mb-3">
-                        <h4 class="text-success">₹{{ "%.2f"|format(stats.total_earnings or 0) }}</h4>
-                        <small class="text-muted">Total Earnings</small>
+                    <div class="col-6 col-lg-12">
+                        <div class="performance-stat" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);">
+                            <h4 class="text-white">₹{{ "%.2f"|format(stats.total_earnings or 0) }}</h4>
+                            <small style="color: rgba(255,255,255,0.8);">Total Earnings</small>
+                        </div>
                     </div>
-                    <div class="col-12 mb-3">
-                        <h4 class="text-warning">₹{{ "%.2f"|format(stats.pending_commission or 0) }}</h4>
-                        <small class="text-muted">Pending Commission</small>
+                    <div class="col-6 col-lg-12">
+                        <div class="performance-stat" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);">
+                            <h4 class="text-white">₹{{ "%.2f"|format(stats.pending_commission or 0) }}</h4>
+                            <small style="color: rgba(255,255,255,0.8);">Pending Commission</small>
+                        </div>
                     </div>
-                    <div class="col-12 mb-3">
-                        <h4 class="text-info">{{ stats.today_deliveries or 0 }}</h4>
-                        <small class="text-muted">Today's Deliveries</small>
+                    <div class="col-6 col-lg-12">
+                        <div class="performance-stat" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);">
+                            <h4 class="text-white">{{ stats.today_deliveries or 0 }}</h4>
+                            <small style="color: rgba(255,255,255,0.8);">Today's Deliveries</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -218,32 +373,41 @@
 
         <!-- Recent Orders -->
         {% if recent_orders %}
-        <div class="card shadow">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Recent Orders</h6>
+        <div class="card shadow" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <div class="card-header py-3" style="background: rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.2);">
+                <h6 class="m-0 font-weight-bold text-white">Recent Orders</h6>
             </div>
             <div class="card-body">
                 {% for order in recent_orders %}
-                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
-                    <div>
-                        <strong>#{{ order.id }}</strong><br>
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 pb-2" style="border-bottom: 1px solid rgba(255,255,255,0.2);">
+                    <div class="mb-2 mb-sm-0">
+                        <strong class="text-primary">#{{ order.id }}</strong><br>
                         <small class="text-muted">{{ order.customer_name or order.user.username }}</small>
                     </div>
-                    <div class="text-end">
-                        <span class="badge bg-{{ 'success' if order.status == 'delivered' else 'primary' if order.status == 'out_for_delivery' else 'warning' }}">
+                    <div class="d-flex flex-column align-items-start align-items-sm-end">
+                        <span class="badge bg-{{ 'success' if order.status == 'delivered' else 'primary' if order.status == 'out_for_delivery' else 'warning' }} mb-1">
                             {{ order.status.replace('_', ' ').title() }}
-                        </span><br>
-                        <small class="text-muted">₹{{ "%.2f"|format(order.delivery_charge or 0) }}</small>
+                        </span>
+                        <small class="text-muted">Earning: ₹{{ "%.2f"|format(order.delivery_charge or 0) }}</small>
                     </div>
                 </div>
                 {% endfor %}
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('delivery.orders') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list"></i> View All Orders
+                    </a>
+                </div>
             </div>
         </div>
         {% else %}
         <div class="card shadow">
-            <div class="card-body text-center">
+            <div class="card-body text-center py-4">
                 <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                <p class="text-muted">No recent orders found</p>
+                <h6 class="text-muted mb-2">No Recent Orders</h6>
+                <p class="text-muted small mb-3">Start delivering to see your recent orders here</p>
+                <a href="{{ url_for('delivery.orders') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-search"></i> Browse Available Orders
+                </a>
             </div>
         </div>
         {% endif %}

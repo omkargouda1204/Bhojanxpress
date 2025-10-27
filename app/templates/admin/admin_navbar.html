@@ -42,6 +42,54 @@
             </ul>
             
             <ul class="navbar-nav">
+                <!-- Orders notification -->
+                <li class="nav-item">
+                    <a class="nav-link position-relative" href="{{ url_for('admin.orders') }}">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span id="orderNotificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">0</span>
+                    </a>
+                </li>
+                
+                <!-- Messages notification -->
+                <li class="nav-item">
+                    <a class="nav-link position-relative" href="{{ url_for('admin.contact_messages') }}">
+                        <i class="fas fa-envelope"></i>
+                        <span id="messageNotificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">0</span>
+                    </a>
+                </li>
+                
+                <!-- Reviews notification -->
+                <li class="nav-item">
+                    <a class="nav-link position-relative" href="{{ url_for('admin.manage_reviews') }}">
+                        <i class="fas fa-star"></i>
+                        <span id="reviewNotificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">0</span>
+                    </a>
+                </li>
+                
+                <!-- Notifications dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="adminNotificationsDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-bell"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end p-0" style="width: 320px; max-height: 400px; overflow-y: auto;">
+                        <div class="card border-0">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                <h6 class="mb-0">Notifications</h6>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="adminMarkAllReadBtn">
+                                    Mark all read
+                                </button>
+                            </div>
+                            <div class="card-body p-0" id="adminNotificationsContainer">
+                                <div class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('user.home') }}" target="_blank">
                         <i class="fas fa-external-link-alt"></i> View Site

@@ -2,54 +2,50 @@
 
 {% block title %}Menu - BhojanXpress{% endblock %}
 
-{% block head %}
-{{ super() }}
-<link href="{{ url_for('static', filename='css/search.css') }}" rel="stylesheet">
-{% endblock %}
-
 {% block content %}
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar Filters (Flipkart Style) -->
-        <div class="col-lg-3 col-md-4 mb-4" id="filterSidebar">
-            <div class="filter-sidebar bg-white shadow-sm rounded p-4 position-sticky" style="top: 20px;">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="col-lg-3 d-none d-lg-block mb-4" id="filterColumn">
+            <!-- Filter Toggle Button for Mobile -->
+            <div class="d-lg-none mb-3">
+                <button class="btn btn-outline-primary w-100" type="button" id="toggleFiltersBtn">
+                    <i class="fas fa-filter me-2"></i>Filters
+                </button>
+            </div>
+            
+            <div class="filter-sidebar bg-white shadow-sm rounded p-4" id="filterSidebar">
+                <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="fw-bold mb-0">Filters</h4>
-                    <button class="btn btn-sm btn-outline-secondary d-lg-none" id="hideFiltersBtn">
-                        <i class="fas fa-times"></i>
-                    </button>
                 </div>
                 
                 <!-- Price Filter -->
                 <div class="filter-section mb-4">
                     <h5 class="filter-title d-flex justify-content-between align-items-center">
                         <span>PRICE</span>
-                        <button class="btn btn-link btn-sm text-primary p-0" onclick="clearPriceFilter()">CLEAR</button>
                     </h5>
                     
                     <!-- Price Range Slider -->
-                    <div class="price-slider-container my-3">
-                        <div class="d-flex justify-content-between mt-2">
-                            <select class="form-select form-select-sm" id="minPriceSelect" style="width: 45%;" onchange="autoApplyFilters()">
-                                <option value="">Min</option>
-                                <option value="0">₹0</option>
-                                <option value="50">₹50</option>
-                                <option value="100">₹100</option>
-                                <option value="200">₹200</option>
-                                <option value="300">₹300</option>
-                                <option value="500">₹500</option>
-                            </select>
-                            <span class="align-self-center mx-2">to</span>
-                            <select class="form-select form-select-sm" id="maxPriceSelect" style="width: 45%;" onchange="autoApplyFilters()">
-                                <option value="">Max</option>
-                                <option value="100">₹100</option>
-                                <option value="200">₹200</option>
-                                <option value="300">₹300</option>
-                                <option value="500">₹500</option>
-                                <option value="1000">₹1000</option>
-                                <option value="2000">₹2000+</option>
-                            </select>
-                        </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <select class="form-select form-select-sm" id="minPriceSelect" style="width: 45%;">
+                            <option value="">Min</option>
+                            <option value="0">₹0</option>
+                            <option value="50">₹50</option>
+                            <option value="100">₹100</option>
+                            <option value="200">₹200</option>
+                            <option value="300">₹300</option>
+                            <option value="500">₹500</option>
+                        </select>
+                        <span class="align-self-center mx-2">to</span>
+                        <select class="form-select form-select-sm" id="maxPriceSelect" style="width: 45%;">
+                            <option value="">Max</option>
+                            <option value="100">₹100</option>
+                            <option value="200">₹200</option>
+                            <option value="300">₹300</option>
+                            <option value="500">₹500</option>
+                            <option value="1000">₹1000</option>
+                            <option value="20000">₹20000+</option>
+                        </select>
                     </div>
                 </div>
 
@@ -57,16 +53,16 @@
                 <div class="filter-section mb-4">
                     <h5 class="filter-title">CATEGORY</h5>
                     <div class="category-filters">
+                        {% if categories %}
                         <div class="form-check mb-2">
-                            <input class="form-check-input category-filter" type="radio" name="categoryFilter" id="categoryAll" value="all" {% if not current_category or current_category == 'all' %}checked{% endif %} onchange="autoApplyFilters()">
+                            <input class="form-check-input" type="radio" name="categoryFilter" id="categoryAll" value="all" {% if not current_category or current_category == 'all' %}checked{% endif %}>
                             <label class="form-check-label" for="categoryAll">
                                 All Categories
                             </label>
                         </div>
-                        {% if categories %}
                         {% for category in categories %}
                         <div class="form-check mb-2">
-                            <input class="form-check-input category-filter" type="radio" name="categoryFilter" id="category{{ loop.index }}" value="{{ category.name }}" {% if current_category == category.name %}checked{% endif %} onchange="autoApplyFilters()">
+                            <input class="form-check-input" type="radio" name="categoryFilter" id="category{{ loop.index }}" value="{{ category.name }}" {% if current_category == category.name %}checked{% endif %}>
                             <label class="form-check-label" for="category{{ loop.index }}">
                                 {{ category.display_name }}
                             </label>
@@ -75,97 +71,75 @@
                         {% endif %}
                     </div>
                 </div>
-
-                <!-- Filter Actions -->
-                <div class="filter-actions mt-4">
-                    <button class="btn btn-outline-secondary w-100" onclick="clearAllFilters()">
-                        <i class="fas fa-times me-2"></i>Clear All
+                
+                <!-- Clear All Filters Button -->
+                <div class="d-grid">
+                    <button class="btn btn-outline-danger" id="clearAllFiltersBtn">
+                        <i class="fas fa-times me-1"></i>Clear All Filters
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- Main Content -->
-        <div class="col-lg-9 col-md-8" id="mainContent">
+        <div class="col-lg-9 col-12" id="mainContent">
             <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <div class="d-flex align-items-center">
-                        <h2 class="fw-bold mb-1 me-3">Our Menu</h2>
-                        <!-- Show/Hide Filter Button (Mobile) -->
-                        <button class="btn btn-outline-primary btn-sm d-lg-none" id="showFiltersBtn">
-                            <i class="fas fa-filter me-2"></i>Filters
-                        </button>
-                    </div>
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                <div class="mb-2 mb-md-0">
+                    <h2 class="fw-bold mb-1">Our Menu</h2>
                     <p class="text-muted mb-0">
+                        <span id="itemsCount">
+                            {% if food_items.items %}
+                                Showing {{ food_items.items|length }} item{{ 's' if food_items.items|length != 1 else '' }}
+                            {% else %}
+                                No items available
+                            {% endif %}
+                        </span>
                         {% if current_category and current_category != 'all' %}
-                            {{ current_category.replace('_', ' ').title() }} - 
-                        {% endif %}
-                        {% if food_items.items %}
-                            Showing {{ food_items.items|length }} item{{ 's' if food_items.items|length != 1 else '' }}
-                        {% else %}
-                            No items available
+                            in {{ current_category.replace('_', ' ').title() }}
                         {% endif %}
                     </p>
                 </div>
                 
-                <!-- Sort Options -->
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown">
-                        <i class="fas fa-sort me-2"></i><span id="sortLabel">Sort by</span>
+                <!-- Controls -->
+                <div class="d-flex gap-2 flex-wrap">
+                    <!-- Sidebar Toggle for Desktop -->
+                    <button class="btn btn-outline-secondary d-none d-lg-block" id="toggleSidebarBtn">
+                        <i class="fas fa-bars me-1"></i>Toggle Filters
                     </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item sort-option" href="#" data-sort="relevance">
-                            <i class="fas fa-star me-2"></i>Relevance
-                        </a></li>
-                        <li><a class="dropdown-item sort-option" href="#" data-sort="name">
-                            <i class="fas fa-sort-alpha-down me-2"></i>Name (A-Z)
-                        </a></li>
-                        <li><a class="dropdown-item sort-option" href="#" data-sort="name-desc">
-                            <i class="fas fa-sort-alpha-up me-2"></i>Name (Z-A)
-                        </a></li>
-                        <li><a class="dropdown-item sort-option" href="#" data-sort="price-low">
-                            <i class="fas fa-arrow-up me-2"></i>Price: Low to High
-                        </a></li>
-                        <li><a class="dropdown-item sort-option" href="#" data-sort="price-high">
-                            <i class="fas fa-arrow-down me-2"></i>Price: High to Low
-                        </a></li>
-                        <li><a class="dropdown-item sort-option" href="#" data-sort="newest">
-                            <i class="fas fa-clock me-2"></i>Newest First
-                        </a></li>
-                        <li><a class="dropdown-item sort-option" href="#" data-sort="rating">
-                            <i class="fas fa-star me-2"></i>Highest Rated
-                        </a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Active Filters Display -->
-            <div id="activeFilters" class="mb-3" style="display: none;">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span class="fw-bold text-muted">Active Filters:</span>
-                    <div id="activeFilterTags"></div>
-                    <button class="btn btn-link btn-sm text-danger p-0 ms-2" onclick="clearAllFilters()">
-                        Clear All
-                    </button>
+                    
+                    <!-- Sort Options -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-sort me-2"></i>Sort by
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="sortItems('name')">Name (A-Z)</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="sortItems('name-desc')">Name (Z-A)</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="sortItems('price-low')">Price: Low to High</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="sortItems('price-high')">Price: High to Low</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="sortItems('newest')">Newest First</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
             <!-- Food Items Grid -->
             {% if food_items.items %}
-            <div class="row g-4" id="foodItemsContainer">
+            <div class="row" id="foodItemsContainer">
                 {% for item in food_items.items %}
-                <div class="col-xl-4 col-lg-6 col-md-6 food-item" 
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-4 food-item" 
                      data-category="{{ item.category }}" 
                      data-price="{{ item.price }}" 
-                     data-available="{{ item.is_available|string|lower }}">
+                     data-available="{{ item.is_available|string|lower }}"
+                     data-name="{{ item.name|lower }}">
                     <div class="card h-100 shadow-sm food-item-card rounded-3 border-0 transition-all">
                         <!-- Food Image -->
                         <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="position-relative">
                             {% if item.image_url %}
-                            <img src="{{ item.image_url }}" class="card-img-top food-image rounded-top-3" alt="{{ item.name }}" loading="lazy" style="height: 200px; object-fit: cover;">
+                            <img src="{{ item.image_url }}" class="card-img-top food-image rounded-top-3" alt="{{ item.name }}" loading="lazy" style="height: 180px; object-fit: cover;">
                             {% else %}
-                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center food-image-placeholder rounded-top-3" style="height: 200px;">
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center food-image-placeholder rounded-top-3" style="height: 180px;">
                                 <i class="fas fa-utensils text-muted fa-2x"></i>
                             </div>
                             {% endif %}
@@ -177,37 +151,57 @@
                         </a>
 
                         <!-- Card Body -->
-                        <div class="card-body d-flex flex-column">
+                        <div class="card-body d-flex flex-column p-3">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="text-decoration-none text-dark">
-                                    <h5 class="card-title mb-0 text-truncate">{{ item.name }}</h5>
+                                <a href="{{ url_for('user.food_detail', food_id=item.id) }}" class="text-decoration-none text-dark flex-grow-1">
+                                    <h6 class="card-title mb-0 text-truncate">{{ item.name }}</h6>
                                 </a>
-                                <span class="badge bg-info text-white ms-2">{{ item.preparation_time or 15 }}min</span>
+                                <span class="badge bg-info text-white ms-2 small">{{ item.preparation_time or 15 }}min</span>
                             </div>
                             
-                            <p class="card-text text-muted small">{{ item.description[:100] }}{% if item.description|length > 100 %}...{% endif %}</p>
+                            <p class="card-text text-muted small mb-2" style="font-size: 0.8rem;">{{ item.description[:80] }}{% if item.description|length > 80 %}...{% endif %}</p>
+                            
+                            <!-- Review Information -->
+                            {% set item_reviews = review_stats.get(item.id, {'total_reviews': 0, 'average_rating': 0}) %}
+                            {% if item_reviews.total_reviews > 0 %}
+                            <div class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="stars-display-small me-2" data-rating="{{ item_reviews.average_rating }}">
+                                        {% for i in range(1, 6) %}
+                                            <i class="fas fa-star star" data-rating="{{ i }}"></i>
+                                        {% endfor %}
+                                    </div>
+                                    <span class="small text-muted">
+                                        {{ item_reviews.average_rating }} ({{ item_reviews.total_reviews }} review{{ 's' if item_reviews.total_reviews != 1 else '' }})
+                                    </span>
+                                </div>
+                            </div>
+                            {% endif %}
                             
                             <div class="mt-auto">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span class="h5 text-success mb-0">₹{{ "%.2f"|format(item.price) }}</span>
-                                    <span class="badge bg-secondary">{{ item.category.replace('_', ' ').title() if item.category else 'General' }}</span>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="h6 text-success mb-0">₹{{ "%.0f"|format(item.price) }}</span>
+                                    <span class="badge bg-secondary small">{{ item.category.replace('_', ' ').title() if item.category else 'General' }}</span>
                                 </div>
                                 
-                                {% if current_user.is_authenticated %}
-                                {% if item.is_available %}
-                                <button class="btn btn-primary w-100" onclick="addToCart({{ item.id }})">
-                                    <i class="fas fa-cart-plus me-1"></i> Add to Cart
-                                </button>
-                                {% else %}
-                                <button class="btn btn-secondary w-100" disabled>
-                                    <i class="fas fa-times me-1"></i> Unavailable
-                                </button>
-                                {% endif %}
-                                {% else %}
-                                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary w-100">
-                                    <i class="fas fa-sign-in-alt me-1"></i> Login to Order
-                                </a>
-                                {% endif %}
+                                <!-- Action Buttons -->
+                                <div class="d-flex gap-1">
+                                    {% if current_user.is_authenticated %}
+                                        {% if item.is_available %}
+                                            <button class="btn btn-primary btn-sm flex-fill" onclick="addToCart({{ item.id }})">
+                                                <i class="fas fa-cart-plus me-1"></i>Add to Cart
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-secondary btn-sm flex-fill" disabled>
+                                                <i class="fas fa-times me-1"></i>Unavailable
+                                            </button>
+                                        {% endif %}
+                                    {% else %}
+                                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-sm flex-fill">
+                                            <i class="fas fa-sign-in-alt me-1"></i>Login to Order
+                                        </a>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -265,403 +259,245 @@
 
 </div>
 
-<script>
-// Menu Filter and Sort Functionality
-let allItems = [];
-let filteredItems = [];
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Store all items for filtering
-    const foodItems = document.querySelectorAll('.food-item');
-    allItems = Array.from(foodItems);
-    filteredItems = [...allItems];
-    
-    // Initialize event listeners
-    initializeEventListeners();
-});
-
-function initializeEventListeners() {
-    // Show/Hide Filter Buttons
-    const showFiltersBtn = document.getElementById('showFiltersBtn');
-    const hideFiltersBtn = document.getElementById('hideFiltersBtn');
-    const filterSidebar = document.getElementById('filterSidebar');
-    
-    if (showFiltersBtn) {
-        showFiltersBtn.addEventListener('click', function() {
-            filterSidebar.style.display = 'block';
-            filterSidebar.classList.add('mobile-filter-show');
-        });
-    }
-    
-    if (hideFiltersBtn) {
-        hideFiltersBtn.addEventListener('click', function() {
-            filterSidebar.style.display = 'none';
-            filterSidebar.classList.remove('mobile-filter-show');
-        });
-    }
-    
-    // Sort dropdown
-    const sortOptions = document.querySelectorAll('.sort-option');
-    sortOptions.forEach(option => {
-        option.addEventListener('click', function(e) {
-            e.preventDefault();
-            const sortType = this.getAttribute('data-sort');
-            const sortLabel = this.textContent.trim();
-            document.getElementById('sortLabel').textContent = sortLabel;
-            sortItems(sortType);
-        });
-    });
-    
-    // Category filters with auto-apply
-    const categoryFilters = document.querySelectorAll('.category-filter');
-    categoryFilters.forEach(filter => {
-        filter.addEventListener('change', function() {
-            if (this.checked) {
-                updateActiveFilters();
-                applyFilters();
-            }
-        });
-    });
-    
-    // Price filters
-    const minPriceSelect = document.getElementById('minPriceSelect');
-    const maxPriceSelect = document.getElementById('maxPriceSelect');
-    
-    if (minPriceSelect) {
-        minPriceSelect.addEventListener('change', function() {
-            updateActiveFilters();
-        });
-    }
-    
-    if (maxPriceSelect) {
-        maxPriceSelect.addEventListener('change', function() {
-            updateActiveFilters();
-        });
-    }
-    
-    // Availability filters
-    const availableOnly = document.getElementById('availableOnly');
-    const includeOutOfStock = document.getElementById('includeOutOfStock');
-    
-    if (availableOnly) {
-        availableOnly.addEventListener('change', updateActiveFilters);
-    }
-    
-    if (includeOutOfStock) {
-        includeOutOfStock.addEventListener('change', updateActiveFilters);
-    }
-}
-
-function applyFilters() {
-    const category = document.querySelector('input[name="categoryFilter"]:checked')?.value || 'all';
-    const minPrice = parseFloat(document.getElementById('minPriceSelect')?.value) || 0;
-    const maxPrice = parseFloat(document.getElementById('maxPriceSelect')?.value) || Infinity;
-    const availableOnly = document.getElementById('availableOnly')?.checked || false;
-    const includeOutOfStock = document.getElementById('includeOutOfStock')?.checked || false;
-    
-    filteredItems = allItems.filter(item => {
-        // Category filter
-        const itemCategory = item.getAttribute('data-category');
-        if (category !== 'all' && itemCategory !== category) {
-            return false;
-        }
-        
-        // Price filter
-        const itemPrice = parseFloat(item.getAttribute('data-price'));
-        if (itemPrice < minPrice || itemPrice > maxPrice) {
-            return false;
-        }
-        
-        // Availability filter
-        const itemAvailable = item.getAttribute('data-available') === 'true';
-        if (availableOnly && !itemAvailable) {
-            return false;
-        }
-        
-        if (!includeOutOfStock && !itemAvailable) {
-            return false;
-        }
-        
-        return true;
-    });
-    
-    // Hide all items first
-    allItems.forEach(item => {
-        item.style.display = 'none';
-    });
-    
-    // Show filtered items
-    filteredItems.forEach(item => {
-        item.style.display = 'block';
-    });
-    
-    // Update results count
-    updateResultsCount();
-    
-    // Update active filters display
-    updateActiveFilters();
-    
-    // Hide filter sidebar on mobile after applying
-    const filterSidebar = document.getElementById('filterSidebar');
-    if (window.innerWidth < 992) {
-        filterSidebar.style.display = 'none';
-    }
-}
-
-function sortItems(sortType) {
-    const container = document.getElementById('foodItemsContainer');
-    
-    filteredItems.sort((a, b) => {
-        switch (sortType) {
-            case 'name':
-                return a.querySelector('.card-title').textContent.localeCompare(b.querySelector('.card-title').textContent);
-            
-            case 'name-desc':
-                return b.querySelector('.card-title').textContent.localeCompare(a.querySelector('.card-title').textContent);
-            
-            case 'price-low':
-                return parseFloat(a.getAttribute('data-price')) - parseFloat(b.getAttribute('data-price'));
-            
-            case 'price-high':
-                return parseFloat(b.getAttribute('data-price')) - parseFloat(a.getAttribute('data-price'));
-            
-            case 'newest':
-                // Assume items are already in newest order in HTML
-                return 0;
-            
-            case 'rating':
-                // If rating data is available
-                const ratingA = parseFloat(a.getAttribute('data-rating')) || 0;
-                const ratingB = parseFloat(b.getAttribute('data-rating')) || 0;
-                return ratingB - ratingA;
-            
-            default:
-                return 0;
-        }
-    });
-    
-    // Re-append items in sorted order
-    filteredItems.forEach(item => {
-        container.appendChild(item);
-    });
-}
-
-function updateActiveFilters() {
-    const activeFiltersDiv = document.getElementById('activeFilters');
-    const activeFilterTags = document.getElementById('activeFilterTags');
-    const tags = [];
-    
-    // Category filter
-    const selectedCategory = document.querySelector('input[name="categoryFilter"]:checked');
-    if (selectedCategory && selectedCategory.value !== 'all') {
-        tags.push({
-            type: 'category',
-            value: selectedCategory.value,
-            label: selectedCategory.nextElementSibling.textContent.trim()
-        });
-    }
-    
-    // Price filters
-    const minPrice = document.getElementById('minPriceSelect')?.value;
-    const maxPrice = document.getElementById('maxPriceSelect')?.value;
-    if (minPrice || maxPrice) {
-        let priceLabel = 'Price: ';
-        if (minPrice && maxPrice) {
-            priceLabel += `₹${minPrice} - ₹${maxPrice}`;
-        } else if (minPrice) {
-            priceLabel += `₹${minPrice}+`;
-        } else if (maxPrice) {
-            priceLabel += `Up to ₹${maxPrice}`;
-        }
-        tags.push({
-            type: 'price',
-            label: priceLabel
-        });
-    }
-    
-    // Availability filters
-    if (document.getElementById('availableOnly')?.checked) {
-        tags.push({
-            type: 'availability',
-            label: 'Available Only'
-        });
-    }
-    
-    // Display tags
-    if (tags.length > 0) {
-        activeFilterTags.innerHTML = tags.map(tag => 
-            `<span class="badge bg-primary me-2 mb-1">
-                ${tag.label}
-                <i class="fas fa-times ms-1 cursor-pointer" onclick="removeFilter('${tag.type}', '${tag.value || ''}')"></i>
-            </span>`
-        ).join('');
-        activeFiltersDiv.style.display = 'block';
-    } else {
-        activeFiltersDiv.style.display = 'none';
-    }
-}
-
-function removeFilter(type, value) {
-    switch (type) {
-        case 'category':
-            document.getElementById('categoryAll').checked = true;
-            break;
-        case 'price':
-            document.getElementById('minPriceSelect').value = '';
-            document.getElementById('maxPriceSelect').value = '';
-            break;
-        case 'availability':
-            document.getElementById('availableOnly').checked = false;
-            break;
-    }
-    applyFilters();
-}
-
-function clearAllFilters() {
-    // Reset all filter inputs
-    document.getElementById('categoryAll').checked = true;
-    document.getElementById('minPriceSelect').value = '';
-    document.getElementById('maxPriceSelect').value = '';
-    document.getElementById('availableOnly').checked = false;
-    document.getElementById('includeOutOfStock').checked = false;
-    
-    // Apply filters (which will show all items)
-    applyFilters();
-}
-
-function clearPriceFilter() {
-    document.getElementById('minPriceSelect').value = '';
-    document.getElementById('maxPriceSelect').value = '';
-    updateActiveFilters();
-}
-
-function updateResultsCount() {
-    const resultText = document.querySelector('.text-muted');
-    if (resultText) {
-        const count = filteredItems.length;
-        const category = document.querySelector('input[name="categoryFilter"]:checked')?.nextElementSibling?.textContent || '';
-        let newText = '';
-        
-        if (category && category !== 'All Categories') {
-            newText = `${category} - `;
-        }
-        
-        newText += `Showing ${count} item${count !== 1 ? 's' : ''}`;
-        resultText.textContent = newText;
-    }
-}
-
-// Add to Cart Function
-function addToCart(itemId) {
-    const button = event.target.closest('button');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Adding...';
-    button.disabled = true;
-    
-    fetch(`/add_to_cart/${itemId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': '{{ csrf_token() }}'
-        },
-        body: new URLSearchParams({
-            'quantity': '1'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-        
-        if (data.success) {
-            // Show success message
-            showToast('success', 'Item added to cart successfully!');
-            
-            // Update cart badge if exists
-            const cartBadge = document.querySelector('.cart-badge');
-            if (cartBadge && data.cart_count) {
-                cartBadge.textContent = data.cart_count;
-                cartBadge.style.display = 'inline';
-            }
-        } else {
-            showToast('error', data.message || 'Failed to add item to cart');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        button.innerHTML = originalText;
-        button.disabled = false;
-        showToast('error', 'An error occurred while adding item to cart');
-    });
-}
-
-function showToast(type, message) {
-    const toast = document.createElement('div');
-    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-    toast.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
-    toast.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.remove();
-        }
-    }, 3000);
-}
-
-// Responsive filter sidebar
-window.addEventListener('resize', function() {
-    const filterSidebar = document.getElementById('filterSidebar');
-    if (window.innerWidth >= 992) {
-        filterSidebar.style.display = 'block';
-        filterSidebar.classList.remove('mobile-filter-show');
-    } else {
-        if (!filterSidebar.classList.contains('mobile-filter-show')) {
-            filterSidebar.style.display = 'none';
-        }
-    }
-});
-</script>
-
 <style>
-/* Additional CSS for mobile filter sidebar */
+/* Enhanced responsive design with better text visibility */
+.food-item-card {
+    transition: all 0.3s ease;
+    height: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.food-item-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+    border-color: #007bff;
+}
+
+/* Card title improvements */
+.food-item-card .card-title {
+    color: #212529 !important;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Card text improvements */
+.food-item-card .card-text {
+    color: #495057 !important;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+/* Price display */
+.food-item-card .text-primary {
+    color: #28a745 !important;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+/* Badge improvements */
+.food-item-card .badge {
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    font-size: 0.85rem;
+}
+
+.badge-success {
+    background-color: #28a745 !important;
+}
+
+.badge-warning {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.badge-danger {
+    background-color: #dc3545 !important;
+}
+
+/* Button hover improvements */
+.food-item-card .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.food-item-card .btn-primary:hover {
+    background-color: #0056b3 !important;
+    border-color: #004085 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+}
+
+.food-item-card .btn-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.food-item-card .btn-warning:hover {
+    background-color: #e0a800 !important;
+    border-color: #d39e00 !important;
+    color: #000 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+
+.food-item-card .btn-outline-primary {
+    color: #007bff;
+    border-color: #007bff;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.food-item-card .btn-outline-primary:hover {
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* Card image container */
+.food-item-card .card-img-top {
+    transition: all 0.3s ease;
+    height: 200px;
+    object-fit: cover;
+}
+
+.food-item-card:hover .card-img-top {
+    transform: scale(1.05);
+}
+
+.food-item {
+    transition: all 0.3s ease;
+}
+
+.food-item.hidden {
+    display: none !important;
+}
+
+/* Sidebar responsive behavior */
+#filterColumn {
+    transition: all 0.3s ease;
+}
+
+#filterColumn.collapsed {
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#mainContent {
+    transition: all 0.3s ease;
+}
+
+#mainContent.expanded {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 575.98px) {
+    .food-item {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
+    
+    .card-title {
+        font-size: 0.9rem;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+    #foodItemsContainer .col-sm-6:nth-child(2n+1) {
+        clear: left;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    #foodItemsContainer .col-md-6:nth-child(2n+1) {
+        clear: left;
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    #foodItemsContainer .col-lg-4:nth-child(3n+1) {
+        clear: left;
+    }
+}
+
+@media (min-width: 1200px) {
+    #foodItemsContainer .col-xl-3:nth-child(4n+1) {
+        clear: left;
+    }
+}
+
+/* Mobile filter sidebar */
 @media (max-width: 991.98px) {
-    #filterSidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100vh;
-        z-index: 1050;
-        overflow-y: auto;
-        width: 300px;
+    #filterColumn.collapsed {
         display: none;
     }
     
-    #filterSidebar.mobile-filter-show {
-        display: block !important;
-    }
-    
-    #filterSidebar::before {
-        content: '';
+    #filterSidebar {
+        display: none;
         position: fixed;
         top: 0;
         left: 0;
-        right: 0;
-        bottom: 0;
+        width: 85%;
+        height: 100vh;
+        background: white;
+        z-index: 1050;
+        overflow-y: auto;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        padding: 20px;
+    }
+    
+    #filterSidebar.show {
+        display: block !important;
+    }
+    
+    .filter-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
         background: rgba(0,0,0,0.5);
-        z-index: -1;
+        z-index: 1040;
+    }
+    
+    .filter-overlay.show {
+        display: block;
+    }
+    
+    #mainContent {
+        width: 100% !important;
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+    
+    #filterSidebar {
+        padding-top: 60px;
     }
 }
 
-.cursor-pointer {
-    cursor: pointer;
+/* Desktop sidebar toggle */
+@media (min-width: 992px) {
+    .filter-overlay {
+        display: none !important;
+    }
 }
 
+/* Filter section styling */
 .filter-section {
     border-bottom: 1px solid #eee;
     padding-bottom: 1rem;
@@ -672,29 +508,459 @@ window.addEventListener('resize', function() {
 }
 
 .filter-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 1rem;
+    color: #212529 !important;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
+/* Improve form check label visibility */
 .form-check-label {
+    color: #495057 !important;
     font-size: 0.9rem;
-    color: #555;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.food-item {
+.form-check-label:hover {
+    color: #007bff !important;
+    padding-left: 3px;
+}
+
+/* Custom checkbox and radio styling */
+.form-check-input {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.form-check-input:hover {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+}
+
+/* Select dropdown styling */
+.form-select {
+    color: #212529 !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-select option {
+    color: #212529;
+    font-weight: 500;
+}
+
+/* Filter sidebar improvements */
+.filter-sidebar {
+    border: 1px solid #e0e0e0;
+}
+
+.filter-sidebar h4 {
+    color: #212529 !important;
+    font-weight: 700;
+}
+
+/* Clear filters button */
+#clearAllFiltersBtn {
+    font-size: 0.85rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
     transition: all 0.3s ease;
 }
 
-.food-item-card:hover {
+#clearAllFiltersBtn:hover {
+    background-color: #dc3545 !important;
+    color: white !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
 }
 
-.badge {
-    font-size: 0.75rem;
+/* Star Rating Styles */
+.stars-display-small .star {
+    color: #ddd;
+    font-size: 0.8rem;
+    margin-right: 1px;
+}
+
+.stars-display-small.filled-1 .star:nth-child(-n+1),
+.stars-display-small.filled-2 .star:nth-child(-n+2),
+.stars-display-small.filled-3 .star:nth-child(-n+3),
+.stars-display-small.filled-4 .star:nth-child(-n+4),
+.stars-display-small.filled-5 .star:nth-child(-n+5) {
+    color: #ffc107;
+}
+
+/* Responsive text adjustments */
+@media (max-width: 575.98px) {
+    .food-item-card .card-body {
+        padding: 0.75rem;
+    }
+    
+    .food-item-card .card-title {
+        font-size: 0.9rem;
+    }
+    
+    .food-item-card .card-text {
+        font-size: 0.75rem;
+    }
+    
+    .badge.small {
+        font-size: 0.65rem;
+    }
 }
 </style>
 
+<script>
+// Enhanced menu filtering and responsiveness
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggleFiltersBtn');
+    const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+    const filterSidebar = document.getElementById('filterSidebar');
+    const filterColumn = document.getElementById('filterColumn');
+    const mainContent = document.getElementById('mainContent');
+    const clearAllFiltersBtn = document.getElementById('clearAllFiltersBtn');
+    const categoryRadios = document.querySelectorAll('input[name="categoryFilter"]');
+    const minPriceSelect = document.getElementById('minPriceSelect');
+    const maxPriceSelect = document.getElementById('maxPriceSelect');
+    const itemsCount = document.getElementById('itemsCount');
+    
+    let overlay = null;
+    let sidebarCollapsed = false;
+    
+    // Initialize
+    function init() {
+        // Create overlay for mobile
+        if (window.innerWidth < 992) {
+            createOverlay();
+        }
+        
+        // Add event listeners
+        addEventListeners();
+        
+        // Initialize filters
+        initializeFilters();
+    }
+    
+    function createOverlay() {
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.classList.add('filter-overlay');
+            document.body.appendChild(overlay);
+            
+            overlay.addEventListener('click', closeMobileFilters);
+        }
+    }
+    
+    function addEventListeners() {
+        // Mobile filter toggle
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', toggleMobileFilters);
+        }
+        
+        // Desktop sidebar toggle
+        if (toggleSidebarBtn) {
+            toggleSidebarBtn.addEventListener('click', toggleDesktopSidebar);
+        }
+        
+        // Clear all filters
+        if (clearAllFiltersBtn) {
+            clearAllFiltersBtn.addEventListener('click', clearAllFilters);
+        }
+        
+        // Auto-filtering
+        categoryRadios.forEach(radio => {
+            radio.addEventListener('change', applyFilters);
+        });
+        
+        if (minPriceSelect) {
+            minPriceSelect.addEventListener('change', applyFilters);
+        }
+        
+        if (maxPriceSelect) {
+            maxPriceSelect.addEventListener('change', applyFilters);
+        }
+        
+        // Window resize handler
+        window.addEventListener('resize', handleResize);
+        
+        // Close mobile filters when clicking close icon
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.fa-times')) {
+                closeMobileFilters();
+            }
+        });
+    }
+    
+    function toggleMobileFilters() {
+        if (filterSidebar && overlay) {
+            const isOpen = filterSidebar.classList.contains('show');
+            
+            if (isOpen) {
+                closeMobileFilters();
+            } else {
+                openMobileFilters();
+            }
+        }
+    }
+    
+    function openMobileFilters() {
+        if (filterSidebar && overlay) {
+            filterSidebar.classList.add('show');
+            overlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            if (toggleBtn) {
+                toggleBtn.innerHTML = '<i class="fas fa-times me-2"></i>Close Filters';
+            }
+        }
+    }
+    
+    function closeMobileFilters() {
+        if (filterSidebar && overlay) {
+            filterSidebar.classList.remove('show');
+            overlay.classList.remove('show');
+            document.body.style.overflow = '';
+            
+            if (toggleBtn) {
+                toggleBtn.innerHTML = '<i class="fas fa-filter me-2"></i>Filters';
+            }
+        }
+    }
+    
+    function toggleDesktopSidebar() {
+        if (window.innerWidth >= 992) {
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            if (sidebarCollapsed) {
+                filterColumn.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+                toggleSidebarBtn.innerHTML = '<i class="fas fa-chevron-right me-1"></i>Show Filters';
+            } else {
+                filterColumn.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+                toggleSidebarBtn.innerHTML = '<i class="fas fa-bars me-1"></i>Toggle Filters';
+            }
+        }
+    }
+    
+    function clearAllFilters() {
+        // Reset category to all
+        const allCategoryRadio = document.getElementById('categoryAll');
+        if (allCategoryRadio) {
+            allCategoryRadio.checked = true;
+        }
+        
+        // Reset price selects
+        if (minPriceSelect) {
+            minPriceSelect.value = '';
+        }
+        if (maxPriceSelect) {
+            maxPriceSelect.value = '';
+        }
+        
+        // Apply filters (show all items)
+        applyFilters();
+    }
+    
+    function applyFilters() {
+        const foodItems = document.querySelectorAll('.food-item');
+        const selectedCategory = document.querySelector('input[name="categoryFilter"]:checked')?.value || 'all';
+        const minPrice = parseFloat(minPriceSelect?.value) || 0;
+        const maxPrice = parseFloat(maxPriceSelect?.value) || Infinity;
+        
+        let visibleCount = 0;
+        
+        foodItems.forEach(item => {
+            const itemCategory = item.dataset.category;
+            const itemPrice = parseFloat(item.dataset.price);
+            const itemAvailable = item.dataset.available === 'true';
+            
+            let show = true;
+            
+            // Category filter
+            if (selectedCategory !== 'all' && itemCategory !== selectedCategory) {
+                show = false;
+            }
+            
+            // Price filter
+            if (itemPrice < minPrice || itemPrice > maxPrice) {
+                show = false;
+            }
+            
+            if (show) {
+                item.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+        
+        // Update items count
+        if (itemsCount) {
+            itemsCount.textContent = `Showing ${visibleCount} item${visibleCount !== 1 ? 's' : ''}`;
+        }
+    }
+    
+    function initializeFilters() {
+        // Apply initial filters based on current state
+        applyFilters();
+    }
+    
+    function handleResize() {
+        if (window.innerWidth >= 992) {
+            // Desktop mode
+            closeMobileFilters();
+            
+            if (!overlay) return;
+            overlay.remove();
+            overlay = null;
+            
+            // Reset desktop sidebar if needed
+            if (sidebarCollapsed) {
+                filterColumn.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+                sidebarCollapsed = false;
+                if (toggleSidebarBtn) {
+                    toggleSidebarBtn.innerHTML = '<i class="fas fa-bars me-1"></i>Toggle Filters';
+                }
+            }
+        } else {
+            // Mobile mode
+            createOverlay();
+        }
+    }
+    
+    // Initialize everything
+    init();
+});
+
+// Sorting functionality (enhanced)
+function sortItems(criteria) {
+    const container = document.getElementById('foodItemsContainer');
+    const items = Array.from(container.querySelectorAll('.food-item:not(.hidden)'));
+    
+    items.sort((a, b) => {
+        switch(criteria) {
+            case 'name':
+                return a.dataset.name.localeCompare(b.dataset.name);
+            case 'name-desc':
+                return b.dataset.name.localeCompare(a.dataset.name);
+            case 'price-low':
+                return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
+            case 'price-high':
+                return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
+            case 'newest':
+                // For now, reverse current order as "newest"
+                return Math.random() - 0.5;
+            default:
+                return 0;
+        }
+    });
+    
+    // Re-append sorted items
+    items.forEach(item => {
+        container.appendChild(item);
+    });
+}
+
+// Cart functionality (if not defined elsewhere)
+function addToCart(itemId) {
+    if (typeof window.addToCart === 'function') {
+        return window.addToCart(itemId);
+    }
+    
+    // Fallback implementation
+    fetch(`/cart/add/${itemId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        },
+        body: JSON.stringify({ quantity: 1 })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update cart count if exists
+            const cartBadge = document.querySelector('.cart-count-badge');
+            if (cartBadge && data.cart_count) {
+                cartBadge.textContent = data.cart_count;
+            }
+            
+            // Show success message
+            showNotificationMessage('Item added to cart!', 'success');
+        } else {
+            showNotificationMessage(data.message || 'Error adding item to cart', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error adding to cart:', error);
+        showNotificationMessage('Error adding item to cart', 'error');
+    });
+}
+
+// Notification helper
+function showNotificationMessage(message, type) {
+    // Create a simple toast notification
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.remove();
+        }
+    }, 3000);
+}
+
+// Initialize star ratings
+function initializeStarRatings() {
+    document.querySelectorAll('.stars-display-small').forEach(function(element) {
+        const rating = parseFloat(element.dataset.rating);
+        const roundedRating = Math.round(rating);
+        element.className = element.className.replace(/filled-\d+/, '');
+        if (roundedRating > 0) {
+            element.classList.add('filled-' + roundedRating);
+        }
+    });
+}
+
+// Initialize tooltips
+function initializeTooltips() {
+    if (typeof bootstrap !== 'undefined') {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+}
+
+// Initialize everything when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeStarRatings();
+    initializeTooltips();
+});
+</script>
+
+<script src="{{ url_for('static', filename='js/menu.js') }}"></script>
 {% endblock %}

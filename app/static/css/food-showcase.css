@@ -1,0 +1,123 @@
+/* Food showcase styles */
+
+/* Filter category styling */
+.filter-category-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.category-btn {
+    border-radius: 20px;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.category-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.category-btn.active {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+}
+
+/* Food card styling */
+.food-item-card {
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.food-item-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.food-image {
+    height: 180px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.price-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.veg-indicator, .non-veg-indicator {
+    width: 15px;
+    height: 15px;
+    display: inline-block;
+    border: 1px solid;
+    border-radius: 2px;
+    margin-right: 5px;
+}
+
+.veg-indicator {
+    border-color: green;
+    background-color: white;
+}
+
+.veg-indicator::after {
+    content: "";
+    display: block;
+    width: 7px;
+    height: 7px;
+    background-color: green;
+    border-radius: 50%;
+    margin: 3px auto;
+}
+
+.non-veg-indicator {
+    border-color: red;
+    background-color: white;
+}
+
+.non-veg-indicator::after {
+    content: "";
+    display: block;
+    width: 7px;
+    height: 7px;
+    background-color: red;
+    border-radius: 50%;
+    margin: 3px auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .category-btn {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
+    
+    .filter-category-container {
+        gap: 5px;
+    }
+    
+    .food-image {
+        height: 150px;
+    }
+}
+
+@media (max-width: 576px) {
+    .category-btn {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+    
+    .food-image {
+        height: 130px;
+    }
+}

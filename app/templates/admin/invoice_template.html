@@ -117,17 +117,33 @@
 <body>
     <div class="invoice-header">
         <div class="company-info">
-            <div>
-                <div class="company-name">BhojanXpress</div>
-                <div style="color: #666;">Delicious Food Delivery</div>
-                <div style="color: #666; font-size: 14px;">
-                    📧 info@bhojanxpress.com | 📞 +91-9876543210
+            <div style="display: flex; align-items: center;">
+                <!-- Left Logo -->
+                <div style="margin-right: 20px;">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BhojanXpress Logo" 
+                         style="height: 60px; width: auto;" onerror="this.style.display='none'"
+                         onload="this.style.display='block'">
+                </div>
+                <div>
+                    <div class="company-name">BhojanXpress</div>
+                    <div style="color: #666;">Delicious Food Delivery</div>
+                    <div style="color: #666; font-size: 14px;">
+                        📧 bhojanaxpress@gmail.com | 📞 +91 84317 29319
+                    </div>
                 </div>
             </div>
-            <div class="invoice-number">
-                <div>INVOICE #{{ order.id }}</div>
-                <div style="font-size: 14px; color: #666;">
-                    Date: {{ current_date.strftime('%d %b %Y') }}
+            <div style="display: flex; align-items: center;">
+                <div style="text-align: right; margin-right: 20px;">
+                    <div class="invoice-number">INVOICE #{{ order.id }}</div>
+                    <div style="font-size: 14px; color: #666;">
+                        Date: {{ current_date.strftime('%d %b %Y') }}
+                    </div>
+                </div>
+                <!-- Right Logo -->
+                <div>
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BhojanXpress Logo" 
+                         style="height: 60px; width: auto;" onerror="this.style.display='none'"
+                         onload="this.style.display='block'">
                 </div>
             </div>
         </div>
@@ -236,7 +252,7 @@
 
     <div class="footer">
         <p><strong>Thank you for choosing BhojanXpress!</strong></p>
-        <p>For any queries, please contact us at info@bhojanxpress.com or call +91-9876543210</p>
+        <p>For any queries, please contact us at bhojanaxpress@gmail.com or call +91 84317 29319</p>
         <p style="margin-top: 20px; font-size: 12px;">
             This is a computer-generated invoice and does not require a signature.
         </p>

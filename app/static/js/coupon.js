@@ -5,22 +5,15 @@
 
 // Copy coupon code to clipboard and show feedback
 function copyCouponCode(code) {
-    // Create a temporary input element
-    const tempInput = document.createElement('input');
-    tempInput.value = code;
-    document.body.appendChild(tempInput);
-
-    // Select the text
-    tempInput.select();
-    tempInput.setSelectionRange(0, 99999); // For mobile devices
-
-    // Copy the text to clipboard
-    navigator.clipboard.writeText(code)
+    // Get the button that was clicked
+    const btn = event ? event.target.closest('.copy-coupon-btn') : null;
+    
+    // Try multiple methods to copy the text to clipboard
+    copyToClipboardWithFallbacks(code)
         .then(() => {
             // Show success message
-            const btn = event.target.closest('.copy-coupon-btn');
             if (btn) {
-                const originalText = btn.textContent;
+                const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
                 btn.classList.add('btn-success');
                 btn.classList.remove('btn-light');
@@ -58,11 +51,134 @@ function copyCouponCode(code) {
         })
         .catch(err => {
             console.error('Failed to copy text: ', err);
-            showToast('Could not copy coupon code. Please try again.', 'error');
+            showToast('Could not copy coupon code. Please try manually copying: ' + code, 'error', 5000);
+            
+            // Display a modal with the coupon code for manual copying
+            showCouponModal(code);
         });
+}
 
-    // Remove the temporary input
-    document.body.removeChild(tempInput);
+/**
+ * Robust implementation for copying text to clipboard with multiple fallbacks
+ * @param {string} text - The text to copy to clipboard
+ * @returns {Promise} - Resolves when copied successfully, rejects on failure
+ */
+function copyToClipboardWithFallbacks(text) {
+    return new Promise((resolve, reject) => {
+        // Method 1: Use Clipboard API if available (modern browsers)
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text)
+                .then(resolve)
+                .catch(err => {
+                    console.warn('Clipboard API failed:', err);
+                    // Try fallback methods
+                    fallbackCopyToClipboard(text, resolve, reject);
+                });
+        } else {
+            // Method 2-3: Try document.execCommand fallbacks
+            fallbackCopyToClipboard(text, resolve, reject);
+        }
+    });
+}
+
+/**
+ * Fallback methods for copying to clipboard
+ */
+function fallbackCopyToClipboard(text, resolve, reject) {
+    try {
+        // Create a temporary input element
+        const tempInput = document.createElement('input');
+        tempInput.value = text;
+        tempInput.style.position = 'fixed';
+        tempInput.style.left = '-9999px';
+        tempInput.setAttribute('readonly', ''); // Prevent mobile keyboard from appearing
+        document.body.appendChild(tempInput);
+
+        // Method 2: Try execCommand('copy') for older browsers
+        try {
+            tempInput.select();
+            tempInput.setSelectionRange(0, 99999); // For mobile devices
+
+            const successful = document.execCommand('copy');
+            if (successful) {
+                resolve();
+                document.body.removeChild(tempInput);
+                return;
+            }
+        } catch (err) {
+            console.warn('execCommand copy failed:', err);
+        }
+
+        // Method 3: Try textarea + focus + select for edge cases
+        try {
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = text;
+            tempTextarea.style.position = 'fixed';
+            tempTextarea.style.left = '-9999px';
+            document.body.removeChild(tempInput); // Remove the input
+            document.body.appendChild(tempTextarea);
+            
+            tempTextarea.focus();
+            tempTextarea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(tempTextarea);
+            
+            if (successful) {
+                resolve();
+                return;
+            }
+        } catch (err) {
+            console.warn('textarea copy failed:', err);
+        }
+        
+        // All methods failed
+        reject(new Error('Could not copy text to clipboard'));
+    } catch (err) {
+        reject(err);
+    }
+}
+
+/**
+ * Show a modal with the coupon code for manual copying
+ * as a last resort if all clipboard methods fail
+ */
+function showCouponModal(code) {
+    // Create modal container if it doesn't exist
+    let modalContainer = document.getElementById('couponModalContainer');
+    if (!modalContainer) {
+        modalContainer = document.createElement('div');
+        modalContainer.id = 'couponModalContainer';
+        document.body.appendChild(modalContainer);
+    }
+    
+    // Create modal content
+    modalContainer.innerHTML = `
+        <div class="modal fade" id="couponModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Your Coupon Code</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <p>Please manually copy this coupon code:</p>
+                        <div class="p-3 bg-light border rounded mb-3">
+                            <h3 class="mb-0 user-select-all">${code}</h3>
+                        </div>
+                        <small class="text-muted">Triple-click the code above to select it</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Show the modal
+    const couponModal = new bootstrap.Modal(document.getElementById('couponModal'));
+    couponModal.show();
 }
 
 // Show a toast notification

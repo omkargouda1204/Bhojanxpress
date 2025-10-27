@@ -70,17 +70,17 @@ def send_email(to_email, subject, html_content):
 
         # Try to send the email through SMTP
         try:
-            # Mailtrap credentials
-            smtp_server = "sandbox.smtp.mailtrap.io"
-            smtp_port = 587
-            smtp_username = "8b5384f4325e9e"
-            smtp_password = "0e37e51c13d4da"
+            # Use Gmail SMTP configuration from config
+            smtp_server = current_app.config.get('MAIL_SERVER', 'smtp.gmail.com')
+            smtp_port = current_app.config.get('MAIL_PORT', 587)
+            smtp_username = current_app.config.get('MAIL_USERNAME', 'bhojanaxpress@gmail.com')
+            smtp_password = current_app.config.get('MAIL_PASSWORD', 'wojerowhpteimebv')
 
             current_app.logger.info(f"SMTP Connection: Server={smtp_server}, Port={smtp_port}, TLS=True, SSL=False")
 
             # Create SMTP connection with timeout
             server = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
-            server.set_debuglevel(1)  # Enable debug output
+            # server.set_debuglevel(1)  # Disable debug output for cleaner logs
 
             # Try establishing TLS connection
             server.ehlo()
@@ -92,8 +92,8 @@ def send_email(to_email, subject, html_content):
             server.sendmail(sender_email, to_email, message.as_string())
             server.quit()
 
-            current_app.logger.info(f"Email sent successfully to {to_email} via Mailtrap")
-            print(f"Email successfully sent to {to_email} via Mailtrap")
+            current_app.logger.info(f"Email sent successfully to {to_email} via Gmail")
+            print(f"Email successfully sent to {to_email} via Gmail")
         except smtplib.SMTPException as smtp_e:
             current_app.logger.error(f"SMTP Error: {str(smtp_e)}")
             print(f"SMTP Error: {str(smtp_e)}")

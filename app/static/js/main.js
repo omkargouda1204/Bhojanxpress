@@ -217,17 +217,25 @@ function updateCartCount() {
 function initializeSmoothScrolling() {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+            const targetSelector = this.getAttribute('href');
+            if (targetSelector && targetSelector.startsWith('#') && targetSelector.length > 1) {
+                e.preventDefault();
+                try {
+                    const target = document.querySelector(targetSelector);
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Invalid selector:', targetSelector);
+                }
             }
         });
     });
 }
+
 
 // Initialize tooltips
 function initializeTooltips() {

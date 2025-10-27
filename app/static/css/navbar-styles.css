@@ -165,17 +165,70 @@
     }
 }
 
-/* Logo animations */
+/* Logo - No animation, just cursor transition */
 .logo-animated img {
-    transition: all 0.3s ease;
+    transition: var(--transition-normal);
+    cursor: pointer;
 }
 
 .logo-animated:hover img {
-    transform: scale(1.1);
+    filter: brightness(1.1);
+    transform: scale(1.02);
+}
+
+/* Remove spinning animation */
+.logo-spin {
+    /* No animation */
+    cursor: pointer;
+}
+
+.logo-spin:hover {
+    transform: scale(1.05);
+    transition: var(--transition-normal);
 }
 
 .logo-round {
     border-radius: 50%;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+}
+
+/* Global cursor transitions for interactive elements */
+a, button, .btn, .nav-link, .card, input, select, textarea {
+    cursor: pointer;
+    transition: var(--transition-normal);
+}
+
+a:hover, button:hover, .btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Page transition effects */
+.page-transition {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.brand-hover-effect {
+    transition: all 0.3s ease;
+}
+
+.brand-hover-effect:hover {
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transform: translateY(-2px);
 }
 
 /* Search bar enhancements */

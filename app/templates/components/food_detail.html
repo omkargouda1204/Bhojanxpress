@@ -32,24 +32,6 @@
                     </div>
                     {% endif %}
                 </div>
-
-                <!-- Food Rating Stars (Below Image) -->
-                <div class="card-body text-center">
-                    <div class="rating-container mb-2">
-                        {% for i in range(5) %}
-                            {% if i < avg_rating|int %}
-                                <i class="fas fa-star text-warning"></i>
-                            {% elif (i < avg_rating|round(0, 'ceil')) and ((avg_rating - i) >= 0.5) %}
-                                <i class="fas fa-star-half-alt text-warning"></i>
-                            {% else %}
-                                <i class="far fa-star text-warning"></i>
-                            {% endif %}
-                        {% endfor %}
-                        <span class="rating-number ms-2 text-muted">
-                            {{ "%.1f"|format(avg_rating) }} ({{ ratings|length }} {% if ratings|length == 1 %}rating{% else %}ratings{% endif %})
-                        </span>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -152,8 +134,9 @@
                                 <i class="fas fa-star text-warning me-2"></i>
                                 <span id="reviewFormTitle">Write a Review</span>
                             </h5>
-                            <form method="POST" action="{{ url_for('user.food_detail', food_id=food.id) }}" enctype="multipart/form-data" id="reviewForm">
+                            <form method="POST" action="{{ url_for('reviews.submit_review') }}" enctype="multipart/form-data" id="reviewForm">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="food_item_id" value="{{ food.id }}">
                                 <input type="hidden" id="editReviewId" name="edit_review_id" value="">
                                 
                                 <!-- Rating Stars -->
@@ -185,7 +168,7 @@
                                     <label for="reviewImages" class="form-label fw-bold">
                                         <i class="fas fa-camera me-1"></i> Add Photos (Optional)
                                     </label>
-                                    <input type="file" class="form-control" id="reviewImages" name="reviewImages" 
+                                    <input type="file" class="form-control" id="reviewImages" name="images" 
                                            multiple accept="image/*" onchange="previewReviewImages()">
                                     <div class="form-text">Upload up to 3 photos of your dish. JPG, PNG accepted. Max 2MB each.</div>
                                     
@@ -397,19 +380,27 @@
                                             </div>
                                         </div>
                                         {% endif %}
-
-                                        <!-- Helpful Actions -->
-                                        <div class="review-actions d-flex align-items-center">
-                                            <small class="text-muted me-3">Was this review helpful?</small>
-                                            <button class="btn btn-sm btn-outline-success me-2" onclick="markHelpful({{ rating.id }}, true)">
-                                                <i class="fas fa-thumbs-up me-1"></i>
-                                                Helpful <span class="helpful-count">({{ rating.helpful_count or 0 }})</span>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="markHelpful({{ rating.id }}, false)">
-                                                <i class="fas fa-thumbs-down me-1"></i>
-                                                Not Helpful
-                                            </button>
+                                        
+                                        <!-- Admin Reply to Review -->
+                                        {% if rating.admin_reply %}
+                                        <div class="admin-reply mt-3 mb-3 border-start border-3 border-primary ps-3">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-2" style="width: 30px; height: 30px;">
+                                                    <i class="fas fa-user-shield"></i>
+                                                </div>
+                                                <div>
+                                                    <span class="fw-bold text-primary">Admin Reply</span>
+                                                    {% if rating.admin_reply_at %}
+                                                    <small class="text-muted ms-2">
+                                                        <i class="fas fa-clock"></i>
+                                                        {{ rating.admin_reply_at.strftime('%B %d, %Y at %I:%M %p') }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <p class="mb-0">{{ rating.admin_reply }}</p>
                                         </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 {% endfor %}
@@ -447,23 +438,53 @@
                                 <tbody>
                                     <tr>
                                         <th>Calories</th>
-                                        <td>{{ food.calories if food.calories else 'Not available' }}</td>
+                                        <td>
+                                            {% if food.nutritional_info and food.nutritional_info.calories %}
+                                                {{ food.nutritional_info.calories }}
+                                            {% else %}
+                                                Not available
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th>Protein</th>
-                                        <td>{{ food.protein }}g</td>
+                                        <td>
+                                            {% if food.nutritional_info and food.nutritional_info.protein %}
+                                                {{ food.nutritional_info.protein }}g
+                                            {% else %}
+                                                Not available
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th>Carbohydrates</th>
-                                        <td>{{ food.carbs }}g</td>
+                                        <td>
+                                            {% if food.nutritional_info and food.nutritional_info.carbohydrates %}
+                                                {{ food.nutritional_info.carbohydrates }}g
+                                            {% else %}
+                                                Not available
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th>Fat</th>
-                                        <td>{{ food.fat }}g</td>
+                                        <td>
+                                            {% if food.nutritional_info and food.nutritional_info.fat %}
+                                                {{ food.nutritional_info.fat }}g
+                                            {% else %}
+                                                Not available
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th>Sugar</th>
-                                        <td>{{ food.sugar }}g</td>
+                                        <td>
+                                            {% if food.nutritional_info and food.nutritional_info.sugar_g is not none %}
+                                                {{ food.nutritional_info.sugar_g }}g
+                                            {% else %}
+                                                Not available
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -492,7 +513,20 @@
                 <!-- Ingredients Tab -->
                 <div class="tab-pane fade" id="ingredients" role="tabpanel" aria-labelledby="ingredients-tab">
                     <h5 class="mb-3">Ingredients</h5>
-                    <p>{{ food.ingredients or 'Ingredients information not available.' }}</p>
+                    <p>
+                        {% if food.nutritional_info and food.nutritional_info.ingredients %}
+                            {{ food.nutritional_info.ingredients }}
+                        {% else %}
+                            Ingredients information not available.
+                        {% endif %}
+                    </p>
+                    
+                    {% if food.nutritional_info and food.nutritional_info.allergens %}
+                    <div class="mt-4">
+                        <h6 class="text-warning"><i class="fas fa-exclamation-triangle"></i> Allergens</h6>
+                        <p class="text-muted">{{ food.nutritional_info.allergens }}</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -661,6 +695,62 @@
 
         // Initialize review display
         initializeReviewDisplay();
+        
+        // Handle review form submission
+        const reviewForm = document.getElementById('reviewForm');
+        if (reviewForm) {
+            reviewForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Validate form
+                const rating = document.querySelector('input[name="rating"]:checked');
+                const comment = document.getElementById('comment');
+                
+                if (!rating) {
+                    showToast('Please select a rating', 'error');
+                    return false;
+                }
+                
+                if (!comment.value.trim() || comment.value.length < 5) {
+                    showToast('Please write a review comment (minimum 5 characters)', 'error');
+                    comment.focus();
+                    return false;
+                }
+                
+                // Submit both new and edit reviews to the same endpoint
+                const editReviewId = document.getElementById('editReviewId').value;
+                const url = '{{ url_for("reviews.submit_review") }}';
+                const method = 'POST';
+                
+                // Create FormData from the form
+                const formData = new FormData(reviewForm);
+                
+                // Submit the form via fetch
+                fetch(url, {
+                    method: method,
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message || 'Review submitted successfully!', 'success');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showToast(data.message || 'Error submitting review', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('An error occurred while submitting your review', 'error');
+                });
+            });
+        }
     });
 
     // Enhanced Review System Functions
@@ -789,7 +879,7 @@
     // Delete review
     function deleteReview(reviewId) {
         if (confirm('Are you sure you want to delete this review? This action cannot be undone.')) {
-            fetch(`/review/${reviewId}/delete`, {
+            fetch(`/reviews/${reviewId}/delete`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -815,7 +905,13 @@
     // Edit review
     function editReview(reviewId) {
         // Fetch review data
-        fetch(`/review/${reviewId}/edit`)
+        fetch(`/reviews/edit/${reviewId}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -867,35 +963,6 @@
     function updateRatingText(rating) {
         const ratingTexts = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
         document.getElementById('ratingText').textContent = ratingTexts[rating - 1];
-    }
-
-    // Mark review as helpful
-    function markHelpful(reviewId, helpful) {
-        fetch(`/review/${reviewId}/helpful`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-            },
-            body: JSON.stringify({ helpful: helpful })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update helpful count
-                const countElement = event.target.closest('button').querySelector('.helpful-count');
-                if (countElement) {
-                    countElement.textContent = `(${data.helpful_count})`;
-                }
-                showToast(helpful ? 'Thanks for your feedback!' : 'Feedback recorded', 'success');
-            } else {
-                showToast(data.message || 'Failed to record feedback', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('An error occurred', 'error');
-        });
     }
 
     // View image in modal
@@ -1105,10 +1172,6 @@
     
     .review-actions button {
         font-size: 0.85rem;
-    }
-    
-    .helpful-count {
-        font-weight: 600;
     }
 </style>
 {% endblock %}

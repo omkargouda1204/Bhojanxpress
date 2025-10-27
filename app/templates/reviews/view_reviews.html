@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+
+{% block title %}Reviews - {{ food_item.name }} - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-9 mx-auto">
+            <!-- Food Item Header -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            {% if food_item.image_url %}
+                                <img src="{{ url_for('static', filename=food_item.image_url) }}" 
+                                     alt="{{ food_item.name }}" 
+                                     class="img-fluid rounded" 
+                                     style="max-height: 100px;">
+                            {% else %}
+                                <div class="bg-secondary rounded d-flex align-items-center justify-content-center" 
+                                     style="height: 100px; width: 100px;">
+                                    <i class="fas fa-utensils text-white"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h3 class="mb-1">{{ food_item.name }}</h3>
+                            <p class="text-muted mb-2">{{ food_item.description or 'No description available' }}</p>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="me-3">
+                                    <div class="stars-display" data-rating="{{ average_rating }}">
+                                        {% for i in range(1, 6) %}
+                                            <i class="fas fa-star star" data-rating="{{ i }}"></i>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <span class="h5 mb-0 me-2">{{ "%.1f"|format(average_rating) }}</span>
+                                <span class="text-muted">({{ total_reviews }} review{{ 's' if total_reviews != 1 else '' }})</span>
+                            </div>
+                            <h4 class="text-primary mb-0">${{ "%.2f"|format(food_item.price) }}</h4>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if current_user.is_authenticated %}
+                                {% if not existing_review %}
+                                    <a href="{{ url_for('reviews.add_review', food_item_id=food_item.id) }}" 
+                                       class="btn btn-primary">
+                                        <i class="fas fa-star me-2"></i>Write a Review
+                                    </a>
+                                {% else %}
+                                    <p class="text-muted mb-2">You've reviewed this item</p>
+                                    <a href="{{ url_for('reviews.edit_review', review_id=existing_review.id) }}" 
+                                       class="btn btn-outline-primary btn-sm me-2">
+                                        <i class="fas fa-edit me-1"></i>Edit
+                                    </a>
+                                    <form method="POST" 
+                                          action="{{ url_for('reviews.delete_review', review_id=existing_review.id) }}" 
+                                          class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete your review?')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="fas fa-trash me-1"></i>Delete
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            {% else %}
+                                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary">
+                                    Login to Review
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Statistics -->
+            {% if total_reviews > 0 %}
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Rating Breakdown</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            {% for rating in range(5, 0, -1) %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="me-2">{{ rating }} star{{ 's' if rating != 1 else '' }}</span>
+                                    <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                        {% set percentage = (rating_distribution[rating] / total_reviews * 100) if total_reviews > 0 else 0 %}
+                                        <div class="progress-bar bg-warning" 
+                                             role="progressbar" 
+                                             style="width: {{ percentage }}%"
+                                             aria-valuenow="{{ percentage }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <span class="text-muted">{{ rating_distribution[rating] }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <div class="display-4 text-warning">{{ "%.1f"|format(average_rating) }}</div>
+                                <div class="stars-display-large mb-2" data-rating="{{ average_rating }}">
+                                    {% for i in range(1, 6) %}
+                                        <i class="fas fa-star star" data-rating="{{ i }}"></i>
+                                    {% endfor %}
+                                </div>
+                                <p class="text-muted">Based on {{ total_reviews }} review{{ 's' if total_reviews != 1 else '' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Review Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            {{ filter_form.rating.label(class="form-label") }}
+                            {{ filter_form.rating(class="form-select") }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ filter_form.sort_by.label(class="form-label") }}
+                            {{ filter_form.sort_by(class="form-select") }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="form-check">
+                                {{ filter_form.verified_only(class="form-check-input") }}
+                                {{ filter_form.verified_only.label(class="form-check-label") }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="form-check">
+                                {{ filter_form.with_images(class="form-check-input") }}
+                                {{ filter_form.with_images.label(class="form-check-label") }}
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+                            <a href="{{ url_for('reviews.view_reviews', food_item_id=food_item.id) }}" 
+                               class="btn btn-outline-secondary btn-sm ms-2">Clear Filters</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reviews List -->
+            {% if reviews.items %}
+                {% for review in reviews.items %}
+                    <div class="card mb-3 review-card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <!-- Review Header -->
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="me-3">
+                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                                                 style="width: 40px; height: 40px;">
+                                                {{ review.user.username[0].upper() }}
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0">{{ review.user.username }}</h6>
+                                            <small class="text-muted">
+                                                {{ review.created_at|time_ago }}
+                                                {% if review.is_verified_purchase %}
+                                                    <span class="badge bg-success ms-2">Verified Purchase</span>
+                                                {% endif %}
+                                                {% if review.updated_at > review.created_at %}
+                                                    <span class="text-muted ms-2">(edited)</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Rating -->
+                                    <div class="stars-display mb-2" data-rating="{{ review.rating }}">
+                                        {% for i in range(1, 6) %}
+                                            <i class="fas fa-star star" data-rating="{{ i }}"></i>
+                                        {% endfor %}
+                                    </div>
+
+                                    <!-- Review Text -->
+                                    {% if review.comment %}
+                                        <p class="mb-3">{{ review.comment|nl2br|safe }}</p>
+                                    {% endif %}
+
+                                    <!-- Review Images -->
+                                    {% if review.images %}
+                                        <div class="review-images mb-3">
+                                            <div class="row g-2">
+                                                {% for image in review.images[:4] %}
+                                                    <div class="col-3">
+                                                        <img src="{{ url_for('static', filename=image.filename) }}" 
+                                                             alt="Review image" 
+                                                             class="img-fluid rounded review-image-thumbnail"
+                                                             data-bs-toggle="modal" 
+                                                             data-bs-target="#imageModal{{ image.id }}"
+                                                             style="cursor: pointer; aspect-ratio: 1; object-fit: cover;">
+                                                    </div>
+                                                {% endfor %}
+                                                {% if review.images|length > 4 %}
+                                                    <div class="col-3">
+                                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                                             style="aspect-ratio: 1;">
+                                                            <small class="text-muted">+{{ review.images|length - 4 }} more</small>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+
+                                    <!-- Admin Reply -->
+                                    {% if review.admin_reply %}
+                                        <div class="admin-reply p-3 bg-light rounded">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="fas fa-shield-alt text-primary me-2"></i>
+                                                <strong class="text-primary">Admin Response</strong>
+                                                <small class="text-muted ms-auto">{{ review.admin_reply_at|time_ago }}</small>
+                                            </div>
+                                            <p class="mb-0">{{ review.admin_reply|nl2br|safe }}</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-4">
+                                    <!-- Helpful Vote -->
+                                    <div class="text-end">
+                                        {% if current_user.is_authenticated and current_user.id != review.user_id %}
+                                            <button class="btn btn-outline-secondary btn-sm helpful-btn" 
+                                                    data-review-id="{{ review.id }}"
+                                                    data-is-helpful="{{ review.is_helpful_by_user(current_user.id) }}">
+                                                <i class="fas fa-thumbs-up me-1"></i>
+                                                Helpful (<span class="helpful-count">{{ review.helpful_count }}</span>)
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                <i class="fas fa-thumbs-up me-1"></i>
+                                                {{ review.helpful_count }} helpful
+                                            </span>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- User Actions (Edit/Delete own review) -->
+                                    {% if current_user.is_authenticated and current_user.id == review.user_id %}
+                                        <div class="mt-3">
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
+                                                        type="button" 
+                                                        data-bs-toggle="dropdown">
+                                                    My Review
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" 
+                                                           href="{{ url_for('reviews.edit_review', review_id=review.id) }}">
+                                                            <i class="fas fa-edit me-2"></i>Edit Review
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <form method="POST" 
+                                                              action="{{ url_for('reviews.delete_review', review_id=review.id) }}"
+                                                              onsubmit="return confirm('Are you sure you want to delete this review?')"
+                                                              class="d-inline">
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="fas fa-trash me-2"></i>Delete Review
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+
+                                    <!-- Admin Actions -->
+                                    {% if current_user.is_authenticated and current_user.is_admin %}
+                                        <div class="mt-3">
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-primary btn-sm dropdown-toggle" 
+                                                        type="button" 
+                                                        data-bs-toggle="dropdown">
+                                                    Admin Actions
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    {% if not review.admin_reply %}
+                                                        <li>
+                                                            <a class="dropdown-item" 
+                                                               href="#" 
+                                                               data-bs-toggle="modal" 
+                                                               data-bs-target="#adminReplyModal{{ review.id }}">
+                                                                <i class="fas fa-reply me-2"></i>Add Reply
+                                                            </a>
+                                                        </li>
+                                                    {% endif %}
+                                                    <li>
+                                                        <a class="dropdown-item" 
+                                                           href="#" 
+                                                           data-bs-toggle="modal" 
+                                                           data-bs-target="#moderateModal{{ review.id }}">
+                                                            <i class="fas fa-gavel me-2"></i>Moderate
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <form method="POST" 
+                                                              action="{{ url_for('reviews.delete_review', review_id=review.id) }}"
+                                                              onsubmit="return confirm('Are you sure you want to delete this review?')">
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="fas fa-trash me-2"></i>Delete Review
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Modals -->
+                    {% for image in review.images %}
+                        <div class="modal fade" id="imageModal{{ image.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Review Image</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <img src="{{ url_for('static', filename=image.filename) }}" 
+                                             alt="Review image" 
+                                             class="img-fluid">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                    <!-- Admin Reply Modal -->
+                    {% if current_user.is_authenticated and current_user.is_admin and not review.admin_reply %}
+                        <div class="modal fade" id="adminReplyModal{{ review.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ url_for('reviews.admin_reply_review', review_id=review.id) }}">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Add Admin Reply</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <input type="hidden" name="review_id" value="{{ review.id }}">
+                                            <div class="mb-3">
+                                                <label for="admin_reply{{ review.id }}" class="form-label">Your Response</label>
+                                                <textarea class="form-control" 
+                                                          id="admin_reply{{ review.id }}" 
+                                                          name="admin_reply" 
+                                                          rows="4" 
+                                                          required
+                                                          placeholder="Write your response to this review..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">Post Reply</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Moderate Review Modal -->
+                    {% if current_user.is_authenticated and current_user.is_admin %}
+                        <div class="modal fade" id="moderateModal{{ review.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ url_for('review.moderate_review', review_id=review.id) }}">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Moderate Review</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label for="action{{ review.id }}" class="form-label">Action</label>
+                                                <select class="form-select" id="action{{ review.id }}" name="action" required>
+                                                    <option value="approve" {{ 'selected' if review.is_approved }}>Approve</option>
+                                                    <option value="reject" {{ 'selected' if not review.is_approved }}>Reject</option>
+                                                    <option value="reply">Reply Only</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="admin_reply_mod{{ review.id }}" class="form-label">Admin Reply (Optional)</label>
+                                                <textarea class="form-control" 
+                                                          id="admin_reply_mod{{ review.id }}" 
+                                                          name="admin_reply" 
+                                                          rows="3"
+                                                          placeholder="Optional response to the customer...">{{ review.admin_reply or '' }}</textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">Apply</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Pagination -->
+                {% if reviews.pages > 1 %}
+                    <nav aria-label="Reviews pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if reviews.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('review.view_reviews', food_item_id=food_item.id, page=reviews.prev_num, **request.args) }}">
+                                        Previous
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in reviews.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != reviews.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('review.view_reviews', food_item_id=food_item.id, page=page_num, **request.args) }}">
+                                                {{ page_num }}
+                                            </a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if reviews.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('review.view_reviews', food_item_id=food_item.id, page=reviews.next_num, **request.args) }}">
+                                        Next
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-star-o display-4 text-muted mb-3"></i>
+                        <h5>No Reviews Yet</h5>
+                        <p class="text-muted">Be the first to review this delicious dish!</p>
+                        {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('review.add_review', food_item_id=food_item.id) }}" 
+                               class="btn btn-primary">
+                                <i class="fas fa-star me-2"></i>Write the First Review
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary">
+                                Login to Review
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Star Rating Styles */
+.stars-display .star {
+    color: #ddd;
+    font-size: 1rem;
+}
+
+.stars-display.filled-1 .star:nth-child(-n+1),
+.stars-display.filled-2 .star:nth-child(-n+2),
+.stars-display.filled-3 .star:nth-child(-n+3),
+.stars-display.filled-4 .star:nth-child(-n+4),
+.stars-display.filled-5 .star:nth-child(-n+5) {
+    color: #ffc107;
+}
+
+.stars-display-large .star {
+    color: #ddd;
+    font-size: 2rem;
+}
+
+.stars-display-large.filled-1 .star:nth-child(-n+1),
+.stars-display-large.filled-2 .star:nth-child(-n+2),
+.stars-display-large.filled-3 .star:nth-child(-n+3),
+.stars-display-large.filled-4 .star:nth-child(-n+4),
+.stars-display-large.filled-5 .star:nth-child(-n+5) {
+    color: #ffc107;
+}
+
+/* Review Card Hover Effect */
+.review-card {
+    transition: box-shadow 0.3s ease;
+}
+
+.review-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Helpful Button States */
+.helpful-btn.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* Review Image Thumbnails */
+.review-image-thumbnail:hover {
+    opacity: 0.8;
+    transform: scale(1.02);
+    transition: all 0.3s ease;
+}
+
+/* Admin Reply Styling */
+.admin-reply {
+    border-left: 4px solid #007bff;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize star ratings
+    function updateStarDisplay() {
+        document.querySelectorAll('.stars-display, .stars-display-large').forEach(function(element) {
+            const rating = parseFloat(element.dataset.rating);
+            const roundedRating = Math.round(rating);
+            element.className = element.className.replace(/filled-\d+/, '');
+            if (roundedRating > 0) {
+                element.classList.add('filled-' + roundedRating);
+            }
+        });
+    }
+
+    // Handle helpful votes
+    document.querySelectorAll('.helpful-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const reviewId = this.dataset.reviewId;
+            const isHelpful = this.dataset.isHelpful === 'true';
+            
+            fetch(`/reviews/toggle_helpful/${reviewId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update button state
+                    this.dataset.isHelpful = data.is_helpful;
+                    this.classList.toggle('active', data.is_helpful);
+                    
+                    // Update count
+                    const countSpan = this.querySelector('.helpful-count');
+                    countSpan.textContent = data.helpful_count;
+                } else {
+                    alert(data.message || 'An error occurred');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+        
+        // Set initial state
+        if (btn.dataset.isHelpful === 'true') {
+            btn.classList.add('active');
+        }
+    });
+
+    // Initialize star ratings
+    updateStarDisplay();
+});
+</script>
+{% endblock %}

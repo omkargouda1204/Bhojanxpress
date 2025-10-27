@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "admin/base.html" %}
 
 {% block title %}Order Details - Admin Dashboard{% endblock %}
 
@@ -40,21 +40,7 @@
                                 </span>
                             </p>
                             <div class="d-flex gap-2 mb-3">
-                                <!-- Invoice Download Button -->
-                                <a href="{{ url_for('admin.download_invoice', order_id=order.id) }}"
-                                   class="btn btn-success btn-sm">
-                                    <i class="fas fa-download"></i> Download Invoice
-                                </a>
-
-                                <!-- Print Invoice Button -->
-                                <button onclick="printInvoice()" class="btn btn-info btn-sm">
-                                    <i class="fas fa-print"></i> Print Invoice
-                                </button>
-
-                                <!-- Email Invoice Button -->
-                                <button onclick="emailInvoice()" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-envelope"></i> Email Invoice
-                                </button>
+                                <!-- Invoice functionality removed as requested -->
                             </div>
                             <p><strong>Payment Method:</strong>
                                 <span class="badge bg-{{ 'warning' if order.payment_method == 'cash_on_delivery' else 'success' }}">
@@ -211,10 +197,9 @@
                         <div class="mb-3">
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select">
-                                <option value="pending" {{ 'selected' if order.status == 'pending' else '' }}>Pending</option>
                                 <option value="confirmed" {{ 'selected' if order.status == 'confirmed' else '' }}>Confirmed</option>
                                 <option value="preparing" {{ 'selected' if order.status == 'preparing' else '' }}>Preparing</option>
-                                <option value="delivered" {{ 'selected' if order.status == 'delivered' else '' }}>Delivered</option>
+                                <option value="out_for_delivery" {{ 'selected' if order.status == 'out_for_delivery' else '' }}>Out for Delivery</option>
                                 <option value="cancelled" {{ 'selected' if order.status == 'cancelled' else '' }}>Cancelled</option>
                             </select>
                         </div>
@@ -245,25 +230,14 @@
                         </div>
                     {% endif %}
 
-                    <form method="POST" action="{{ url_for('admin.assign_delivery_agent', order_id=order.id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <div class="mb-3">
-                            <label class="form-label">Select Delivery Agent</label>
-                            <select name="delivery_agent_id" class="form-select" required>
-                                <option value="">Choose a delivery agent...</option>
-                                {% for agent in active_delivery_agents %}
-                                <option value="{{ agent.id }}" {{ 'selected' if order.delivery_boy_id == agent.id else '' }}>
-                                    {{ agent.name }} - {{ agent.phone or 'No phone' }}
-                                    ({{ agent.pending_orders }} pending orders)
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="fas fa-user-plus"></i> {{ 'Reassign' if order.delivery_boy_id else 'Assign' }} Agent
-                        </button>
+                    {% if order.status == 'preparing' %}
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin.assign_delivery_agent', order_id=order.id) }}" class="btn btn-success w-100">
+                            <i class="fas fa-user-plus"></i> {{ 'Reassign' if order.delivery_boy_id else 'Assign' }} Delivery Agent
+                        </a>
+                    </div>
                     </form>
+                    {% endif %}
                 </div>
             </div>
 
@@ -307,32 +281,6 @@
 
 {% block extra_js %}
 <script>
-function printInvoice() {
-    // Open invoice in new window for printing
-    window.open('{{ url_for("admin.download_invoice", order_id=order.id) }}', '_blank');
-}
-
-function emailInvoice() {
-    if (confirm('Send invoice to customer email: {{ order.user.email if order.user else "No email available" }}?')) {
-        fetch('{{ url_for("admin.email_invoice", order_id=order.id) }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Invoice sent successfully!');
-            } else {
-                alert('Failed to send invoice: ' + data.error);
-            }
-        })
-        .catch(error => {
-            alert('Error sending invoice: ' + error);
-        });
-    }
-}
+// Invoice functionality (print and email) removed as requested
 </script>
 {% endblock %}

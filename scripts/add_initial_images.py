@@ -1,6 +1,6 @@
 from app import create_app, db
-from app.models.banner import Banner, SiteImage
-from config import Config
+from app.models import Banner, SiteImage
+from config_new import Config
 
 app = create_app(Config)
 

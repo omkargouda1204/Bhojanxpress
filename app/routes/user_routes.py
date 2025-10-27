@@ -1,9 +1,11 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from flask_login import login_required, current_user
-from app import db
-from app.models import FoodItem, CartItem, Order, OrderItem, Coupon, UserProfile, Category, Rating, ContactMessage, ReviewImage
-from app.models.special_offers import SpecialOffer
+from app import db, csrf
+from app.models import FoodItem, CartItem, Order, OrderItem, Coupon, UserProfile, Category, Rating, ContactMessage, Notification, SpecialOffer, Review, SliderImage
+from app.utils.notification_service import NotificationService
 from sqlalchemy import func
+import io
+from datetime import datetime
 
 from app.forms import SearchForm, CartForm, OrderForm
 from app.utils.helpers import search_food_items, get_cart_total, calculate_delivery_time, format_currency, validate_phone_number, flash_errors
@@ -51,15 +53,34 @@ def download_invoice(order_id):
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
     order_items = OrderItem.query.filter_by(order_id=order_id).all()
 
-    # Create invoice HTML content
+    # Create invoice HTML content with improved formatting
     invoice_html = render_template('components/invoice_template.html',
                                  order=order,
                                  order_items=order_items,
                                  current_date=datetime.now())
 
-    # Create a file-like object
+    # Create a properly formatted HTML file
     invoice_io = io.BytesIO()
-    invoice_io.write(invoice_html.encode('utf-8'))
+    # Add proper HTML document structure for better rendering
+    formatted_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{order.id} - BhojanXpress</title>
+    <style>
+        @media print {{
+            body {{ margin: 0; }}
+            .invoice-container {{ box-shadow: none; border: none; }}
+        }}
+    </style>
+</head>
+<body>
+{invoice_html}
+</body>
+</html>"""
+    
+    invoice_io.write(formatted_html.encode('utf-8'))
     invoice_io.seek(0)
 
     filename = f"BhojanXpress_Invoice_{order.id}_{datetime.now().strftime('%Y%m%d')}.html"
@@ -89,13 +110,25 @@ def order_confirmation(order_id):
 @login_required
 def cancel_order(order_id):
     """Cancel an order"""
+    from datetime import datetime, timedelta
+    
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
 
     # Check if order can be cancelled based on status
     if order.status in ['pending', 'confirmed']:
+        # Check 5-minute cancellation rule
+        time_since_order = datetime.utcnow() - order.created_at
+        if time_since_order > timedelta(minutes=5):
+            return jsonify({
+                'success': False,
+                'message': 'Order cannot be cancelled after 5 minutes of placement'
+            })
+        
         try:
-            # Automatically update status to cancelled without time restrictions
+            # Update status to cancelled
             order.status = 'cancelled'
+            order.cancel_reason = 'Cancelled by customer'
+            order.cancelled_at = datetime.utcnow()
 
             # Handle refunds for online payments
             online_payment_methods = ['credit_card', 'debit_card', 'paypal', 'upi', 'netbanking']
@@ -190,10 +223,8 @@ def place_order():
             flash('Please complete your payment to confirm your order.', 'info')
             return redirect(url_for('user.payment', order_id=order.id))
         else:
-            # For cash on delivery, mark as confirmed immediately
-            order.status = 'confirmed'
-            db.session.commit()
-            flash('Order placed successfully!', 'success')
+            # For cash on delivery, keep as pending for admin confirmation
+            flash('Order placed successfully! It will be confirmed by the restaurant shortly.', 'success')
             return redirect(url_for('user.order_confirmation', order_id=order.id))
 
     except Exception as e:
@@ -204,9 +235,12 @@ def place_order():
 
 @user_bp.route('/')
 def home():
+    # Get active slider images for home page carousel
+    slider_images = SliderImage.query.filter_by(is_active=True).order_by(SliderImage.display_order.asc()).all()
+    
     # Get featured food items (latest 6 items)
     # Featured Menu Items - Show all available items (max 18 for 3 rows)
-    featured_items = FoodItem.query.filter_by(is_available=True).order_by(FoodItem.created_at.desc()).limit(18).all()
+    featured_items = FoodItem.query.filter_by(is_available=True).filter(~FoodItem.name.like('[DELETED]%')).order_by(FoodItem.created_at.desc()).limit(18).all()
 
     # Get all categories for dynamic display
     categories = Category.query.all()
@@ -219,10 +253,10 @@ def home():
     ).order_by(Coupon.created_at.desc()).all()  # Get ALL, not limited
 
     # Get special offers
-    special_offers = SpecialOffer.query.filter(
-        SpecialOffer.is_active == True,
-        SpecialOffer.valid_until > datetime.now()
-    ).all()
+    # special_offers = SpecialOffer.query.filter(
+    #     SpecialOffer.is_active == True,
+    #     SpecialOffer.valid_until > datetime.now()
+    # ).all()
 
     # Get most popular food items (based on order count) - Limited to 10 items
     popular_items = db.session.query(
@@ -235,9 +269,10 @@ def home():
     popular_food_items = [item[0] for item in popular_items]
 
     return render_template('home.html',
+                         slider_images=slider_images,
                          featured_items=featured_items,
                          active_coupons=active_coupons,
-                         special_offers=special_offers,
+                        #  special_offers=special_offers,
                          popular_items=popular_food_items,
                          categories=categories)
 
@@ -245,7 +280,7 @@ def home():
 def menu():
     page = request.args.get('page', 1, type=int)
     category = request.args.get('category', 'all')
-    query = FoodItem.query.filter_by(is_available=True)
+    query = FoodItem.query.filter_by(is_available=True).filter(~FoodItem.name.like('[DELETED]%'))
 
     # Fix category filtering - use both string category and category_id
     if category != 'all':
@@ -262,10 +297,23 @@ def menu():
 
     # Get actual categories from database
     db_categories = Category.query.all()
-    # Create a simple list for filtering, but pass the actual category objects to template
-    categories_list = ['all'] + [cat.name for cat in db_categories]
+    
+    # Get review statistics for all food items
+    review_stats = {}
+    for item in food_items.items:
+        reviews = Review.query.filter_by(food_item_id=item.id, is_approved=True).all()
+        total_reviews = len(reviews)
+        average_rating = sum(r.rating for r in reviews) / total_reviews if total_reviews > 0 else 0
+        review_stats[item.id] = {
+            'total_reviews': total_reviews,
+            'average_rating': round(average_rating, 1)
+        }
 
-    return render_template('components/menu.html', food_items=food_items, categories=db_categories, current_category=category)
+    return render_template('components/menu.html', 
+                         food_items=food_items, 
+                         categories=db_categories, 
+                         current_category=category,
+                         review_stats=review_stats)
 
 @user_bp.route('/search_suggestions')
 def search_suggestions():
@@ -279,7 +327,7 @@ def search_suggestions():
         return jsonify([])
     
     # Base query
-    search_query = FoodItem.query.filter(FoodItem.is_available == True)
+    search_query = FoodItem.query.filter(FoodItem.is_available == True).filter(~FoodItem.name.like('[DELETED]%'))
     
     # Apply filters
     search_query = search_query.filter(
@@ -391,9 +439,8 @@ def process_payment():
     order.payment_method = payment_method
 
     if payment_method == 'cash_on_delivery':
-        order.status = 'confirmed'
         db.session.commit()
-        flash('Your order has been confirmed!', 'success')
+        flash('Your order has been placed and will be confirmed by the restaurant shortly!', 'success')
         return redirect(url_for('user.order_confirmation', order_id=order.id))
     elif payment_method == 'paypal':
         # For PayPal, we should redirect to create the order via AJAX
@@ -417,10 +464,9 @@ def process_payment():
 
         # Store payment reference (last 4 digits of card)
         order.payment_reference = f"CARD-{card_number.strip()[-4:]}"
-        order.status = 'confirmed'
 
         db.session.commit()
-        flash('Your card payment has been processed successfully!', 'success')
+        flash('Your card payment has been processed successfully! Your order will be confirmed by the restaurant shortly.', 'success')
         return redirect(url_for('user.order_confirmation', order_id=order.id))
     elif payment_method == 'upi_payment':
         # Get UPI ID
@@ -436,10 +482,9 @@ def process_payment():
 
         # Store payment reference
         order.payment_reference = f"UPI-{upi_id}"
-        order.status = 'confirmed'
 
         db.session.commit()
-        flash('Your UPI payment has been processed successfully!', 'success')
+        flash('Your UPI payment has been processed successfully! Your order will be confirmed by the restaurant shortly.', 'success')
         return redirect(url_for('user.order_confirmation', order_id=order.id))
     else:
         flash('Invalid payment method selected', 'error')
@@ -896,10 +941,18 @@ def checkout():
     # Get user profile for shipping address
     user_profile = UserProfile.query.filter_by(user_id=current_user.id).first()
 
+    # Payment methods available (removed digital wallet)
+    payment_methods = [
+        {'id': 'cod', 'name': 'Cash on Delivery', 'icon': 'fas fa-money-bill-wave', 'description': 'Pay when your order arrives'},
+        {'id': 'upi', 'name': 'UPI Payment', 'icon': 'fas fa-mobile-alt', 'description': 'Pay using UPI apps like PhonePe, Paytm'},
+        {'id': 'card', 'name': 'Credit/Debit Card', 'icon': 'fas fa-credit-card', 'description': 'Pay using your bank card'}
+    ]
+
     return render_template('components/checkout.html',
                          cart_items=cart_items,
                          checkout_summary=checkout_summary,
-                         user_profile=user_profile)
+                         user_profile=user_profile,
+                         payment_methods=payment_methods)
 
 @user_bp.route('/profile')
 @login_required
@@ -937,16 +990,25 @@ def update_profile():
     user_profile.state = request.form.get('state')
     user_profile.zip_code = request.form.get('zip_code')
     
+    # Update user fields too to ensure consistency in admin dashboard
+    current_user.phone = request.form.get('phone')  # Update phone in User model
+    current_user.address = f"{request.form.get('address_line1')}, {request.form.get('address_line2') or ''}, {request.form.get('city')}"
+    
     # Update user email if provided
     email = request.form.get('email')
     if email and email != current_user.email:
         current_user.email = email
+    
+    # Update timestamps
+    from datetime import datetime
+    current_user.updated_at = datetime.utcnow()
     
     try:
         db.session.commit()
         flash('Profile updated successfully!', 'success')
     except Exception as e:
         db.session.rollback()
+        print(f"Profile update error: {str(e)}")
         flash('Error updating profile', 'error')
     
     return redirect(url_for('user.profile'))
@@ -958,7 +1020,7 @@ def contact():
 
 @user_bp.route('/send-contact-message', methods=['POST'])
 def send_contact_message():
-    """Send contact form message to bhojanxpress@gmail.com"""
+    """Send contact form message to bhojanaxpress@gmail.com"""
     try:
         name = request.form.get('name')
         email = request.form.get('email')
@@ -1002,27 +1064,32 @@ def send_contact_message():
         db.session.commit()
 
         # Use Flask-Mail to send the email
+        from app import mail
         msg = Message(
             subject=subject,
             recipients=['bhojanaxpress@gmail.com'],
             body=email_body,
-            sender=email
+            sender=current_app.config['MAIL_DEFAULT_SENDER']
         )
-        current_app.extensions['mail'].send(msg)
+        mail.send(msg)
 
-        flash('Your message has been sent successfully! We will get back to you soon.', 'success')
+        flash('✅ Your message has been sent successfully! We will get back to you soon.', 'success')
         return redirect(url_for('user.contact'))
 
     except Exception as e:
+        db.session.rollback()
         current_app.logger.error(f"Error sending contact email: {str(e)}")
-        flash('There was an error sending your message. Please try again later.', 'error')
+        flash('❌ There was an error sending your message. Please try again later.', 'error')
         return redirect(url_for('user.contact'))
 
 @user_bp.route('/receipt/<int:order_id>')
 @login_required
 def receipt(order_id):
     order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
-    download = request.args.get('download')
+    download = request.args.get('download', '0')
+    
+    # Convert download parameter to boolean
+    download = download == '1' or download.lower() == 'true'
 
     # Explicitly load order items to avoid attribute error
     try:
@@ -1031,63 +1098,44 @@ def receipt(order_id):
         current_app.logger.error(f"Error loading order items: {str(e)}")
         order_items = []
 
-    if download and REPORTLAB_AVAILABLE:
-        # Generate PDF
+    if download:
+        # Generate HTML for download - consistent with invoice format
+        html_content = render_template('components/invoice_template.html',
+                                     order=order,
+                                     order_items=order_items,
+                                     current_date=datetime.now())
+        
+        # Create properly formatted HTML file
+        formatted_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{order.id} - BhojanXpress</title>
+    <style>
+        @media print {{
+            body {{ margin: 0; }}
+            .invoice-container {{ box-shadow: none; border: none; }}
+        }}
+    </style>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
+        
         buffer = io.BytesIO()
-        p = canvas.Canvas(buffer, pagesize=letter)
-        width, height = letter
-        y = height - 40
-        p.setFont("Helvetica-Bold", 18)
-        p.drawString(40, y, "BhojanXpress Invoice")
-        p.setFont("Helvetica", 12)
-        y -= 40
-        p.drawString(40, y, f"Order ID: {order.id}")
-        y -= 20
-        p.drawString(40, y, f"Date: {order.created_at.strftime('%d-%m-%Y %H:%M')}")
-        y -= 20
-        p.drawString(40, y, f"Customer: {order.customer_name}")
-        y -= 20
-        p.drawString(40, y, f"Phone: {order.phone_number}")
-        y -= 20
-        p.drawString(40, y, f"Shipping Address: {order.delivery_address}")
-        y -= 30
-        p.setFont("Helvetica-Bold", 14)
-        p.drawString(40, y, "Order Items:")
-        y -= 20
-        p.setFont("Helvetica", 12)
-
-        # Iterate through explicitly loaded order items instead of using relationship
-        for item in order_items:
-            # Get the food item
-            food_item = FoodItem.query.get(item.food_item_id)
-            if food_item:
-                food_name = food_item.name
-            else:
-                food_name = "Unknown Item"
-
-            p.drawString(50, y, f"{food_name} (x{item.quantity}) - ₹{item.price:.2f} each")
-            y -= 18
-            if y < 100:
-                p.showPage()
-                y = height - 40
-        y -= 10
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(40, y, f"Subtotal: ₹{order.subtotal:.2f}")
-        y -= 18
-        p.drawString(40, y, f"Discount: -₹{order.discount_amount + order.coupon_discount:.2f}")
-        y -= 18
-        p.drawString(40, y, f"GST: ₹{order.gst_amount:.2f}")
-        y -= 18
-        p.drawString(40, y, f"Delivery: ₹{order.delivery_charge:.2f}")
-        y -= 18
-        p.setFont("Helvetica-Bold", 14)
-        p.drawString(40, y, f"Total: ₹{order.total_amount:.2f}")
-        p.showPage()
-        p.save()
+        buffer.write(formatted_html.encode('utf-8'))
         buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name=f"invoice_{order.id}.pdf", mimetype='application/pdf')
-    # Fallback: render HTML invoice
-    return render_template('components/receipt.html', order=order)
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"BhojanXpress_Invoice_{order.id}.html",
+            mimetype='text/html'
+        )
+    else:
+        # Just display the invoice
+        return render_template('components/receipt.html', order=order)
 
 @user_bp.route('/track_order/<int:order_id>')
 @login_required
@@ -1102,21 +1150,8 @@ def track_order(order_id):
 
 @user_bp.route('/food/<int:food_id>', methods=['GET', 'POST'])
 def food_detail(food_id):
-    """Display food item details and handle rating submissions"""
+    """Display food item details"""
     food_item = FoodItem.query.get_or_404(food_id)
-
-    # Get all ratings for this food item
-    ratings = Rating.query.filter_by(food_item_id=food_id).order_by(Rating.created_at.desc()).all()
-
-    # Calculate average rating
-    avg_rating = 0
-    if ratings:
-        avg_rating = sum(r.rating for r in ratings) / len(ratings)
-
-    # Get user's reviews for this item (multiple reviews allowed)
-    user_reviews = []
-    if current_user.is_authenticated:
-        user_reviews = Rating.query.filter_by(food_item_id=food_id, user_id=current_user.id).all()
 
     # Get similar food items from the same category
     similar_items = FoodItem.query.filter(
@@ -1124,98 +1159,30 @@ def food_detail(food_id):
         FoodItem.id != food_item.id,
         FoodItem.is_available == True
     ).order_by(db.func.random()).limit(4).all()
-
-    # Handle rating submission
-    if request.method == 'POST' and current_user.is_authenticated:
-        try:
-            rating_value = int(request.form.get('rating', 0))
-            if 1 <= rating_value <= 5:
-                comment = request.form.get('comment', '')
-                edit_review_id = request.form.get('edit_review_id')
-
-                current_rating = None
-                
-                if edit_review_id:
-                    # Update existing review
-                    current_rating = Rating.query.filter_by(
-                        id=edit_review_id, 
-                        user_id=current_user.id, 
-                        food_item_id=food_id
-                    ).first()
-                    
-                    if current_rating:
-                        # Delete existing images
-                        for img in current_rating.images:
-                            db.session.delete(img)
-                        
-                        current_rating.rating = rating_value
-                        current_rating.comment = comment
-                        current_rating.updated_at = datetime.utcnow()
-                        flash('Your review has been updated!', 'success')
-                else:
-                    # Create new review
-                    current_rating = Rating(
-                        user_id=current_user.id,
-                        food_item_id=food_id,
-                        rating=rating_value,
-                        comment=comment
-                    )
-                    db.session.add(current_rating)
-                    flash('Your review has been submitted!', 'success')
-
-                # Handle image uploads
-                uploaded_files = request.files.getlist('reviewImages')
-                if uploaded_files:
-                    import os
-                    from werkzeug.utils import secure_filename
-                    
-                    # Create uploads directory if it doesn't exist
-                    upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'reviews')
-                    os.makedirs(upload_folder, exist_ok=True)
-                    
-                    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-                    
-                    for i, file in enumerate(uploaded_files[:3]):  # Limit to 3 images
-                        if file and file.filename and '.' in file.filename:
-                            file_ext = file.filename.rsplit('.', 1)[1].lower()
-                            if file_ext in allowed_extensions:
-                                # Generate unique filename
-                                filename = f"review_{current_rating.id if hasattr(current_rating, 'id') and current_rating.id else 'temp'}_{i}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
-                                filepath = os.path.join(upload_folder, filename)
-                                
-                                # Save file
-                                file.save(filepath)
-                                
-                                # Create ReviewImage record
-                                review_image = ReviewImage(
-                                    rating_id=current_rating.id if hasattr(current_rating, 'id') and current_rating.id else None,
-                                    image_url=f"/static/uploads/reviews/{filename}",
-                                    image_filename=file.filename
-                                )
-                                db.session.add(review_image)
-
-                db.session.commit()
-                
-                # Update rating_id for images if it was a new rating
-                if not hasattr(current_rating, 'id') or not current_rating.id:
-                    db.session.refresh(current_rating)
-                    for img in db.session.query(ReviewImage).filter_by(rating_id=None).all():
-                        img.rating_id = current_rating.id
-                    db.session.commit()
-                
-                return redirect(url_for('user.food_detail', food_id=food_id))
-            else:
-                flash('Please provide a valid rating (1-5 stars).', 'error')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error submitting rating: {str(e)}', 'error')
+    
+    # Calculate average rating
+    from app.models import Review
+    avg_rating_result = db.session.query(func.avg(Review.rating)).filter_by(
+        food_item_id=food_item.id, 
+        is_approved=True
+    ).scalar()
+    avg_rating = avg_rating_result if avg_rating_result else 0.0
+    
+    # Get all approved reviews for this food item
+    ratings = Review.query.filter_by(
+        food_item_id=food_item.id, 
+        is_approved=True
+    ).order_by(Review.created_at.desc()).all()
+    
+    # Get total reviews count
+    total_reviews = len(ratings)
 
     return render_template('components/food_detail.html',
                           food=food_item,
+                          similar_items=similar_items,
                           ratings=ratings,
                           avg_rating=avg_rating,
-                          user_reviews=user_reviews,
-                          similar_items=similar_items)
+                          total_reviews=total_reviews)
 
 @user_bp.route('/reorder/<int:order_id>', methods=['POST'])
 @login_required
@@ -1277,105 +1244,97 @@ def reorder(order_id):
             'message': 'An error occurred while reordering'
         })
 
-# Review Management Routes
-@user_bp.route('/review/<int:review_id>/edit', methods=['GET'])
+@user_bp.route('/notifications', methods=['GET'])
 @login_required
-def edit_review(review_id):
-    """Get review data for editing"""
-    try:
-        review = Rating.query.filter_by(id=review_id, user_id=current_user.id).first()
-        
-        if not review:
-            return jsonify({
-                'success': False,
-                'message': 'Review not found or you do not have permission to edit it'
-            })
-        
-        return jsonify({
-            'success': True,
-            'review': {
-                'id': review.id,
-                'rating': review.rating,
-                'comment': review.comment or ''
+def notifications():
+    """View all user notifications with filtering and pagination."""
+    page = request.args.get('page', 1, type=int)
+    filter_by = request.args.get('filter', 'all')
+    
+    # Use notification service to get paginated results
+    notifications_data = NotificationService.get_user_notifications(
+        user_id=current_user.id,
+        filter_type=filter_by,
+        page=page,
+        per_page=10
+    )
+    
+    if notifications_data is None:
+        flash('Error loading notifications', 'error')
+        return redirect(url_for('user.dashboard'))
+    
+    return render_template(
+        'notifications/list.html',
+        notifications=notifications_data.items,
+        pagination=notifications_data,
+        filter_by=filter_by
+    )
+
+@user_bp.route('/notifications/api/get', methods=['GET'])
+@login_required
+def get_notifications_api():
+    """Get user notifications for the dropdown in navbar."""
+    limit = request.args.get('limit', 5, type=int)
+    
+    # Get recent notifications using service
+    notifications_data = NotificationService.get_user_notifications(
+        user_id=current_user.id,
+        filter_type='all',
+        page=1,
+        per_page=limit
+    )
+    
+    unread_count = NotificationService.get_unread_count(current_user.id)
+    
+    notifications_list = []
+    if notifications_data and notifications_data.items:
+        for notification in notifications_data.items:
+            notification_data = {
+                'id': notification.id,
+                'title': notification.title,
+                'content': notification.content[:50] + '...' if len(notification.content) > 50 else notification.content,
+                'type': notification.notification_type,
+                'reference_id': notification.reference_id,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.strftime('%b %d, %Y %H:%M'),
+                'image_url': notification.image_url
             }
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Error fetching review for edit: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': 'An error occurred while loading the review'
-        })
+            notifications_list.append(notification_data)
+    
+    return jsonify({
+        'notifications': notifications_list,
+        'unread_count': unread_count
+    })
 
-@user_bp.route('/review/<int:review_id>/delete', methods=['DELETE'])
+@user_bp.route('/notifications/<int:notification_id>/mark-read', methods=['POST'])
+@csrf.exempt
 @login_required
-def delete_review(review_id):
-    """Delete a review"""
-    try:
-        review = Rating.query.filter_by(id=review_id, user_id=current_user.id).first()
-        
-        if not review:
-            return jsonify({
-                'success': False,
-                'message': 'Review not found or you do not have permission to delete it'
-            })
-        
-        # Delete associated images
-        for image in review.images:
-            # Delete physical file
-            try:
-                import os
-                filepath = os.path.join(current_app.root_path, 'static', 'uploads', 'reviews', os.path.basename(image.image_url))
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-            except Exception as e:
-                current_app.logger.warning(f"Could not delete image file: {str(e)}")
-            
-            db.session.delete(image)
-        
-        # Delete the review
-        db.session.delete(review)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Review deleted successfully'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Error deleting review: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': 'An error occurred while deleting the review'
-        })
+def mark_notification_read(notification_id):
+    """Mark a notification as read."""
+    success = NotificationService.mark_as_read(notification_id, current_user.id)
+    
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Notification not found'})
 
-@user_bp.route('/review/<int:review_id>/helpful', methods=['POST'])
+@user_bp.route('/notifications/mark-all-read', methods=['POST'])
+@csrf.exempt
 @login_required
-def mark_review_helpful(review_id):
-    """Mark a review as helpful or unhelpful"""
-    try:
-        review = Rating.query.get_or_404(review_id)
-        data = request.get_json()
-        helpful = data.get('helpful', True)
-        
-        if helpful:
-            review.helpful_count = (review.helpful_count or 0) + 1
-        else:
-            review.helpful_count = max(0, (review.helpful_count or 0) - 1)
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'helpful_count': review.helpful_count,
-            'message': 'Thank you for your feedback!'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Error marking review helpful: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': 'An error occurred while recording your feedback'
-        })
+def mark_all_notifications_read():
+    """Mark all user notifications as read."""
+    count = NotificationService.mark_all_as_read(current_user.id)
+    
+    return jsonify({'success': True, 'marked_count': count})
+
+@user_bp.route('/notifications/<int:notification_id>/delete', methods=['POST'])
+@csrf.exempt
+@login_required
+def delete_notification(notification_id):
+    """Delete a notification."""
+    success = NotificationService.delete_notification(notification_id, current_user.id)
+    
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Notification not found'})

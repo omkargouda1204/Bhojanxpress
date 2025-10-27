@@ -143,12 +143,21 @@
                             </a>
                             
                             {% if order.status in ['pending', 'confirmed'] %}
-                                <button class="btn btn-outline-danger btn-sm" onclick="cancelOrder({{ order.id }})">
+                                <button class="btn btn-outline-danger btn-sm cancel-btn" 
+                                        data-order-id="{{ order.id }}" 
+                                        data-created-at="{{ order.created_at.isoformat() }}"
+                                        onclick="cancelOrder({{ order.id }})">
                                     <i class="fas fa-times"></i> Cancel Order
                                 </button>
+                                <small class="text-muted d-block mt-1 cancel-timer" data-order-id="{{ order.id }}">
+                                    <i class="fas fa-clock"></i> <span id="timer-{{ order.id }}">Calculating...</span>
+                                </small>
                             {% endif %}
                             
                             {% if order.status == 'delivered' %}
+                                <a href="{{ url_for('user.receipt', order_id=order.id, download=0) }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-file-invoice"></i> View Invoice
+                                </a>
                                 <a href="{{ url_for('user.receipt', order_id=order.id, download=1) }}" class="btn btn-outline-info btn-sm">
                                     <i class="fas fa-download"></i> Download Invoice
                                 </a>
@@ -210,8 +219,51 @@
 </div>
 
 <script>
+// Initialize countdown timers for cancel buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const cancelButtons = document.querySelectorAll('.cancel-btn');
+    
+    cancelButtons.forEach(button => {
+        const orderId = button.dataset.orderId;
+        const createdAt = new Date(button.dataset.createdAt);
+        const timerElement = document.getElementById(`timer-${orderId}`);
+        
+        function updateTimer() {
+            const now = new Date();
+            const timeSinceOrder = (now - createdAt) / 1000; // seconds
+            const timeRemaining = 300 - timeSinceOrder; // 5 minutes = 300 seconds
+            
+            if (timeRemaining > 0) {
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = Math.floor(timeRemaining % 60);
+                timerElement.textContent = `Cancel within ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                // Time expired
+                button.disabled = true;
+                button.classList.add('disabled');
+                button.innerHTML = '<i class="fas fa-clock"></i> Cannot Cancel';
+                timerElement.innerHTML = '<i class="fas fa-info-circle"></i> Cancellation window expired';
+                timerElement.classList.add('text-danger');
+            }
+        }
+        
+        // Update immediately
+        updateTimer();
+        
+        // Update every second
+        setInterval(updateTimer, 1000);
+    });
+});
+
 function cancelOrder(orderId) {
-    if (confirm('Are you sure you want to cancel this order?')) {
+    if (confirm('Are you sure you want to cancel this order? A 5% cancellation fee may apply.')) {
+        const button = document.querySelector(`[data-order-id="${orderId}"]`);
+        const originalText = button.innerHTML;
+        
+        // Show loading state
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Cancelling...';
+        button.disabled = true;
+        
         fetch(`/user/cancel-order/${orderId}`, {
             method: 'POST',
             headers: {
@@ -222,14 +274,58 @@ function cancelOrder(orderId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                // Show success message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    <i class="fas fa-check-circle me-2"></i>${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                
+                // Insert alert at top of page
+                const container = document.querySelector('.container');
+                container.insertBefore(alertDiv, container.firstChild);
+                
+                // Reload page after 2 seconds
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
             } else {
-                alert('Failed to cancel order: ' + data.message);
+                // Show error message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    <i class="fas fa-exclamation-triangle me-2"></i>Failed to cancel order: ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                
+                // Insert alert at top of page
+                const container = document.querySelector('.container');
+                container.insertBefore(alertDiv, container.firstChild);
+                
+                // Restore button
+                button.innerHTML = originalText;
+                button.disabled = false;
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to cancel order. Please try again.');
+            
+            // Show error message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>Failed to cancel order. Please try again.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert alert at top of page
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Restore button
+            button.innerHTML = originalText;
+            button.disabled = false;
         });
     }
 }

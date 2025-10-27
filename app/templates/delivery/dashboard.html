@@ -6,22 +6,26 @@
 <div class="row">
     <!-- Welcome Header with Status Toggle -->
     <div class="col-12 mb-4">
-        <div class="card bg-gradient-primary text-white shadow">
+        <div class="card shadow" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col">
                         <h2 class="mb-0">Welcome back, {{ current_user.username }}! 🚀</h2>
-                        <p class="mb-0 opacity-75">Ready to deliver some delicious food today?</p>
+                        <p class="mb-0" style="opacity: 0.9;">Ready to deliver some delicious food today?</p>
                     </div>
                     <div class="col-auto">
                         <!-- Agent Status Toggle -->
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="statusToggle"
-                                   {{ 'checked' if current_user.is_active else '' }}
-                                   onchange="toggleAgentStatus()">
-                            <label class="form-check-label text-white" for="statusToggle">
-                                <span id="statusLabel">{{ 'Active' if current_user.is_active else 'Inactive' }}</span>
-                            </label>
+                        <div class="d-flex align-items-center">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input status-toggle" type="checkbox" id="statusToggle"
+                                       {{ 'checked' if current_user.is_active else '' }}
+                                       onchange="toggleAgentStatus()">
+                                <label class="form-check-label text-white" for="statusToggle">
+                                    <span id="statusBadge" class="badge bg-{{ 'success' if current_user.is_active else 'danger' }} ms-1">
+                                        <span id="statusLabel">{{ 'Active' if current_user.is_active else 'Inactive' }}</span>
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                         <a href="{{ url_for('user.home') }}" class="btn btn-light btn-sm" target="_blank">
                             <i class="fas fa-globe"></i> Visit Website
@@ -36,96 +40,56 @@
 <!-- Statistics Cards -->
 <div class="row mb-4">
     <div class="col-lg-3 col-md-6">
-        <div class="stat-card p-4 mb-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h3 class="text-primary mb-0">{{ stats.total_assigned }}</h3>
-                    <p class="text-muted mb-0">Total Assigned</p>
+        <div class="card text-white mb-3" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+            <div class="card-body text-center">
+                <div class="mb-2">
+                    <i class="fas fa-money-bill-wave fa-2x"></i>
                 </div>
-                <div class="text-primary">
-                    <i class="fas fa-box fa-2x"></i>
-                </div>
+                <h3 class="mb-0">₹{{ "%.2f"|format(stats.today_commission) }}</h3>
+                <p class="mb-0">Total Commission Earned</p>
             </div>
         </div>
     </div>
 
     <div class="col-lg-3 col-md-6">
-        <div class="stat-card p-4 mb-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h3 class="text-warning mb-0">{{ stats.pending_deliveries }}</h3>
-                    <p class="text-muted mb-0">Pending Deliveries</p>
-                </div>
-                <div class="text-warning">
+        <div class="card text-white mb-3" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);">
+            <div class="card-body text-center">
+                <div class="mb-2">
                     <i class="fas fa-clock fa-2x"></i>
                 </div>
+                <h3 class="mb-0">₹{{ "%.2f"|format(stats.pending_commission or 0) }}</h3>
+                <p class="mb-0">Pending Commission</p>
             </div>
         </div>
     </div>
 
     <div class="col-lg-3 col-md-6">
-        <div class="stat-card p-4 mb-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h3 class="text-success mb-0">{{ stats.today_deliveries }}</h3>
-                    <p class="text-muted mb-0">Today's Deliveries</p>
-                </div>
-                <div class="text-success">
+        <div class="card text-white mb-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body text-center">
+                <div class="mb-2">
                     <i class="fas fa-check-circle fa-2x"></i>
                 </div>
+                <h3 class="mb-0">₹{{ "%.2f"|format(stats.paid_commission or 0) }}</h3>
+                <p class="mb-0">Commission Paid</p>
             </div>
         </div>
     </div>
 
     <div class="col-lg-3 col-md-6">
-        <div class="stat-card p-4 mb-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h3 class="text-info mb-0">₹{{ "%.0f"|format(stats.total_earnings) }}</h3>
-                    <p class="text-muted mb-0">Total Earnings</p>
+        <div class="card text-white mb-3" style="background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);">
+            <div class="card-body text-center">
+                <div class="mb-2">
+                    <i class="fas fa-shopping-bag fa-2x"></i>
                 </div>
-                <div class="text-info">
-                    <i class="fas fa-rupee-sign fa-2x"></i>
-                </div>
+                <h3 class="mb-0">{{ stats.total_assigned }}</h3>
+                <p class="mb-0">Total Deliveries</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Quick Actions -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('delivery.my_orders') }}" class="btn btn-primary btn-block">
-                            <i class="fas fa-list"></i> View My Orders
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('delivery.earnings') }}" class="btn btn-success btn-block">
-                            <i class="fas fa-chart-line"></i> View Earnings
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('delivery.profile') }}" class="btn btn-info btn-block">
-                            <i class="fas fa-user-edit"></i> Edit Profile
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger btn-block">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
+
 
 <!-- Assigned Orders and Available Orders -->
 <div class="row">
@@ -179,7 +143,11 @@
                             <small class="text-muted">{{ order.customer_name or order.user.name }}</small>
                         </div>
                         <div class="text-end">
-                            <span class="badge bg-warning">Awaiting Admin Assignment</span>
+                            {% if order.delivery_boy_id == current_user.id %}
+                                <span class="badge bg-info">Assigned to You</span>
+                            {% else %}
+                                <span class="badge bg-warning">Available for Assignment</span>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -198,13 +166,15 @@
     function toggleAgentStatus() {
         const checkbox = document.getElementById('statusToggle');
         const label = document.getElementById('statusLabel');
+        const badge = document.getElementById('statusBadge');
         const isActive = checkbox.checked;
 
-        // Update label text
+        // Update label text and badge color
         label.innerText = isActive ? 'Active' : 'Inactive';
+        badge.className = isActive ? 'badge bg-success ms-1' : 'badge bg-danger ms-1';
 
         // Send AJAX request to update status
-        fetch('{{ url_for('delivery.toggle_status') }}', {
+        fetch("{{ url_for('delivery.toggle_status') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -215,12 +185,172 @@
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
+            // Notify successful status change
+            showToast(isActive ? 'You are now active and can receive orders' : 'You are now inactive and will not receive orders');
         }).catch(error => {
             console.error('There was a problem with the fetch operation:', error);
             // Revert the checkbox state in case of error
             checkbox.checked = !isActive;
             label.innerText = isActive ? 'Inactive' : 'Active';
+            badge.className = isActive ? 'badge bg-danger ms-1' : 'badge bg-success ms-1';
+            showToast('Failed to update status. Please try again later.', 'error');
         });
     }
+    
+    // Function to show toast messages
+    function showToast(message, type = 'success') {
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create toast element
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : 'success'} border-0`;
+        toast.id = toastId;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        // Create toast content
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Add toast to container
+        toastContainer.appendChild(toast);
+        
+        // Initialize and show toast
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // Remove toast after it's hidden
+        toast.addEventListener('hidden.bs.toast', function() {
+            toast.remove();
+        });
+    }
+
+    // Notification sound management
+    function toggleNotificationSound() {
+        const soundIcon = document.getElementById('soundIcon');
+        const muteBtn = document.getElementById('muteNotifications');
+        
+        if (soundIcon.classList.contains('fa-volume-up')) {
+            soundIcon.classList.remove('fa-volume-up');
+            soundIcon.classList.add('fa-volume-mute');
+            muteBtn.title = 'Unmute notifications';
+            localStorage.setItem('deliveryNotificationsMuted', 'true');
+        } else {
+            soundIcon.classList.remove('fa-volume-mute');
+            soundIcon.classList.add('fa-volume-up');
+            muteBtn.title = 'Mute notifications';
+            localStorage.setItem('deliveryNotificationsMuted', 'false');
+        }
+    }
+
+    // Load delivery notifications
+    function loadDeliveryNotifications() {
+        fetch('/delivery/notifications-api')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('deliveryNotifications');
+                
+                if (data.notifications && data.notifications.length > 0) {
+                    container.innerHTML = '';
+                    data.notifications.slice(0, 5).forEach(notification => {
+                        const notifElement = document.createElement('div');
+                        notifElement.className = `alert alert-${getNotificationClass(notification.type)} alert-dismissible fade show mb-2`;
+                        notifElement.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <i class="fas ${getNotificationIcon(notification.type)} me-2"></i>
+                                <div class="flex-grow-1">
+                                    <strong>${notification.title}</strong>
+                                    <div class="small">${notification.message}</div>
+                                    <div class="small text-muted">${formatTime(notification.created_at)}</div>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        `;
+                        container.appendChild(notifElement);
+                    });
+                    
+                    // Play sound for new notifications if not muted
+                    if (data.new_count > 0 && localStorage.getItem('deliveryNotificationsMuted') !== 'true') {
+                        playNotificationSound('delivery');
+                    }
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-3">
+                            <i class="fas fa-bell-slash text-muted"></i>
+                            <p class="mb-0 text-muted">No new notifications</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading notifications:', error);
+            });
+    }
+
+    function getNotificationClass(type) {
+        switch(type) {
+            case 'order_assigned': return 'info';
+            case 'payment_received': return 'success';
+            case 'order_cancelled': return 'warning';
+            default: return 'primary';
+        }
+    }
+
+    function getNotificationIcon(type) {
+        switch(type) {
+            case 'order_assigned': return 'fa-truck';
+            case 'payment_received': return 'fa-money-bill-wave';
+            case 'order_cancelled': return 'fa-times-circle';
+            default: return 'fa-bell';
+        }
+    }
+
+    function formatTime(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = now - date;
+        
+        if (diff < 60000) return 'Just now';
+        if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+        if (diff < 86400000) return Math.floor(diff / 3600000) + ' hr ago';
+        return date.toLocaleDateString();
+    }
+
+    function playNotificationSound(type) {
+        if (window.BhojanNotifications) {
+            window.BhojanNotifications.play('DELIVERY', type);
+        }
+    }
+
+    // Load notifications on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDeliveryNotifications();
+        
+        // Check mute state on load
+        if (localStorage.getItem('deliveryNotificationsMuted') === 'true') {
+            toggleNotificationSound();
+        }
+        
+        // Refresh notifications every 30 seconds
+        setInterval(loadDeliveryNotifications, 30000);
+    });
 </script>
+
+<!-- Toast container for status updates -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 {% endblock %}
