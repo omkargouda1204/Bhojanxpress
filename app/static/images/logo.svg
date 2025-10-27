@@ -1,0 +1,7 @@
+<!-- This is a placeholder SVG for the BhojanXpress logo -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="90" fill="#FF5722" opacity="0.9"/>
+  <circle cx="100" cy="100" r="70" fill="#FFF" opacity="0.9"/>
+  <path d="M70,70 Q100,40 130,70 Q160,100 130,130 Q100,160 70,130 Q40,100 70,70 Z" fill="none" stroke="#FF8C00" stroke-width="8"/>
+  <text x="100" y="105" font-family="Arial" font-size="20" font-weight="bold" text-anchor="middle" fill="#FF5722">BhojanXpress</text>
+</svg>

@@ -1,0 +1,531 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Delivery Agent Details - BhojanXpress Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back Button -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="{{ url_for('admin.delivery_agents') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Delivery Agents
+            </a>
+        </div>
+    </div>
+
+    <!-- Agent Profile Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h3 class="card-title mb-1">{{ agent.name }}</h3>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-envelope me-2"></i>{{ agent.email }}
+                            </p>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-phone me-2"></i>{{ agent.phone or 'Not provided' }}
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <div class="d-flex flex-column align-items-md-end">
+                                <div class="mb-2">
+                                    <span class="badge bg-{{ 'success' if agent.is_delivery_boy else 'secondary' }} fs-6">
+                                        {{ 'Active' if agent.is_delivery_boy else 'Inactive' }}
+                                    </span>
+                                </div>
+                                <div class="mb-2">
+                                    <a href="{{ url_for('admin.edit_delivery_agent', agent_id=agent.id) }}" class="btn btn-primary btn-sm hover-lift">
+                                        <i class="fas fa-edit me-1"></i>Edit Details
+                                    </a>
+                                </div>
+                                <p class="text-muted mb-0">
+                                    <small>Joined: {{ agent.created_at.strftime('%B %d, %Y') if agent.created_at else 'N/A' }}</small>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-primary">
+                        <i class="fas fa-box fa-2x mb-2"></i>
+                    </div>
+                    <h4 class="card-title">{{ total_orders }}</h4>
+                    <p class="card-text text-muted">Total Orders</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-success">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    </div>
+                    <h4 class="card-title">{{ completed_orders }}</h4>
+                    <p class="card-text text-muted">Completed Orders</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-info">
+                        <i class="fas fa-percentage fa-2x mb-2"></i>
+                    </div>
+                    <h4 class="card-title">{{ success_rate }}%</h4>
+                    <p class="card-text text-muted">Success Rate</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-warning">
+                        <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                    </div>
+                    <h4 class="card-title">₹{{ "%.2f"|format(total_earnings) }}</h4>
+                    <p class="card-text text-muted">Total Earnings</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Orders</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Items</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td>
+                                        <strong>#{{ order.id }}</strong>
+                                    </td>
+                                    <td>{{ order.customer_name }}</td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ order.order_items|length }} item{{ 's' if order.order_items|length != 1 else '' }}
+                                        </small>
+                                    </td>
+                                    <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 
+                                            'success' if order.status == 'delivered' 
+                                            else 'warning' if order.status == 'out_for_delivery' 
+                                            else 'info' if order.status == 'confirmed' 
+                                            else 'secondary' 
+                                        }}">
+                                            {{ order.status.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>{{ order.created_at.strftime('%b %d, %Y %I:%M %p') if order.created_at else 'N/A' }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No orders found for this delivery agent.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commission Management Section -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-rupee-sign me-2 text-success"></i>Commission Details
+                    </h5>
+                    <span class="badge bg-info">₹{{ "%.2f"|format(stats.pending_commission if stats and stats.pending_commission else 0) }} Pending</span>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h6 class="text-success">₹{{ "%.2f"|format(stats.total_commission_earned if stats and stats.total_commission_earned else 0) }}</h6>
+                                <small class="text-muted">Total Earned</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h6 class="text-warning">₹{{ "%.2f"|format(stats.pending_commission if stats and stats.pending_commission else 0) }}</h6>
+                                <small class="text-muted">Pending</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <h6 class="text-primary">₹{{ "%.2f"|format(stats.paid_commission if stats and stats.paid_commission else 0) }}</h6>
+                            <small class="text-muted">Paid</small>
+                        </div>
+                    </div>
+                    
+                    {% if unpaid_commissions and unpaid_commissions|length > 0 %}
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Unpaid Orders ({{ unpaid_commissions|length }})</h6>
+                        <button type="button" class="btn btn-success btn-sm" 
+                                onclick="showPayAllModal({{ agent.id }})">
+                            <i class="fas fa-money-bill-wave me-1"></i>Pay All (₹{{ "%.2f"|format(stats.pending_commission if stats and stats.pending_commission else 0) }})
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Amount</th>
+                                    <th>Commission</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in unpaid_commissions[:10] %}
+                                <tr>
+                                    <td>#{{ order.id }}</td>
+                                    <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+                                    <td>₹{{ "%.2f"|format(order.total_amount * 0.12) }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-outline-success btn-xs" onclick="showPaymentModal({{ order.id }})">
+                                            Pay
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3 text-muted">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <p class="mb-0">No pending commissions</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-university me-2 text-primary"></i>Account Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if agent.bank_name or agent.account_number or agent.upi_id %}
+                    <div class="row">
+                        {% if agent.bank_name %}
+                        <div class="col-12 mb-3">
+                            <label class="form-label text-muted">Bank Name</label>
+                            <div class="fw-bold">{{ agent.bank_name }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if agent.account_holder_name %}
+                        <div class="col-12 mb-3">
+                            <label class="form-label text-muted">Account Holder</label>
+                            <div class="fw-bold">{{ agent.account_holder_name }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if agent.account_number %}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Account Number</label>
+                            <div class="fw-bold">{{ agent.account_number }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if agent.ifsc_code %}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">IFSC Code</label>
+                            <div class="fw-bold">{{ agent.ifsc_code }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if agent.upi_id %}
+                        <div class="col-12 mb-3">
+                            <label class="form-label text-muted">UPI ID</label>
+                            <div class="fw-bold">{{ agent.upi_id }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-credit-card fa-3x mb-3"></i>
+                        <p class="mb-2">No account details provided</p>
+                        <a href="{{ url_for('admin.edit_delivery_agent', agent_id=agent.id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>Add Account Details
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Performance Chart (Future Enhancement) -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Performance Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Order Status Distribution</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: {{ (completed_orders / total_orders * 100) if total_orders > 0 else 0 }}%">
+                                    Delivered: {{ completed_orders }}
+                                </div>
+                            </div>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-warning" role="progressbar" 
+                                     style="width: {{ ((total_orders - completed_orders) / total_orders * 100) if total_orders > 0 else 0 }}%">
+                                    Others: {{ total_orders - completed_orders }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Performance Metrics</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-star text-warning me-2"></i>
+                                    <strong>Average Rating:</strong> 
+                                    <span class="badge bg-light text-dark">Coming Soon</span>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-clock text-info me-2"></i>
+                                    <strong>Average Delivery Time:</strong> 
+                                    <span class="badge bg-light text-dark">Coming Soon</span>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-calendar text-primary me-2"></i>
+                                    <strong>Active Days:</strong> 
+                                    <span class="badge bg-light text-dark">Coming Soon</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Method Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalLabel">Commission Payment</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="paymentForm" method="POST">
+                {{ csrf_token() }}
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="payment_method">Payment Method</label>
+                        <select class="form-control" id="payment_method" name="payment_method" required onchange="toggleReferenceField()">
+                            <option value="">Select Payment Method</option>
+                            <option value="cash">Cash</option>
+                            <option value="online">Online</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="referenceGroup" style="display: none;">
+                        <label for="reference_id">Reference Number</label>
+                        <input type="text" class="form-control" id="reference_id" name="reference_id" 
+                               placeholder="Enter transaction reference number">
+                        <small class="form-text text-muted">Required for online payments</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Process Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Pay All Commission Modal -->
+<div class="modal fade" id="payAllModal" tabindex="-1" role="dialog" aria-labelledby="payAllModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="payAllModalLabel">Pay All Commissions</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="payAllForm" method="POST">
+                {{ csrf_token() }}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This will pay commission for all delivered orders for this agent.
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pay_all_payment_method">Payment Method</label>
+                        <select class="form-control" id="pay_all_payment_method" name="payment_method" required onchange="togglePayAllReferenceField()">
+                            <option value="">Select Payment Method</option>
+                            <option value="cash">Cash</option>
+                            <option value="online">Online</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="payAllReferenceGroup" style="display: none;">
+                        <label for="pay_all_reference_id">Reference Number</label>
+                        <input type="text" class="form-control" id="pay_all_reference_id" name="reference_id" 
+                               placeholder="Enter transaction reference number">
+                        <small class="form-text text-muted">Required for online payments</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Pay All Commissions</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Payment Modal Functions
+    function showPaymentModal(orderId) {
+        $('#paymentForm').attr('action', '{{ url_for("admin.pay_commission") }}?order_id=' + orderId);
+        $('#paymentModal').modal('show');
+    }
+    
+    function toggleReferenceField() {
+        const paymentMethod = $('#payment_method').val();
+        const referenceGroup = $('#referenceGroup');
+        const referenceInput = $('#reference_id');
+        
+        if (paymentMethod === 'online') {
+            referenceGroup.show();
+            referenceInput.attr('required', true);
+        } else {
+            referenceGroup.hide();
+            referenceInput.attr('required', false);
+            referenceInput.val('');
+        }
+    }
+    
+    // Form validation
+    $('#paymentForm').on('submit', function(e) {
+        const paymentMethod = $('#payment_method').val();
+        const referenceId = $('#reference_id').val().trim();
+        
+        if (paymentMethod === 'online' && !referenceId) {
+            e.preventDefault();
+            alert('Reference number is required for online payments');
+            return false;
+        }
+        
+        if (paymentMethod === 'cash') {
+            return confirm('Are you sure you want to mark this commission as paid in cash?');
+        } else if (paymentMethod === 'online') {
+            return confirm('Are you sure you want to process this online payment with reference: ' + referenceId + '?');
+        }
+    });
+    
+    // Pay All Modal Functions
+    function showPayAllModal(agentId) {
+        $('#payAllForm').attr('action', '{{ url_for("admin.pay_all_commission", agent_id=0) }}'.replace('0', agentId));
+        $('#payAllModal').modal('show');
+    }
+    
+    function togglePayAllReferenceField() {
+        const paymentMethod = $('#pay_all_payment_method').val();
+        const referenceGroup = $('#payAllReferenceGroup');
+        const referenceInput = $('#pay_all_reference_id');
+        
+        if (paymentMethod === 'online') {
+            referenceGroup.show();
+            referenceInput.attr('required', true);
+        } else {
+            referenceGroup.hide();
+            referenceInput.attr('required', false);
+            referenceInput.val('');
+        }
+    }
+    
+    // Pay All form validation
+    $('#payAllForm').on('submit', function(e) {
+        const paymentMethod = $('#pay_all_payment_method').val();
+        const referenceId = $('#pay_all_reference_id').val().trim();
+        
+        if (paymentMethod === 'online' && !referenceId) {
+            e.preventDefault();
+            alert('Reference number is required for online payments');
+            return false;
+        }
+        
+        const orderCount = {{ unpaid_commissions|length if unpaid_commissions else 0 }};
+        const totalAmount = {{ stats.pending_commission if stats and stats.pending_commission else 0 }};
+        
+        if (paymentMethod === 'cash') {
+            return confirm(`Are you sure you want to pay commission for ${orderCount} orders (₹${totalAmount.toFixed(2)}) in cash?`);
+        } else if (paymentMethod === 'online') {
+            return confirm(`Are you sure you want to process online payment for ${orderCount} orders (₹${totalAmount.toFixed(2)}) with reference: ${referenceId}?`);
+        }
+    });
+    
+    // Reset modal on close
+    $('#paymentModal').on('hidden.bs.modal', function () {
+        $('#paymentForm')[0].reset();
+        $('#referenceGroup').hide();
+        $('#reference_id').attr('required', false);
+    });
+    
+    $('#payAllModal').on('hidden.bs.modal', function () {
+        $('#payAllForm')[0].reset();
+        $('#payAllReferenceGroup').hide();
+        $('#pay_all_reference_id').attr('required', false);
+    });
+    
+    console.log('Delivery Agent Details Page Loaded with Enhanced Payment System');
+</script>
+{% endblock %}

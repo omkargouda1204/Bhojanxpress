@@ -1,0 +1,172 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Admin Notifications | BhojanXpress{% endblock %}
+
+{% block content %}
+<!-- Toast for notification feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i class="fas fa-info-circle text-primary me-2"></i>
+            <strong class="me-auto">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="notificationToastBody">
+            Notifications updated.
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0"><i class="fas fa-bell me-2"></i> Admin Notifications</h5>
+                    <button type="button" class="btn btn-light btn-sm" id="markAllRead">
+                        <i class="fas fa-check-double me-1"></i>Mark All Read
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="notificationsTabContent">
+                        <div class="tab-pane fade show active" id="all">
+                            <div class="notifications-container" id="allNotifications">
+                                {% if all_notifications %}
+                                    {% for notification in all_notifications %}
+                                    <div class="notification-card mb-3" data-notification-id="{{ loop.index0 }}">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="card-title mb-1">
+                                                            <i class="fas fa-{{ 'shopping-cart' if notification.type == 'order' else 'envelope' }} me-2 text-primary"></i>
+                                                            {{ notification.title }}
+                                                        </h6>
+                                                        <p class="card-text text-muted mb-2">{{ notification.message }}</p>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-clock me-1"></i>{{ notification.timestamp }}
+                                                        </small>
+                                                    </div>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li><a class="dropdown-item" href="#" onclick="markNotificationRead({{ loop.index0 }})">
+                                                                <i class="fas fa-check me-2"></i>Mark as Read
+                                                            </a></li>
+                                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteNotification({{ loop.index0 }})">
+                                                                <i class="fas fa-trash me-2"></i>Delete
+                                                            </a></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center py-5">
+                                        <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No notifications available</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mark single notification as read
+        window.markNotificationRead = function(notificationId) {
+            fetch(`/admin/mark_notification_read/${notificationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                    if (notificationElement) {
+                        notificationElement.style.opacity = '0.7';
+                        notificationElement.classList.add('read');
+                    }
+                    showToast('Notification marked as read');
+                }
+            })
+            .catch(error => console.error('Error marking notification read:', error));
+        };
+        
+        // Delete notification
+        window.deleteNotification = function(notificationId) {
+            if (confirm('Are you sure you want to delete this notification?')) {
+                fetch(`/admin/delete_notification/${notificationId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                        if (notificationElement) {
+                            notificationElement.remove();
+                        }
+                        showToast('Notification deleted successfully');
+                    }
+                })
+                .catch(error => console.error('Error deleting notification:', error));
+            }
+        };
+        
+        // Mark all notifications as read
+        const markAllReadBtn = document.getElementById('markAllRead');
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function() {
+                fetch('/admin/mark_all_admin_notifications_read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Mark all visible notifications as read
+                        document.querySelectorAll('.notification-card').forEach(card => {
+                            card.style.opacity = '0.7';
+                            card.classList.add('read');
+                        });
+                        showToast('All notifications marked as read');
+                    }
+                })
+                .catch(error => console.error('Error marking all notifications read:', error));
+            });
+        }
+        
+        // Helper function to show toast messages
+        function showToast(message) {
+            const toastBody = document.getElementById('notificationToastBody');
+            if (toastBody) {
+                toastBody.innerText = message;
+                const toast = new bootstrap.Toast(document.getElementById('notificationToast'));
+                toast.show();
+            }
+        }
+    });
+</script>
+{% endblock %}

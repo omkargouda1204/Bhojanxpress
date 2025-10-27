@@ -1,0 +1,8 @@
+<!-- This is a placeholder SVG for a pizza icon -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="48" fill="#FFA500" stroke="#FF6347" stroke-width="2"/>
+  <circle cx="30" cy="35" r="5" fill="#FF0000"/>
+  <circle cx="45" cy="70" r="5" fill="#FF0000"/>
+  <circle cx="70" cy="40" r="5" fill="#FF0000"/>
+  <circle cx="60" cy="60" r="5" fill="#FF0000"/>
+</svg>

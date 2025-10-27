@@ -1,0 +1,223 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Delivery Agents Management - BhojanXpress Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Delivery Agents</h1>
+        <a href="{{ url_for('admin.add_delivery_agent') }}" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Add Delivery Agent
+        </a>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">All Delivery Agents</h6>
+                </div>
+                <div class="card-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    {% if delivery_agents.items %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Status</th>
+                                        <th>Total Deliveries</th>
+                                        <th>Pending Orders</th>
+                                        <th>Joined Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agent in delivery_agents.items %}
+                                    <tr>
+                                        <td>{{ agent.id }}</td>
+                                        <td>
+                                            <a href="{{ url_for('admin.delivery_agent_profile', agent_id=agent.id) }}" class="text-decoration-none">
+                                                <strong>{{ agent.name }}</strong>
+                                            </a>
+                                        </td>
+                                        <td>{{ agent.email }}</td>
+                                        <td>{{ agent.phone or 'N/A' }}</td>
+                                        <td>
+                                            {% if agent.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ agent.total_deliveries or 0 }}</td>
+                                        <td>{{ agent.pending_orders or 0 }}</td>
+                                        <td>{{ agent.created_at.strftime('%Y-%m-%d') if agent.created_at else 'N/A' }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <a href="{{ url_for('admin.delivery_agent_profile', agent_id=agent.id) }}" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-eye"></i> View Profile
+                                                </a>
+                                                <!-- Toggle Switch -->
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" 
+                                                           id="agent-toggle-{{ agent.id }}" 
+                                                           {{ 'checked' if agent.is_active else '' }}
+                                                           onchange="toggleAgentStatus({{ agent.id }}, this.checked)">
+                                                    <label class="form-check-label" for="agent-toggle-{{ agent.id }}">
+                                                        <span id="agent-status-label-{{ agent.id }}" class="badge bg-{{ 'success' if agent.is_active else 'danger' }}">
+                                                            {{ 'Active' if agent.is_active else 'Inactive' }}
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if delivery_agents.pages > 1 %}
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center">
+                                {% if delivery_agents.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.delivery_agents', page=delivery_agents.prev_num) }}">Previous</a>
+                                    </li>
+                                {% endif %}
+
+                                {% for page_num in delivery_agents.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != delivery_agents.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('admin.delivery_agents', page=page_num) }}">{{ page_num }}</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% endif %}
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">…</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if delivery_agents.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.delivery_agents', page=delivery_agents.next_num) }}">Next</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No delivery agents found.
+                        </div>
+                    {% endif %}
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    function toggleAgentStatus(agentId, isActive) {
+        const toggle = document.getElementById(`agent-toggle-${agentId}`);
+        const label = document.getElementById(`agent-status-label-${agentId}`);
+        
+        if (!confirm(`Are you sure you want to ${isActive ? 'activate' : 'deactivate'} this delivery agent?`)) {
+            // Revert toggle if user cancels
+            toggle.checked = !isActive;
+            return;
+        }
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        
+        // Send AJAX request to update status
+        fetch(`/admin/delivery_agents/${agentId}/toggle_status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ active: isActive })
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        }).then(data => {
+            // Update UI immediately without page reload
+            if (data.success) {
+                label.innerText = data.is_active ? 'Active' : 'Inactive';
+                label.className = `badge bg-${data.is_active ? 'success' : 'danger'}`;
+                showToast(`Delivery agent has been ${data.is_active ? 'activated' : 'deactivated'} successfully.`);
+            } else {
+                throw new Error(data.error || 'Failed to update status');
+            }
+        }).catch(error => {
+            console.error('There was a problem with the fetch operation:', error);
+            // Revert toggle on error
+            toggle.checked = !isActive;
+            showToast('Failed to update agent status. Please try again.', 'error');
+        });
+    }
+    
+    // Function to show toast messages
+    function showToast(message, type = 'success') {
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create toast element
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : 'success'} border-0`;
+        toast.id = toastId;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        // Create toast content
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Add toast to container
+        toastContainer.appendChild(toast);
+        
+        // Initialize and show toast
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // Remove toast after it's hidden
+        toast.addEventListener('hidden.bs.toast', function() {
+            toast.remove();
+        });
+    }
+</script>
+
+<!-- Toast container for notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+{% endblock %}

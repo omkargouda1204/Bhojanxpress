@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block navbar %}
+<!-- No navbar for delivery agents -->
+{% endblock %}
+
+{% block footer %}
+<!-- No footer for delivery agents -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.delivery-sidebar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    transition: transform 0.3s ease;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    background: rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-nav .nav-link {
+    color: rgba(255,255,255,0.8);
+    padding: 0.75rem 1.5rem;
+    margin: 0.25rem 0;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.sidebar-nav .nav-link:hover,
+.sidebar-nav .nav-link.active {
+    color: white;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+}
+
+.sidebar-nav .nav-link i {
+    width: 20px;
+    margin-right: 0.75rem;
+}
+
+.delivery-content {
+    background: transparent;
+    min-height: 100vh;
+    padding: 2rem;
+    transition: margin-left 0.3s ease;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 1rem;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-card:hover {
+    transform: translateY(-0.25rem);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,0.15);
+}
+
+/* Mobile Responsive Sidebar */
+@media (max-width: 768px) {
+    .delivery-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1050;
+        width: 280px;
+        transform: translateX(-100%);
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    
+    .delivery-sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .delivery-content {
+        padding: 1rem;
+        width: 100%;
+        margin-left: 0;
+    }
+    
+    .delivery-content.sidebar-open {
+        margin-left: 0; /* Don't shift content on mobile */
+    }
+    
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1040;
+        display: none;
+    }
+    
+    .sidebar-overlay.show {
+        display: block;
+    }
+}
+
+/* Tablet adjustments */
+@media (max-width: 992px) and (min-width: 769px) {
+    .delivery-sidebar {
+        width: 250px;
+    }
+    
+    .delivery-content {
+        padding: 1.5rem;
+    }
+}
+
+/* Large screens */
+@media (min-width: 993px) {
+    .delivery-sidebar {
+        width: 280px;
+    }
+}
+
+/* Mobile toggle button */
+.sidebar-toggle {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1060;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.sidebar-toggle i {
+    font-size: 1.2rem;
+}
+
+@media (max-width: 768px) {
+    .sidebar-toggle {
+        display: flex;
+    }
+}
+
+/* Close button in sidebar */
+.sidebar-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease;
+}
+
+.sidebar-close:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+@media (max-width: 768px) {
+    .sidebar-close {
+        display: flex;
+    }
+}
+
+.stat-card:hover {
+    transform: translateY(-0.25rem);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Mobile sidebar toggle button -->
+<button class="sidebar-toggle" id="sidebarToggle" type="button" {% if hide_sidebar %}style="display: none;"{% endif %}>
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Sidebar overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="container-fluid p-0">
+    <div class="row no-gutters">
+        <!-- Sidebar -->
+        {% if not hide_sidebar %}
+        <div class="col-md-3 delivery-sidebar" id="deliverySidebar">
+            <!-- Close button for mobile -->
+            <button class="sidebar-close" id="sidebarClose" type="button">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="sidebar-header text-white text-center">
+                <i class="fas fa-motorcycle fa-3x mb-3"></i>
+                <h4>{{ current_user.username }}</h4>
+                <p class="mb-0">Delivery Agent</p>
+            </div>
+
+            <nav class="sidebar-nav mt-4">
+                <a href="{{ url_for('delivery.dashboard') }}" class="nav-link {{ 'active' if request.endpoint == 'delivery.dashboard' else '' }}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="{{ url_for('delivery.my_orders') }}" class="nav-link {{ 'active' if request.endpoint == 'delivery.my_orders' else '' }}">
+                    <i class="fas fa-box"></i> My Orders
+                </a>
+                <a href="{{ url_for('delivery.earnings') }}" class="nav-link {{ 'active' if request.endpoint == 'delivery.earnings' else '' }}">
+                    <i class="fas fa-money-bill-wave"></i> Earnings
+                </a>
+                <a href="{{ url_for('delivery.notifications') }}" class="nav-link {{ 'active' if request.endpoint == 'delivery.notifications' else '' }} position-relative">
+                    <i class="fas fa-bell"></i> Notifications
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="deliveryNotificationBadge" style="display: none;">0</span>
+                </a>
+
+                <a href="{{ url_for('delivery.profile') }}" class="nav-link {{ 'active' if request.endpoint == 'delivery.profile' else '' }}">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+
+                <hr class="mx-3" style="border-color: rgba(255,255,255,0.2);">
+
+                <a href="{{ url_for('user.home') }}" class="nav-link" target="_blank">
+                    <i class="fas fa-globe"></i> Visit Website
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="nav-link text-warning">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </nav>
+        </div>
+        {% endif %}
+
+        <!-- Main Content -->
+        <div class="{% if hide_sidebar %}col-12{% else %}col-md-9{% endif %} delivery-content" id="deliveryContent">
+            <!-- Back Navigation Bar (when sidebar is hidden) -->
+            {% if hide_sidebar %}
+            <div class="d-flex align-items-center justify-content-between mb-4 p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 0.5rem; margin: -2rem -2rem 1rem -2rem;">
+                <div class="d-flex align-items-center">
+                    <a href="{{ back_url or url_for('delivery.dashboard') }}" class="btn btn-light me-3" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                    <h4 class="text-white mb-0">
+                        <i class="fas fa-motorcycle me-2"></i>
+                        {% block page_title %}{{ current_user.username }}{% endblock %}
+                    </h4>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="text-white me-3">
+                        <i class="fas fa-user"></i> {{ current_user.name or current_user.username }}
+                    </span>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }}"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block delivery_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Load notifications system -->
+<script src="{{ url_for('static', filename='js/notifications-sound.js') }}"></script>
+<script src="{{ url_for('static', filename='js/delivery-notifications.js') }}"></script>
+
+<!-- Responsive sidebar functionality -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarClose = document.getElementById('sidebarClose');
+    const sidebar = document.getElementById('deliverySidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const content = document.getElementById('deliveryContent');
+
+    // Toggle sidebar
+    function toggleSidebar() {
+        sidebar.classList.toggle('show');
+        overlay.classList.toggle('show');
+        content.classList.toggle('sidebar-open');
+    }
+
+    // Close sidebar
+    function closeSidebar() {
+        sidebar.classList.remove('show');
+        overlay.classList.remove('show');
+        content.classList.remove('sidebar-open');
+    }
+
+    // Event listeners
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', toggleSidebar);
+    }
+
+    if (sidebarClose) {
+        sidebarClose.addEventListener('click', closeSidebar);
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
+
+    // Close sidebar on link click (mobile only)
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+        });
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            closeSidebar();
+        }
+    });
+
+    // Handle touch swipe to close sidebar on mobile
+    let startX = null;
+    let currentX = null;
+    
+    sidebar.addEventListener('touchstart', function(e) {
+        startX = e.touches[0].clientX;
+    }, { passive: true });
+    
+    sidebar.addEventListener('touchmove', function(e) {
+        if (startX === null) return;
+        currentX = e.touches[0].clientX;
+        
+        const diffX = startX - currentX;
+        if (diffX > 50 && window.innerWidth <= 768) {
+            closeSidebar();
+        }
+    }, { passive: true });
+    
+    sidebar.addEventListener('touchend', function() {
+        startX = null;
+        currentX = null;
+    }, { passive: true });
+});
+</script>
+{% endblock %}

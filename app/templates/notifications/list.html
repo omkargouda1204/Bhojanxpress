@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Notifications | BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">
+        <i class="fas fa-bell me-2"></i> Your Notifications
+    </h1>
+
+    <!-- Filter & Actions Toolbar -->
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-8">
+            <!-- Filter Buttons -->
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('user.notifications', filter='all') }}" class="btn btn-outline-primary {{ 'active' if filter_by == 'all' }}">
+                    All
+                </a>
+                <a href="{{ url_for('user.notifications', filter='unread') }}" class="btn btn-outline-primary {{ 'active' if filter_by == 'unread' }}">
+                    Unread
+                </a>
+                <a href="{{ url_for('user.notifications', filter='read') }}" class="btn btn-outline-primary {{ 'active' if filter_by == 'read' }}">
+                    Read
+                </a>
+            </div>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <button id="markAllReadBtn" class="btn btn-outline-secondary">
+                <i class="fas fa-check-double me-1"></i> Mark All as Read
+            </button>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="card shadow-sm">
+        <div class="list-group list-group-flush" id="notificationsList">
+            {% if notifications %}
+                {% for notification in notifications %}
+                    <div class="list-group-item notification-item {{ 'bg-light' if not notification.is_read }}" 
+                         data-notification-id="{{ notification.id }}" 
+                         style="cursor: pointer; transition: all 0.3s ease;"
+                         onclick="handleNotificationClick({{ notification.id }}, '{{ notification.notification_type }}', {{ notification.reference_id or 'null' }})">>
+                        <div class="d-flex">
+                            <!-- Notification Icon -->
+                            <div class="me-3">
+                                {% if notification.notification_type == 'review_reply' %}
+                                    <div class="notification-icon bg-primary text-white">
+                                        <i class="fas fa-comment-dots"></i>
+                                    </div>
+                                {% elif notification.notification_type == 'order_update' %}
+                                    <div class="notification-icon bg-success text-white">
+                                        <i class="fas fa-truck"></i>
+                                    </div>
+                                {% elif notification.notification_type == 'admin_message' %}
+                                    <div class="notification-icon bg-info text-white">
+                                        <i class="fas fa-bullhorn"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="notification-icon bg-secondary text-white">
+                                        <i class="fas fa-bell"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Notification Content -->
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <h6 class="mb-0 {{ 'fw-bold' if not notification.is_read }}">{{ notification.title }}</h6>
+                                    <small class="text-muted">{{ notification.created_at.strftime('%b %d, %Y %H:%M') }}</small>
+                                </div>
+                                <p class="mb-0">{{ notification.content }}</p>
+                                
+                                {% if notification.notification_type == 'review_reply' %}
+                                <a href="{{ url_for('user.food_detail', food_id=notification.reference_id) }}" class="btn btn-sm btn-link mt-2 px-0">View Review</a>
+                                {% elif notification.notification_type == 'order_update' %}
+                                <a href="{{ url_for('user.order_details', order_id=notification.reference_id) }}" class="btn btn-sm btn-link mt-2 px-0">View Order</a>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="ms-2 d-flex flex-column">
+                                {% if not notification.is_read %}
+                                <button 
+                                    class="btn btn-sm btn-outline-secondary mb-2 mark-read-btn" 
+                                    data-notification-id="{{ notification.id }}" 
+                                    title="Mark as read">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                {% endif %}
+                                <button 
+                                    class="btn btn-sm btn-outline-danger delete-notification-btn" 
+                                    data-notification-id="{{ notification.id }}" 
+                                    title="Delete notification">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-bell-slash fa-4x text-muted"></i>
+                    </div>
+                    <h5 class="text-muted">No notifications found</h5>
+                    <p class="text-muted">
+                        {% if filter_by == 'unread' %}
+                            You don't have any unread notifications.
+                        {% elif filter_by == 'read' %}
+                            You don't have any read notifications.
+                        {% else %}
+                            You don't have any notifications yet.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if pagination and pagination.pages > 1 %}
+    <div class="d-flex justify-content-center mt-4">
+        <nav>
+            <ul class="pagination">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('user.notifications', page=pagination.prev_num, filter=filter_by) }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+                            <a class="page-link" href="{{ url_for('user.notifications', page=page_num, filter=filter_by) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('user.notifications', page=pagination.next_num, filter=filter_by) }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .notification-item {
+        transition: background-color 0.3s;
+    }
+    
+    .notification-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Handle notification click to mark as read and navigate
+function handleNotificationClick(notificationId, notificationType, referenceId) {
+    // Prevent event bubbling
+    event.stopPropagation();
+    
+    // Mark as read if not already read
+    const notificationItem = $(`.notification-item[data-notification-id="${notificationId}"]`);
+    if (notificationItem.hasClass('bg-light')) {
+        $.ajax({
+            url: '/notifications/' + notificationId + '/mark-read',
+            type: 'POST',
+            success: function(response) {
+                notificationItem.removeClass('bg-light');
+                notificationItem.find('h6').removeClass('fw-bold');
+                notificationItem.find('.mark-read-btn').remove();
+                
+                // Update badge count
+                updateNotificationBadge();
+            }
+        });
+    }
+    
+    // Navigate based on notification type
+    setTimeout(() => {
+        if (notificationType === 'order_update' && referenceId) {
+            window.location.href = `/user/order/${referenceId}`;
+        } else if (notificationType === 'review_reply' && referenceId) {
+            window.location.href = `/food/${referenceId}`;
+        } else if (notificationType === 'admin_message') {
+            // Just mark as read for admin messages
+            return;
+        }
+    }, 200);
+}
+
+// Update notification badge count
+function updateNotificationBadge() {
+    const unreadCount = $('.notification-item.bg-light').length;
+    const badge = $('.notification-badge');
+    if (unreadCount > 0) {
+        badge.text(unreadCount).show();
+    } else {
+        badge.hide();
+    }
+}
+
+$(document).ready(function() {
+    // Mark single notification as read
+    $('.mark-read-btn').on('click', function(e) {
+        e.stopPropagation(); // Prevent notification click
+        const notificationId = $(this).data('notification-id');
+        const button = $(this);
+        
+        $.ajax({
+            url: '/notifications/' + notificationId + '/mark-read',
+            type: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    // Remove highlight and mark button
+                    button.closest('.notification-item').removeClass('bg-light');
+                    button.closest('.notification-item').find('h6').removeClass('fw-bold');
+                    button.remove();
+                    
+                    // Update unread count in navbar if it exists
+                    updateNavbarNotificationCount();
+                }
+            }
+        });
+    });
+    
+    // Delete notification with improved UX
+    $('.delete-notification-btn').on('click', function(e) {
+        e.stopPropagation(); // Prevent notification click
+        const notificationId = $(this).data('notification-id');
+        const item = $(this).closest('.notification-item');
+        const button = $(this);
+        
+        // Show confirmation with better styling
+        if (confirm('Are you sure you want to delete this notification? This action cannot be undone.')) {
+            // Disable button and show loading
+            button.prop('disabled', true);
+            button.html('<i class="fas fa-spinner fa-spin"></i>');
+            
+            $.ajax({
+                url: '/notifications/' + notificationId + '/delete',
+                type: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        // Smooth removal animation
+                        item.addClass('border-danger');
+                        item.fadeOut(400, function() {
+                            $(this).remove();
+                            
+                            // Update badge count
+                            updateNotificationBadge();
+                            
+                            // Check if list is now empty
+                            if ($('#notificationsList').children().length === 0) {
+                                $('#notificationsList').html(`
+                                    <div class="text-center py-5">
+                                        <div class="mb-3">
+                                            <i class="fas fa-bell-slash fa-4x text-muted"></i>
+                                        </div>
+                                        <h5 class="text-muted">No notifications found</h5>
+                                        <p class="text-muted">You don't have any notifications.</p>
+                                    </div>
+                                `);
+                            }
+                        });
+                    } else {
+                        // Re-enable button on error
+                        button.prop('disabled', false);
+                        button.html('<i class="fas fa-trash"></i>');
+                        alert('Error deleting notification. Please try again.');
+                    }
+                },
+                error: function() {
+                    // Re-enable button on error
+                    button.prop('disabled', false);
+                    button.html('<i class="fas fa-trash"></i>');
+                    alert('Error deleting notification. Please try again.');
+                }
+            });
+        }
+    });
+                            
+                            // Update unread count in navbar if it exists
+                            updateNavbarNotificationCount();
+                        });
+                    }
+                }
+            });
+        }
+    });
+    
+    // Mark all as read
+    $('#markAllReadBtn').on('click', function() {
+        if ($('.notification-item.bg-light').length === 0) {
+            return; // No unread notifications
+        }
+        
+        $.ajax({
+            url: '/notifications/mark-all-read',
+            type: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    // Remove all highlighting
+                    $('.notification-item').removeClass('bg-light');
+                    $('.notification-item h6').removeClass('fw-bold');
+                    $('.mark-read-btn').remove();
+                    
+                    // Update unread count in navbar if it exists
+                    updateNavbarNotificationCount();
+                }
+            }
+        });
+    });
+    
+    // Helper function to update navbar notification count
+    function updateNavbarNotificationCount() {
+        const navbarBadge = $('.notification-badge');
+        if (navbarBadge.length) {
+            $.get('/notifications/api/get', function(data) {
+                if (data.unread_count > 0) {
+                    navbarBadge.text(data.unread_count).show();
+                } else {
+                    navbarBadge.text('0').hide();
+                }
+            });
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,223 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Add Delivery Agent{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-user-plus"></i> Add Delivery Agent
+        </h1>
+        <a href="{{ url_for('admin.delivery_agents') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Agents
+        </a>
+    </div>
+
+    <!-- Add Agent Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Delivery Agent Information</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.add_delivery_agent') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name" name="name" required>
+                                    <small class="form-text text-muted">Enter the delivery agent's full name</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                    <small class="form-text text-muted">This will be used for login</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="phone" class="form-label">Phone Number <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" placeholder="+91 9876543210" required>
+                                    <small class="form-text text-muted">Contact number for the delivery agent</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                                    <small class="form-text text-muted">Minimum 6 characters</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="address" class="form-label">Address</label>
+                            <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                            <small class="form-text text-muted">Residential address of the delivery agent</small>
+                        </div>
+
+                        <div class="card mb-4">
+                            <div class="card-header py-2">
+                                <h6 class="m-0 font-weight-bold text-primary">Payment Details (Optional)</h6>
+                                <small class="text-muted">These details will be used for agent payments</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="bank_name" class="form-label">Bank Name</label>
+                                            <input type="text" class="form-control" id="bank_name" name="bank_name">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="account_holder_name" class="form-label">Account Holder Name</label>
+                                            <input type="text" class="form-control" id="account_holder_name" name="account_holder_name">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="account_number" class="form-label">Account Number</label>
+                                            <input type="text" class="form-control" id="account_number" name="account_number">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="ifsc_code" class="form-label">IFSC Code</label>
+                                            <input type="text" class="form-control" id="ifsc_code" name="ifsc_code">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="upi_id" class="form-label">UPI ID</label>
+                                    <input type="text" class="form-control" id="upi_id" name="upi_id" placeholder="example@upi">
+                                    <small class="form-text text-muted">UPI ID for quick payments</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Note:</strong> The delivery agent will be automatically activated and can start receiving orders immediately after creation.
+                                They can login using their email and password to access the delivery dashboard.
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus"></i> Add Delivery Agent
+                            </button>
+                            <a href="{{ url_for('admin.delivery_agents') }}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for form validation -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const emailInput = document.getElementById('email');
+    const phoneInput = document.getElementById('phone');
+
+    // Email validation
+    emailInput.addEventListener('blur', function() {
+        const email = this.value;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (email && !emailRegex.test(email)) {
+            this.classList.add('is-invalid');
+            this.insertAdjacentHTML('afterend', '<div class="invalid-feedback">Please enter a valid email address.</div>');
+        } else {
+            this.classList.remove('is-invalid');
+            const feedback = this.parentNode.querySelector('.invalid-feedback');
+            if (feedback) feedback.remove();
+        }
+    });
+
+    // Phone validation
+    phoneInput.addEventListener('blur', function() {
+        const phone = this.value;
+        const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/;
+
+        if (phone && !phoneRegex.test(phone)) {
+            this.classList.add('is-invalid');
+            this.insertAdjacentHTML('afterend', '<div class="invalid-feedback">Please enter a valid phone number.</div>');
+        } else {
+            this.classList.remove('is-invalid');
+            const feedback = this.parentNode.querySelector('.invalid-feedback');
+            if (feedback) feedback.remove();
+        }
+    });
+
+    // Form submission validation
+    form.addEventListener('submit', function(e) {
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+
+        if (!name || !email || !password) {
+            e.preventDefault();
+            alert('Please fill in all required fields (Name, Email, and Password).');
+            return false;
+        }
+
+        if (password.length < 6) {
+            e.preventDefault();
+            alert('Password must be at least 6 characters long.');
+            return false;
+        }
+
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding Agent...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-label {
+    font-weight: 600;
+    color: #5a5c69;
+}
+
+.form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.text-danger {
+    color: #e74a3b !important;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.invalid-feedback {
+    display: block;
+}
+</style>
+{% endblock %}

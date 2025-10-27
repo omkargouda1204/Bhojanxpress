@@ -1,0 +1,272 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Send Message to Users | Admin - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        Send Message to Users
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <form method="POST" id="messageForm">
+                        {{ csrf_token() }}
+                        
+                        <!-- Message Title -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">
+                                <i class="fas fa-heading me-2"></i>Message Title
+                            </label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   placeholder="Enter message title" required maxlength="200">
+                        </div>
+                        
+                        <!-- Message Content -->
+                        <div class="mb-3">
+                            <label for="message" class="form-label">
+                                <i class="fas fa-comment me-2"></i>Message Content
+                            </label>
+                            <textarea class="form-control" id="message" name="message" rows="5" 
+                                      placeholder="Enter your message here..." required maxlength="1000"></textarea>
+                            <div class="form-text">Maximum 1000 characters</div>
+                        </div>
+                        
+                        <!-- Recipients -->
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-users me-2"></i>Send To:
+                            </label>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Recipient Type</h6>
+                                            
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" name="recipient_type" 
+                                                       id="all_users" value="all" checked>
+                                                <label class="form-check-label" for="all_users">
+                                                    <i class="fas fa-globe me-2"></i>All Users
+                                                </label>
+                                            </div>
+                                            
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" name="recipient_type" 
+                                                       id="customers" value="customers">
+                                                <label class="form-check-label" for="customers">
+                                                    <i class="fas fa-user me-2"></i>Customers Only
+                                                </label>
+                                            </div>
+                                            
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" name="recipient_type" 
+                                                       id="delivery_boys" value="delivery_boys">
+                                                <label class="form-check-label" for="delivery_boys">
+                                                    <i class="fas fa-motorcycle me-2"></i>Delivery Agents Only
+                                                </label>
+                                            </div>
+                                            
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="recipient_type" 
+                                                       id="specific_users" value="specific">
+                                                <label class="form-check-label" for="specific_users">
+                                                    <i class="fas fa-user-check me-2"></i>Specific Users
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card" id="user_selection" style="display: none;">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Select Users</h6>
+                                            
+                                            <!-- Search users -->
+                                            <div class="mb-3">
+                                                <input type="text" class="form-control form-control-sm" 
+                                                       id="user_search" placeholder="Search users...">
+                                            </div>
+                                            
+                                            <!-- Customer List -->
+                                            <div id="customer_list" class="user-list">
+                                                <h6 class="text-muted small">CUSTOMERS</h6>
+                                                <div class="user-scroll">
+                                                    {% for user in regular_users %}
+                                                    <div class="form-check user-item" data-username="{{ user.username|lower }}" data-email="{{ user.email|lower }}">
+                                                        <input class="form-check-input" type="checkbox" name="user_ids" 
+                                                               value="{{ user.id }}" id="user_{{ user.id }}">
+                                                        <label class="form-check-label small" for="user_{{ user.id }}">
+                                                            {{ user.username }}
+                                                            <br><small class="text-muted">{{ user.email }}</small>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Delivery Agents List -->
+                                            <div id="delivery_list" class="user-list mt-3">
+                                                <h6 class="text-muted small">DELIVERY AGENTS</h6>
+                                                <div class="user-scroll">
+                                                    {% for user in delivery_users %}
+                                                    <div class="form-check user-item" data-username="{{ user.username|lower }}" data-email="{{ user.email|lower }}">
+                                                        <input class="form-check-input" type="checkbox" name="user_ids" 
+                                                               value="{{ user.id }}" id="user_{{ user.id }}">
+                                                        <label class="form-check-label small" for="user_{{ user.id }}">
+                                                            {{ user.username }}
+                                                            <br><small class="text-muted">{{ user.email }}</small>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Selection controls -->
+                                            <div class="mt-2 d-flex gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" id="select_all">
+                                                    Select All Visible
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="clear_all">
+                                                    Clear All
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <span id="selected_count">0</span> users selected
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>Send Message
+                            </button>
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary btn-lg ms-2">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-scroll {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .user-item {
+        padding: 5px 10px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    
+    .user-item:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+    
+    .user-item.hidden {
+        display: none;
+    }
+    
+    .user-list h6 {
+        margin-bottom: 10px;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Show/hide user selection based on recipient type
+    $('input[name="recipient_type"]').change(function() {
+        if ($(this).val() === 'specific') {
+            $('#user_selection').show();
+        } else {
+            $('#user_selection').hide();
+        }
+    });
+    
+    // User search functionality
+    $('#user_search').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        
+        $('.user-item').each(function() {
+            const username = $(this).data('username');
+            const email = $(this).data('email');
+            
+            if (username.includes(searchTerm) || email.includes(searchTerm)) {
+                $(this).removeClass('hidden');
+            } else {
+                $(this).addClass('hidden');
+            }
+        });
+    });
+    
+    // Select all visible users
+    $('#select_all').click(function() {
+        $('.user-item:not(.hidden) input[type="checkbox"]').prop('checked', true);
+        updateSelectedCount();
+    });
+    
+    // Clear all selections
+    $('#clear_all').click(function() {
+        $('input[name="user_ids"]').prop('checked', false);
+        updateSelectedCount();
+    });
+    
+    // Update selected count
+    $('input[name="user_ids"]').change(function() {
+        updateSelectedCount();
+    });
+    
+    function updateSelectedCount() {
+        const count = $('input[name="user_ids"]:checked').length;
+        $('#selected_count').text(count);
+    }
+    
+    // Form validation
+    $('#messageForm').on('submit', function(e) {
+        const recipientType = $('input[name="recipient_type"]:checked').val();
+        
+        if (recipientType === 'specific') {
+            const selectedUsers = $('input[name="user_ids"]:checked').length;
+            if (selectedUsers === 0) {
+                e.preventDefault();
+                alert('Please select at least one user to send the message to.');
+                return false;
+            }
+        }
+        
+        const title = $('#title').val().trim();
+        const message = $('#message').val().trim();
+        
+        if (!title || !message) {
+            e.preventDefault();
+            alert('Please fill in both title and message fields.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

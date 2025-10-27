@@ -1,0 +1,282 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit Delivery Agent - {{ agent.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-user-edit"></i> Edit Delivery Agent - {{ agent.name }}
+        </h1>
+        <div>
+            <a href="{{ url_for('admin.delivery_agent_profile', agent_id=agent.id) }}" class="btn btn-secondary mr-2">
+                <i class="fas fa-arrow-left"></i> Back to Profile
+            </a>
+            <a href="{{ url_for('admin.delivery_agents') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-list"></i> All Agents
+            </a>
+        </div>
+    </div>
+
+    <!-- Edit Agent Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Agent Information</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.edit_delivery_agent', agent_id=agent.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name" name="name" value="{{ agent.name }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email" class="form-label">Email Address (Read-only)</label>
+                                    <input type="email" class="form-control" value="{{ agent.email }}" readonly>
+                                    <small class="form-text text-muted">Email cannot be changed for security reasons</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="phone" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" value="{{ agent.phone or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="new_password" class="form-label">New Password (Optional)</label>
+                                    <input type="password" class="form-control" id="new_password" name="new_password" placeholder="Leave blank to keep current password">
+                                    <small class="form-text text-muted">Minimum 6 characters</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {{ 'checked' if agent.is_active else '' }}>
+                                        <label class="form-check-label" for="is_active">
+                                            Active Status
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">Unchecked agents cannot receive new orders</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <p class="text-muted mb-0">
+                                        <strong>Joined:</strong> {{ agent.created_at.strftime('%B %d, %Y') if agent.created_at else 'N/A' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Details Section -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <hr>
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-university"></i> Account Details
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="bank_name" class="form-label">Bank Name</label>
+                                    <input type="text" class="form-control" id="bank_name" name="bank_name" value="{{ agent.bank_name or '' }}" placeholder="e.g., State Bank of India">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="account_holder_name" class="form-label">Account Holder Name</label>
+                                    <input type="text" class="form-control" id="account_holder_name" name="account_holder_name" value="{{ agent.account_holder_name or '' }}" placeholder="As per bank records">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="account_number" class="form-label">Account Number</label>
+                                    <input type="text" class="form-control" id="account_number" name="account_number" value="{{ agent.account_number or '' }}" placeholder="Bank account number">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="ifsc_code" class="form-label">IFSC Code</label>
+                                    <input type="text" class="form-control" id="ifsc_code" name="ifsc_code" value="{{ agent.ifsc_code or '' }}" placeholder="e.g., SBIN0001234" style="text-transform: uppercase;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="upi_id" class="form-label">UPI ID</label>
+                                    <input type="text" class="form-control" id="upi_id" name="upi_id" value="{{ agent.upi_id or '' }}" placeholder="e.g., username@paytm">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label text-muted">Payment Methods</label>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge badge-info mr-2">
+                                            <i class="fas fa-university"></i> Bank Transfer
+                                        </span>
+                                        <span class="badge badge-success">
+                                            <i class="fab fa-google-pay"></i> UPI
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Update Agent Details
+                            </button>
+                            <a href="{{ url_for('admin.delivery_agent_profile', agent_id=agent.id) }}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for form validation -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const phoneInput = document.getElementById('phone');
+    const ifscInput = document.getElementById('ifsc_code');
+    const accountInput = document.getElementById('account_number');
+    const upiInput = document.getElementById('upi_id');
+
+    // Phone validation
+    phoneInput.addEventListener('blur', function() {
+        const phone = this.value;
+        const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/;
+
+        if (phone && !phoneRegex.test(phone)) {
+            this.classList.add('is-invalid');
+            this.insertAdjacentHTML('afterend', '<div class="invalid-feedback">Please enter a valid phone number.</div>');
+        } else {
+            this.classList.remove('is-invalid');
+            const feedback = this.parentNode.querySelector('.invalid-feedback');
+            if (feedback) feedback.remove();
+        }
+    });
+
+    // IFSC Code validation
+    ifscInput.addEventListener('input', function() {
+        this.value = this.value.toUpperCase();
+    });
+
+    ifscInput.addEventListener('blur', function() {
+        const ifsc = this.value;
+        const ifscRegex = /^[A-Z]{4}[0-9]{7}$/;
+
+        if (ifsc && !ifscRegex.test(ifsc)) {
+            this.classList.add('is-invalid');
+            this.insertAdjacentHTML('afterend', '<div class="invalid-feedback">Please enter a valid IFSC code (e.g., SBIN0001234).</div>');
+        } else {
+            this.classList.remove('is-invalid');
+            const feedback = this.parentNode.querySelector('.invalid-feedback');
+            if (feedback) feedback.remove();
+        }
+    });
+
+    // Account number validation
+    accountInput.addEventListener('blur', function() {
+        const account = this.value;
+        const accountRegex = /^[0-9]{9,18}$/;
+
+        if (account && !accountRegex.test(account)) {
+            this.classList.add('is-invalid');
+            this.insertAdjacentHTML('afterend', '<div class="invalid-feedback">Please enter a valid account number (9-18 digits).</div>');
+        } else {
+            this.classList.remove('is-invalid');
+            const feedback = this.parentNode.querySelector('.invalid-feedback');
+            if (feedback) feedback.remove();
+        }
+    });
+
+    // UPI ID validation
+    upiInput.addEventListener('blur', function() {
+        const upi = this.value;
+        const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+$/;
+
+        if (upi && !upiRegex.test(upi)) {
+            this.classList.add('is-invalid');
+            this.insertAdjacentHTML('afterend', '<div class="invalid-feedback">Please enter a valid UPI ID (e.g., username@paytm).</div>');
+        } else {
+            this.classList.remove('is-invalid');
+            const feedback = this.parentNode.querySelector('.invalid-feedback');
+            if (feedback) feedback.remove();
+        }
+    });
+
+    // Form submission validation
+    form.addEventListener('submit', function(e) {
+        const name = document.getElementById('name').value.trim();
+        const password = document.getElementById('new_password').value;
+
+        if (!name) {
+            e.preventDefault();
+            alert('Agent name is required.');
+            return false;
+        }
+
+        if (password && password.length < 6) {
+            e.preventDefault();
+            alert('Password must be at least 6 characters long.');
+            return false;
+        }
+
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-label {
+    font-weight: 600;
+    color: #5a5c69;
+}
+
+.form-control:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.text-danger {
+    color: #e74a3b !important;
+}
+
+.invalid-feedback {
+    display: block;
+}
+</style>
+{% endblock %}

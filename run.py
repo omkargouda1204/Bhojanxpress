@@ -138,7 +138,9 @@ def init_db():
         db.session.rollback()
         print(f'Error initializing database: {str(e)}')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    app.run()
+    
     with flask_app.app_context():
         # Ensure we're using environment DATABASE_URL
         if 'sqlite' in flask_app.config['SQLALCHEMY_DATABASE_URI']:

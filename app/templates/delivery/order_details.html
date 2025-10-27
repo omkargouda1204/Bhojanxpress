@@ -1,0 +1,385 @@
+{% extends "delivery/delivery_base.html" %}
+
+{% block title %}Order Details - Delivery Agent{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3"><i class="fas fa-receipt text-primary me-2"></i> Order #{{ order.id }}</h1>
+        <a href="{{ url_for('delivery.dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Order Information -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Order Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Customer Details</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Name:</strong> {{ order.user.username if order.user else 'Not provided' }}</li>
+                                <li><strong>Phone:</strong> {{ order.phone_number }}</li>
+                                <li><strong>Email:</strong> {{ order.user.email if order.user else 'Not provided' }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Delivery Address</h6>
+                            <address>
+                                {{ order.delivery_address }}<br>
+                                {{ order.city }}, {{ order.state }} {{ order.pincode }}
+                            </address>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6>Order Status</h6>
+                            <span class="badge bg-{{ 
+                                'success' if order.status == 'delivered' 
+                                else 'warning' if order.status in ['out_for_delivery', 'preparing'] 
+                                else 'info' if order.status == 'confirmed' 
+                                else 'secondary' 
+                            }} fs-6">
+                                {{ order.status.replace('_', ' ').title() }}
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Payment Method</h6>
+                            <span class="badge bg-{{ 'warning' if order.payment_method == 'cash_on_delivery' else 'success' }}">
+                                {{ 'Cash on Delivery' if order.payment_method == 'cash_on_delivery' else 'Online Payment' }}
+                            </span>
+                            {% if order.payment_method == 'cash_on_delivery' %}
+                                <br>
+                                <small class="text-muted mt-1">
+                                    Payment {{ 'Received' if order.payment_received else 'Pending' }}
+                                    {% if order.payment_received %}
+                                        <i class="fas fa-check-circle text-success ms-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-clock text-warning ms-1"></i>
+                                    {% endif %}
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if order.special_instructions %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Special Instructions</h6>
+                            <p class="text-muted">{{ order.special_instructions }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Order Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items %}
+                                <tr>
+                                    <td>{{ item.food_item.name }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>₹{{ "%.2f"|format(item.price) }}</td>
+                                    <td>₹{{ "%.2f"|format(item.quantity * item.price) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end">Subtotal:</th>
+                                    <th>₹{{ "%.2f"|format(order.subtotal) }}</th>
+                                </tr>
+                                {% if order.delivery_charge > 0 %}
+                                <tr>
+                                    <th colspan="3" class="text-end">Delivery Charge:</th>
+                                    <th>₹{{ "%.2f"|format(order.delivery_charge) }}</th>
+                                </tr>
+                                {% endif %}
+                                {% if order.gst_amount > 0 %}
+                                <tr>
+                                    <th colspan="3" class="text-end">GST:</th>
+                                    <th>₹{{ "%.2f"|format(order.gst_amount) }}</th>
+                                </tr>
+                                {% endif %}
+                                {% if order.discount_amount > 0 %}
+                                <tr>
+                                    <th colspan="3" class="text-end">Discount:</th>
+                                    <th class="text-success">-₹{{ "%.2f"|format(order.discount_amount) }}</th>
+                                </tr>
+                                {% endif %}
+                                <tr class="table-active">
+                                    <th colspan="3" class="text-end">Total Amount:</th>
+                                    <th>₹{{ "%.2f"|format(order.total_amount) }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Update Panel -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Update Order Status</h5>
+                </div>
+                <div class="card-body">
+                    {% if order.status not in ['delivered', 'cancelled', 'returned'] %}
+                    <form method="POST" action="{{ url_for('delivery.update_order_status', order_id=order.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="mb-3">
+                            <label for="status" class="form-label">New Status</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="">Select Status</option>
+                                {% if order.status in ['confirmed', 'preparing'] %}
+                                <option value="out_for_delivery">Out for Delivery</option>
+                                {% endif %}
+                                {% if order.status in ['confirmed', 'preparing', 'out_for_delivery'] %}
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="returned">Returned</option>
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Any additional notes about the delivery..."></textarea>
+                        </div>
+
+                        <!-- Cancel/Return Reason Fields (shown conditionally) -->
+                        <div id="cancelReasonDiv" class="mb-3" style="display: none;">
+                            <label for="cancel_reason" class="form-label">Cancellation Reason <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="cancel_reason" name="cancel_reason" rows="2" 
+                                      placeholder="Please provide reason for cancellation..." required></textarea>
+                        </div>
+
+                        <div id="returnReasonDiv" class="mb-3" style="display: none;">
+                            <label for="return_reason" class="form-label">Return Reason <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="return_reason" name="return_reason" rows="2" 
+                                      placeholder="Please provide reason for return..." required></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" id="updateStatusBtn">
+                            <i class="fas fa-save"></i> Update Status
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        {% if order.status == 'delivered' %}
+                            This order has been delivered successfully.
+                        {% elif order.status in ['cancelled', 'returned'] %}
+                            This order has been {{ order.status }}.
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- COD Payment Status (always available for COD orders) -->
+                    {% if order.payment_method == 'cash_on_delivery' %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Cash Payment Status</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('delivery.update_payment_status', order_id=order.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="payment_received" 
+                                               name="payment_received" value="true" 
+                                               {% if order.payment_received %}checked{% endif %}>
+                                        <label class="form-check-label" for="payment_received">
+                                            Payment Received (₹{{ "%.2f"|format(order.total_amount) }})
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Check this box when you receive the cash payment from customer
+                                    </small>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-money-bill"></i> Update Payment Status
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Order Timeline -->
+                    <div class="mt-4">
+                        <h6>Order Timeline</h6>
+                        <div class="timeline">
+                            <div class="timeline-item {{ 'active' if order.status in ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'] else '' }}">
+                                <i class="fas fa-shopping-cart"></i>
+                                <span>Order Placed</span>
+                                <small>{{ order.created_at.strftime('%I:%M %p') if order.created_at else '' }}</small>
+                            </div>
+                            <div class="timeline-item {{ 'active' if order.status in ['confirmed', 'preparing', 'out_for_delivery', 'delivered'] else '' }}">
+                                <i class="fas fa-check"></i>
+                                <span>Confirmed</span>
+                            </div>
+                            <div class="timeline-item {{ 'active' if order.status in ['preparing', 'out_for_delivery', 'delivered'] else '' }}">
+                                <i class="fas fa-utensils"></i>
+                                <span>Preparing</span>
+                            </div>
+                            <div class="timeline-item {{ 'active' if order.status in ['out_for_delivery', 'delivered'] else '' }}">
+                                <i class="fas fa-motorcycle"></i>
+                                <span>Out for Delivery</span>
+                            </div>
+                            <div class="timeline-item {{ 'active' if order.status == 'delivered' else '' }}">
+                                <i class="fas fa-home"></i>
+                                <span>Delivered</span>
+                                {% if order.delivered_at %}
+                                    <small>{{ order.delivered_at.strftime('%I:%M %p') }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 20px;
+}
+.timeline-item {
+    position: relative;
+    padding-bottom: 15px;
+    border-left: 2px solid #e9ecef;
+    padding-left: 20px;
+}
+.timeline-item.active {
+    border-left-color: #28a745;
+}
+.timeline-item.active i {
+    color: #28a745;
+}
+.timeline-item i {
+    position: absolute;
+    left: -8px;
+    top: 2px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+    border: 2px solid #e9ecef;
+    border-radius: 50%;
+    padding: 4px;
+    color: #6c757d;
+    backdrop-filter: blur(5px);
+}
+.timeline-item.active i {
+    border-color: #28a745;
+}
+.timeline-item:last-child {
+    border-left: none;
+}
+.timeline-item small {
+    display: block;
+    color: #6c757d;
+    font-size: 0.8em;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-check payment received checkbox when status is delivered
+    const statusSelect = document.getElementById('status');
+    const paymentCheckbox = document.getElementById('payment_received');
+    const cancelReasonDiv = document.getElementById('cancelReasonDiv');
+    const returnReasonDiv = document.getElementById('returnReasonDiv');
+    const cancelReasonField = document.getElementById('cancel_reason');
+    const returnReasonField = document.getElementById('return_reason');
+    const updateStatusBtn = document.getElementById('updateStatusBtn');
+    
+    // Debug: Check if elements exist
+    console.log('Status select:', statusSelect);
+    console.log('Update button:', updateStatusBtn);
+    
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+            const status = this.value;
+            console.log('Status changed to:', status);
+            
+            // Auto-check payment for delivered orders
+            if (status === 'delivered' && paymentCheckbox) {
+                paymentCheckbox.checked = true;
+            }
+            
+            // Show/hide reason fields
+            if (status === 'cancelled') {
+                cancelReasonDiv.style.display = 'block';
+                returnReasonDiv.style.display = 'none';
+                cancelReasonField.required = true;
+                returnReasonField.required = false;
+            } else if (status === 'returned') {
+                cancelReasonDiv.style.display = 'none';
+                returnReasonDiv.style.display = 'block';
+                cancelReasonField.required = false;
+                returnReasonField.required = true;
+            } else {
+                cancelReasonDiv.style.display = 'none';
+                returnReasonDiv.style.display = 'none';
+                cancelReasonField.required = false;
+                returnReasonField.required = false;
+            }
+        });
+    }
+    
+    // Update status button functionality
+    if (updateStatusBtn) {
+        updateStatusBtn.addEventListener('click', function(e) {
+            console.log('Update status button clicked');
+            
+            if (statusSelect && statusSelect.value === '') {
+                e.preventDefault();
+                alert('Please select a status before updating.');
+                return false;
+            }
+            
+            if (statusSelect) {
+                const status = statusSelect.value;
+                console.log('Status:', status);
+                
+                if (paymentCheckbox) {
+                    const paymentReceived = paymentCheckbox.checked;
+                    console.log('Payment received:', paymentReceived);
+                }
+                
+                console.log('Form will be submitted automatically (submit button)');
+                // Don't prevent default - let the form submit naturally
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

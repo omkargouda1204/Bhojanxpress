@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Order Invoice #{{ order.id }} - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-4">
+                    <div class="invoice-header d-flex justify-content-between align-items-center mb-4">
+                        <div class="logo-container">
+                            <img src="{{ restaurant.logo_url }}" alt="BhojanXpress Logo" style="height: 60px;" class="mb-2">
+                            <h4 class="mb-0">{{ restaurant.name }}</h4>
+                        </div>
+                        <div class="text-end">
+                            <h2 class="text-primary mb-1">INVOICE</h2>
+                            <p class="mb-0">#{{ order.id }}</p>
+                            <p class="mb-0 text-muted small">{{ today }}</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5 class="mb-2">Restaurant Details:</h5>
+                            <p class="mb-1">{{ restaurant.name }}</p>
+                            <p class="mb-1">{{ restaurant.address }}</p>
+                            <p class="mb-1">Phone: {{ restaurant.phone }}</p>
+                            <p class="mb-1">Email: {{ restaurant.email }}</p>
+                            <p class="mb-0">GSTIN: {{ restaurant.gstin }}</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <h5 class="mb-2">Customer Details:</h5>
+                            <p class="mb-1">{{ order.customer_name }}</p>
+                            <p class="mb-1">{{ order.phone_number }}</p>
+                            <p class="mb-1">{{ order.delivery_address }}</p>
+                            <p class="mb-0">Order Date: {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="order-status">
+                                <strong>Order Status:</strong> 
+                                <span class="badge bg-{{ 'success' if order.status == 'delivered' else 'warning' if order.status == 'out_for_delivery' else 'primary' }}">
+                                    {{ order.status.replace('_', ' ').title() }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <div class="payment-status">
+                                <strong>Payment Method:</strong> 
+                                <span class="badge bg-{{ 'success' if order.payment_method == 'online' else 'warning' }}">
+                                    {{ order.payment_method.title() }}
+                                </span>
+                                {% if order.payment_method == 'cash' %}
+                                <span class="ms-2 badge bg-{{ 'success' if order.payment_received else 'danger' }}">
+                                    {{ 'Received' if order.payment_received else 'Pending' }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Item</th>
+                                    <th scope="col">Price</th>
+                                    <th scope="col">Quantity</th>
+                                    <th scope="col">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.order_items %}
+                                <tr>
+                                    <th scope="row">{{ loop.index }}</th>
+                                    <td>{{ item.food_item.name }}</td>
+                                    <td>₹{{ "%.2f"|format(item.price) }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>₹{{ "%.2f"|format(item.price * item.quantity) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
+                                    <td>₹{{ "%.2f"|format(order.subtotal) }}</td>
+                                </tr>
+                                {% if order.discount_amount > 0 %}
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Discount:</strong></td>
+                                    <td>-₹{{ "%.2f"|format(order.discount_amount) }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if order.coupon_discount > 0 %}
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Coupon Discount:</strong></td>
+                                    <td>-₹{{ "%.2f"|format(order.coupon_discount) }}</td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Delivery Charges:</strong></td>
+                                    <td>₹{{ "%.2f"|format(order.delivery_charge) }}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>GST ({{ "%.0f"|format(order.gst_amount / order.subtotal * 100) }}%):</strong></td>
+                                    <td>₹{{ "%.2f"|format(order.gst_amount) }}</td>
+                                </tr>
+                                <tr class="table-active">
+                                    <td colspan="4" class="text-end"><strong>Grand Total:</strong></td>
+                                    <td><strong>₹{{ "%.2f"|format(order.total_amount) }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-8">
+                            {% if order.special_instructions %}
+                            <div class="special-instructions mb-3">
+                                <strong>Special Instructions:</strong>
+                                <p class="mb-0">{{ order.special_instructions }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="delivery-note mt-3">
+                                <strong>Delivery Note:</strong>
+                                <p class="mb-0">Order was delivered by {{ order.delivery_boy.profile.full_name if order.delivery_boy and order.delivery_boy.profile else 'BhojanXpress Delivery' }}</p>
+                                {% if order.delivered_at %}
+                                <p class="mb-0">Delivery Time: {{ order.delivered_at.strftime('%d %b %Y, %I:%M %p') }}</p>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="policy-note mt-3 small text-muted">
+                                <p class="mb-0">For any issues with your order, please contact our customer support at +91 84317 29319 or email bhojanaxpress@gmail.com.</p>
+                                <p class="mb-0">Thank you for choosing BhojanXpress!</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="commission-note">
+                                <h6 class="mb-2">Delivery Agent Commission</h6>
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td class="text-end">Order Value:</td>
+                                        <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-end">Commission Rate:</td>
+                                        <td>{{ "%.1f"|format(order.commission_rate) }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-end">Commission Amount:</td>
+                                        <td><strong>₹{{ "%.2f"|format(order.commission_amount) }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-end">Status:</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if order.commission_paid else 'warning' }}">
+                                                {{ 'Paid' if order.commission_paid else 'Pending' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% if order.commission_paid and order.commission_paid_at %}
+                                    <tr>
+                                        <td class="text-end">Paid On:</td>
+                                        <td>{{ order.commission_paid_at.strftime('%d %b %Y') }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                            
+                            <div class="signature mt-4 pt-4 border-top">
+                                <img src="data:image/png;base64,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" alt="Signature" style="max-height: 30px;">
+                                <p class="mb-0">Authorized Signature</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button class="btn btn-primary" onclick="window.print();">
+                            <i class="fas fa-print"></i> Print Invoice
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .card, .card * {
+            visibility: visible;
+        }
+        .card {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .btn-primary {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}

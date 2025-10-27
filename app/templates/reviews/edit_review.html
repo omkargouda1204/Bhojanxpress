@@ -1,0 +1,618 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Review - {{ review.food_item.name }} - BhojanXpress{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Food Item Info -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            {% if review.food_item.image_url %}
+                                <img src="{{ url_for('static', filename=review.food_item.image_url) }}" 
+                                     alt="{{ review.food_item.name }}" 
+                                     class="img-fluid rounded">
+                            {% else %}
+                                <div class="bg-secondary rounded d-flex align-items-center justify-content-center" 
+                                     style="height: 120px;">
+                                    <i class="fas fa-utensils text-white fs-2"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h3 class="mb-2">{{ review.food_item.name }}</h3>
+                            <p class="text-muted mb-2">{{ review.food_item.description or 'No description available' }}</p>
+                            <h4 class="text-primary mb-2">${{ "%.2f"|format(review.food_item.price) }}</h4>
+                            <small class="text-muted">
+                                Original review: {{ review.created_at|format_datetime }}
+                                {% if review.updated_at > review.created_at %}
+                                    | Last updated: {{ review.updated_at|format_datetime }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Review Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-edit text-primary me-2"></i>Edit Your Review
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" id="editReviewForm">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Rating Selection -->
+                        <div class="mb-4">
+                            {{ form.rating.label(class="form-label h5") }}
+                            <div class="rating-input-container">
+                                <div class="star-rating" id="starRating">
+                                    {% for i in range(1, 6) %}
+                                        <i class="fas fa-star star-input" 
+                                           data-rating="{{ i }}" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="{{ ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][i-1] }}"></i>
+                                    {% endfor %}
+                                </div>
+                                <div class="rating-text mt-2">
+                                    <span id="ratingText" class="text-success">{{ ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][form.rating.data - 1] if form.rating.data else 'Click stars to rate' }}</span>
+                                </div>
+                            </div>
+                            {{ form.rating(style="display: none;") }}
+                            {% for error in form.rating.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Review Comment -->
+                        <div class="mb-4">
+                            {{ form.comment.label(class="form-label h5") }}
+                            {{ form.comment(class="form-control", rows="5", id="reviewComment") }}
+                            <div class="form-text">
+                                <small class="text-muted">
+                                    <span id="charCount">{{ form.comment.data|length if form.comment.data else 0 }}</span>/1000 characters
+                                </small>
+                            </div>
+                            {% for error in form.comment.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Current Images -->
+                        {% if review.images %}
+                            <div class="mb-4">
+                                <h5>Current Images</h5>
+                                <div class="row g-2" id="currentImages">
+                                    {% for image in review.images %}
+                                        <div class="col-6 col-md-3" data-image-id="{{ image.id }}">
+                                            <div class="image-preview">
+                                                <img src="{{ url_for('static', filename=image.filename) }}" 
+                                                     alt="Review image" 
+                                                     class="img-fluid rounded">
+                                                <button type="button" class="remove-btn" data-image-id="{{ image.id }}">
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <small class="text-muted">Click the × button to remove images</small>
+                            </div>
+                        {% endif %}
+
+                        <!-- New Image Upload -->
+                        <div class="mb-4">
+                            {{ form.new_images.label(class="form-label h5") }}
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-placeholder text-center p-4">
+                                    <i class="fas fa-cloud-upload-alt fs-2 text-muted mb-2"></i>
+                                    <p class="text-muted mb-2">Add new images (optional)</p>
+                                    <p class="small text-muted mb-0">Maximum 5 total images, 16MB each (JPG, PNG, WEBP)</p>
+                                </div>
+                                {{ form.new_images(class="form-control d-none", id="imageInput") }}
+                            </div>
+                            
+                            <!-- New Image Preview Container -->
+                            <div id="newImagePreviewContainer" class="mt-3" style="display: none;">
+                                <h6>New Images:</h6>
+                                <div class="row g-2" id="newImagePreviews"></div>
+                            </div>
+                            
+                            {% for error in form.new_images.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Hidden field for images to remove -->
+                        {{ form.remove_images() }}
+
+                        <!-- Update Notice -->
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Note:</strong> Your updated review will be marked with an "edited" label and the update timestamp will be visible to other users.
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('review.view_reviews', food_item_id=review.food_item_id) }}" 
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Cancel
+                            </a>
+                            <div>
+                                <button type="button" class="btn btn-outline-primary me-2" id="previewBtn">
+                                    <i class="fas fa-eye me-2"></i>Preview
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="updateBtn">
+                                    <i class="fas fa-save me-2"></i>Update Review
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Updated Review Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="review-preview">
+                    <!-- Preview content will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('editReviewForm').submit();">
+                    Update Review
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Star Rating Input Styles */
+.star-rating {
+    font-size: 2rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.star-input {
+    color: #ddd;
+    transition: color 0.2s ease;
+    margin: 0 2px;
+}
+
+.star-input:hover,
+.star-input.active {
+    color: #ffc107;
+}
+
+.star-input:hover ~ .star-input {
+    color: #ddd;
+}
+
+/* Upload Area Styles */
+.upload-area {
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.upload-area.dragover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+/* Image Preview Styles */
+.image-preview {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 1;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-preview .remove-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #dc3545;
+}
+
+.image-preview .remove-btn:hover {
+    background: white;
+    color: #dc3545;
+}
+
+.image-preview.marked-for-removal {
+    opacity: 0.5;
+    border: 2px solid #dc3545;
+}
+
+/* Character Counter */
+#charCount {
+    font-weight: 500;
+}
+
+/* Loading States */
+.btn.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.btn.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Star Rating Functionality
+    const starRating = document.getElementById('starRating');
+    const ratingInput = document.getElementById('rating');
+    const ratingText = document.getElementById('ratingText');
+    const stars = starRating.querySelectorAll('.star-input');
+    
+    const ratingTexts = {
+        1: 'Poor - Not recommended',
+        2: 'Fair - Could be better',
+        3: 'Good - Satisfactory',
+        4: 'Very Good - Recommended',
+        5: 'Excellent - Highly recommended!'
+    };
+
+    let currentRating = {{ form.rating.data or 0 }};
+    
+    // Set initial rating display
+    if (currentRating > 0) {
+        setRating(currentRating);
+        ratingInput.value = currentRating;
+    }
+
+    stars.forEach((star, index) => {
+        star.addEventListener('mouseover', () => {
+            highlightStars(index + 1);
+            ratingText.textContent = ratingTexts[index + 1];
+        });
+
+        star.addEventListener('click', () => {
+            currentRating = index + 1;
+            ratingInput.value = currentRating;
+            setRating(currentRating);
+            ratingText.textContent = ratingTexts[currentRating];
+            ratingText.style.color = '#28a745';
+            ratingText.style.fontWeight = 'bold';
+        });
+    });
+
+    starRating.addEventListener('mouseleave', () => {
+        if (currentRating > 0) {
+            setRating(currentRating);
+            ratingText.textContent = ratingTexts[currentRating];
+            ratingText.style.color = '#28a745';
+        } else {
+            highlightStars(0);
+            ratingText.textContent = 'Click stars to rate';
+            ratingText.style.color = '';
+            ratingText.style.fontWeight = '';
+        }
+    });
+
+    function highlightStars(rating) {
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('active');
+            } else {
+                star.classList.remove('active');
+            }
+        });
+    }
+
+    function setRating(rating) {
+        highlightStars(rating);
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.style.color = '#ffc107';
+            } else {
+                star.style.color = '#ddd';
+            }
+        });
+    }
+
+    // Character Counter
+    const reviewComment = document.getElementById('reviewComment');
+    const charCount = document.getElementById('charCount');
+    
+    reviewComment.addEventListener('input', function() {
+        const length = this.value.length;
+        charCount.textContent = length;
+        
+        if (length > 1000) {
+            charCount.style.color = '#dc3545';
+        } else if (length > 800) {
+            charCount.style.color = '#ffc107';
+        } else {
+            charCount.style.color = '#6c757d';
+        }
+    });
+
+    // Handle Current Image Removal
+    const removeImageInput = document.getElementById('remove_images');
+    let imagesToRemove = [];
+    
+    document.querySelectorAll('#currentImages .remove-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const imageId = this.dataset.imageId;
+            const imageContainer = this.closest('[data-image-id]');
+            
+            if (imagesToRemove.includes(imageId)) {
+                // Unmark for removal
+                imagesToRemove = imagesToRemove.filter(id => id !== imageId);
+                imageContainer.classList.remove('marked-for-removal');
+                this.innerHTML = '×';
+            } else {
+                // Mark for removal
+                imagesToRemove.push(imageId);
+                imageContainer.classList.add('marked-for-removal');
+                this.innerHTML = '↺';
+            }
+            
+            removeImageInput.value = JSON.stringify(imagesToRemove);
+        });
+    });
+
+    // New Image Upload Functionality
+    const uploadArea = document.getElementById('uploadArea');
+    const imageInput = document.getElementById('imageInput');
+    const newImagePreviewContainer = document.getElementById('newImagePreviewContainer');
+    const newImagePreviews = document.getElementById('newImagePreviews');
+    
+    let selectedFiles = [];
+
+    // Handle drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    uploadArea.addEventListener('click', () => {
+        imageInput.click();
+    });
+
+    imageInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+        const currentImageCount = {{ review.images|length }} - imagesToRemove.length;
+        const maxFiles = 5;
+        const maxSize = 16 * 1024 * 1024; // 16MB
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        
+        const validFiles = Array.from(files).filter(file => {
+            if (!allowedTypes.includes(file.type)) {
+                alert(`Invalid file type: ${file.name}. Only JPG, PNG, and WEBP files are allowed.`);
+                return false;
+            }
+            if (file.size > maxSize) {
+                alert(`File too large: ${file.name}. Maximum size is 16MB.`);
+                return false;
+            }
+            return true;
+        });
+
+        // Limit total number of files
+        const totalFiles = currentImageCount + selectedFiles.length + validFiles.length;
+        if (totalFiles > maxFiles) {
+            const allowedNewFiles = maxFiles - currentImageCount - selectedFiles.length;
+            if (allowedNewFiles <= 0) {
+                alert(`Maximum ${maxFiles} images allowed. Remove some existing images first.`);
+                return;
+            }
+            alert(`Maximum ${maxFiles} total images allowed. Only ${allowedNewFiles} new images will be added.`);
+            validFiles.splice(allowedNewFiles);
+        }
+
+        selectedFiles = selectedFiles.concat(validFiles);
+        updateNewImagePreviews();
+        updateFileInput();
+    }
+
+    function updateNewImagePreviews() {
+        newImagePreviews.innerHTML = '';
+        
+        if (selectedFiles.length > 0) {
+            newImagePreviewContainer.style.display = 'block';
+            
+            selectedFiles.forEach((file, index) => {
+                const col = document.createElement('div');
+                col.className = 'col-6 col-md-3';
+                
+                const preview = document.createElement('div');
+                preview.className = 'image-preview';
+                
+                const img = document.createElement('img');
+                img.className = 'img-fluid';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = (e) => {
+                    e.preventDefault();
+                    removeNewImage(index);
+                };
+                
+                preview.appendChild(img);
+                preview.appendChild(removeBtn);
+                col.appendChild(preview);
+                newImagePreviews.appendChild(col);
+                
+                // Create image preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        } else {
+            newImagePreviewContainer.style.display = 'none';
+        }
+    }
+
+    function removeNewImage(index) {
+        selectedFiles.splice(index, 1);
+        updateNewImagePreviews();
+        updateFileInput();
+    }
+
+    function updateFileInput() {
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => dt.items.add(file));
+        imageInput.files = dt.files;
+    }
+
+    // Preview Functionality
+    const previewBtn = document.getElementById('previewBtn');
+    const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+    
+    previewBtn.addEventListener('click', () => {
+        generatePreview();
+        previewModal.show();
+    });
+
+    function generatePreview() {
+        const rating = currentRating;
+        const comment = reviewComment.value.trim();
+        const ratingStars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        
+        const previewContent = `
+            <div class="d-flex align-items-center mb-3">
+                <div class="me-3">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                         style="width: 40px; height: 40px;">
+                        {{ review.user.username[0].upper() }}
+                    </div>
+                </div>
+                <div>
+                    <h6 class="mb-0">{{ review.user.username }}</h6>
+                    <small class="text-muted">{{ review.created_at|time_ago }} (edited)</small>
+                </div>
+            </div>
+            <div class="mb-2">
+                <span style="color: #ffc107; font-size: 1.2rem;">${ratingStars}</span>
+            </div>
+            ${comment ? `<p class="mb-3">${comment.replace(/\n/g, '<br>')}</p>` : '<p class="text-muted mb-3">No comment provided</p>'}
+            <div class="text-muted">
+                ${getCurrentImageCount()} current image(s)
+                ${selectedFiles.length > 0 ? ` + ${selectedFiles.length} new image(s)` : ''}
+            </div>
+        `;
+        
+        document.querySelector('.review-preview').innerHTML = previewContent;
+    }
+
+    function getCurrentImageCount() {
+        return {{ review.images|length }} - imagesToRemove.length;
+    }
+
+    // Form Validation and Submission
+    const form = document.getElementById('editReviewForm');
+    const updateBtn = document.getElementById('updateBtn');
+    
+    form.addEventListener('submit', (e) => {
+        let isValid = true;
+        
+        // Validate rating
+        if (currentRating === 0) {
+            isValid = false;
+            ratingText.textContent = 'Please select a rating';
+            ratingText.style.color = '#dc3545';
+            ratingText.style.fontWeight = 'bold';
+        }
+        
+        // Validate comment length
+        if (reviewComment.value.length > 1000) {
+            isValid = false;
+            reviewComment.classList.add('is-invalid');
+        } else {
+            reviewComment.classList.remove('is-invalid');
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Show loading state
+        updateBtn.classList.add('loading');
+        updateBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %}

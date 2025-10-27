@@ -1,0 +1,8 @@
+<!-- This is a placeholder SVG for a burger icon -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <rect x="20" y="30" width="60" height="10" rx="5" fill="#FFA07A"/>
+  <rect x="15" y="40" width="70" height="20" rx="5" fill="#8B4513"/>
+  <rect x="20" y="60" width="60" height="10" rx="5" fill="#FFA07A"/>
+  <rect x="25" y="45" width="50" height="10" fill="#90EE90"/>
+  <rect x="30" y="50" width="40" height="5" fill="#FF0000"/>
+</svg>

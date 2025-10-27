@@ -1,0 +1,495 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Slider Management - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-images"></i> Slider Management
+        </h1>
+        <div>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Upload New Image -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3 bg-gradient-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-upload"></i> Create New Slider
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.upload_slider_image') }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="title" class="form-label fw-bold">Slider Title</label>
+                                    <input type="text" class="form-control" id="title" name="title" 
+                                           placeholder="Fresh & Healthy Meals" required>
+                                    <small class="text-muted">This will be the main heading of your slider</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="subtitle" class="form-label fw-bold">Subtitle</label>
+                                    <input type="text" class="form-control" id="subtitle" name="subtitle" 
+                                           placeholder="Start your day with nutritious and delicious options.">
+                                    <small class="text-muted">Supporting text for your slider</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="button_text" class="form-label fw-bold">Button Text</label>
+                                    <input type="text" class="form-control" id="button_text" name="button_text" 
+                                           placeholder="ORDER NOW" value="ORDER NOW">
+                                    <small class="text-muted">Call-to-action button text</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="button_link" class="form-label fw-bold">Button Link</label>
+                                    <select class="form-control" id="button_link" name="button_link">
+                                        <option value="/menu">📋 Browse Menu</option>
+                                        <option value="/food_items">🍽️ View Food Items</option>
+                                        <option value="/categories">📂 Food Categories</option>
+                                        <option value="/offers">🎉 Special Offers</option>
+                                        <option value="/contact">📞 Contact Us</option>
+                                        <option value="/about">ℹ️ About Us</option>
+                                        <option value="/auth/register">👤 Join Now</option>
+                                        <option value="/auth/login">🔐 Login</option>
+                                        <option value="#order">📦 Order Section</option>
+                                        <option value="https://wa.me/918431729319">💬 WhatsApp</option>
+                                        <option value="tel:+918431729319">📱 Call Now</option>
+                                    </select>
+                                    <small class="text-muted">Choose destination page for button</small>
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="button_color" class="form-label fw-bold">Button Color</label>
+                                    <select class="form-control" id="button_color" name="button_color">
+                                        <option value="warning" data-color="#ffc107">🟡 Yellow (Warning)</option>
+                                        <option value="primary" data-color="#0d6efd">🔵 Blue (Primary)</option>
+                                        <option value="success" data-color="#198754">🟢 Green (Success)</option>
+                                        <option value="danger" data-color="#dc3545">🔴 Red (Danger)</option>
+                                        <option value="info" data-color="#0dcaf0">🔷 Cyan (Info)</option>
+                                        <option value="dark" data-color="#212529">⚫ Dark</option>
+                                        <option value="light" data-color="#f8f9fa">⚪ Light</option>
+                                        <option value="secondary" data-color="#6c757d">🔘 Gray (Secondary)</option>
+                                    </select>
+                                    <small class="text-muted">Color scheme for the button</small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="slider_image" class="form-label fw-bold">Select Image</label>
+                                    <input type="file" class="form-control" id="slider_image" name="slider_image" 
+                                           accept=".jpg,.jpeg,.png,.gif" required>
+                                    <small class="form-text text-muted">
+                                        Supported formats: JPG, JPEG, PNG, GIF. Recommended size: 1920x600px
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="offer_text" class="form-label fw-bold">Offer/Discount Text (Optional)</label>
+                                    <input type="text" class="form-control" id="offer_text" name="offer_text" 
+                                           placeholder="50% OFF">
+                                    <small class="text-muted">Special offer or discount text</small>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="display_order" class="form-label fw-bold">Display Order</label>
+                                    <input type="number" class="form-control" id="display_order" name="display_order" 
+                                           min="1" value="1">
+                                    <small class="text-muted">Order in which this slider will appear</small>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input type="checkbox" class="form-check-input" id="is_active" name="is_active" checked>
+                                    <label class="form-check-label fw-bold" for="is_active">
+                                        Active Slider
+                                    </label>
+                                    <small class="d-block text-muted">Uncheck to hide this slider</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-success btn-lg px-5">
+                                <i class="fas fa-plus-circle"></i> Create Slider
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header py-3 bg-gradient-info text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-lightbulb"></i> Slider Tips
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-primary"><i class="fas fa-palette"></i> Image Guidelines</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="fas fa-check text-success"></i> Use high-quality food images</li>
+                            <li><i class="fas fa-check text-success"></i> Size: 1920x600 pixels</li>
+                            <li><i class="fas fa-check text-success"></i> File size: Under 2MB</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-primary"><i class="fas fa-font"></i> Text Guidelines</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="fas fa-check text-success"></i> Keep titles short and catchy</li>
+                            <li><i class="fas fa-check text-success"></i> Use action words in buttons</li>
+                            <li><i class="fas fa-check text-success"></i> Make offers prominent</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <small><i class="fas fa-exclamation-triangle"></i> 
+                        Test your sliders on different devices to ensure proper visibility.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Slider Images -->
+    <div class="card shadow">
+        <div class="card-header py-3 bg-gradient-primary text-white">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-images"></i> Current Slider Images ({{ slider_images|length }})
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if slider_images %}
+                <div class="row">
+                    {% for image in slider_images %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="position-relative">
+                                {% if image.image_filename %}
+                                <img src="{{ url_for('static', filename='uploads/sliders/' + image.image_filename) }}" 
+                                     class="card-img-top" alt="{{ image.title }}" style="height: 200px; object-fit: cover;">
+                                <div class="position-absolute top-0 end-0 m-2">
+                                    <span class="badge {{ 'bg-success' if image.is_active else 'bg-secondary' }}">
+                                        {{ 'Active' if image.is_active else 'Inactive' }}
+                                    </span>
+                                </div>
+                                {% if image.offer_text %}
+                                <div class="position-absolute top-0 start-0 m-2">
+                                    <span class="badge bg-warning text-dark">{{ image.offer_text }}</span>
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <div class="card-img-top d-flex align-items-center justify-content-center bg-light" 
+                                     style="height: 200px;">
+                                    <i class="fas fa-image text-muted fa-3x"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="card-body">
+                                <h6 class="card-title fw-bold">{{ image.title or 'Untitled Slider' }}</h6>
+                                {% if image.subtitle %}
+                                <p class="card-text text-muted small">{{ image.subtitle }}</p>
+                                {% endif %}
+                                
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">
+                                        Order: {{ image.display_order or 'N/A' }}
+                                    </small>
+                                    {% if image.button_text %}
+                                    <span class="badge bg-primary">{{ image.button_text }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <small class="text-muted d-block">
+                                    Created: {{ image.created_at.strftime('%Y-%m-%d %H:%M') if image.created_at else 'N/A' }}
+                                </small>
+                            </div>
+                            
+                            <div class="card-footer bg-transparent">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" 
+                                                onclick="editSlider({{ image.id }})">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <form method="POST" action="{{ url_for('admin.delete_slider_image', slider_id=image.id) }}" 
+                                              style="display: inline-block;" 
+                                              onsubmit="return confirm('Are you sure you want to delete this slider?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                    
+                                    <!-- Toggle Switch -->
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="slider-toggle-{{ image.id }}" 
+                                               {{ 'checked' if image.is_active else '' }}
+                                               onchange="toggleSliderStatus({{ image.id }}, this.checked)">
+                                        <label class="form-check-label" for="slider-toggle-{{ image.id }}">
+                                            <span id="slider-status-label-{{ image.id }}" class="badge bg-{{ 'success' if image.is_active else 'danger' }} small">
+                                                {{ 'Active' if image.is_active else 'Inactive' }}
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-images text-muted fa-5x mb-3"></i>
+                    <h5 class="text-muted">No slider images uploaded yet</h5>
+                    <p class="text-muted">Create your first slider using the form above to showcase your delicious food items.</p>
+                    <div class="mt-4">
+                        <button class="btn btn-primary" onclick="document.getElementById('slider_image').click()">
+                            <i class="fas fa-plus"></i> Add Your First Slider
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function editSlider(sliderId) {
+    // Fetch slider data and populate edit modal
+    fetch('/admin/slider-management/edit/' + sliderId, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Create and show edit modal
+            showEditModal(data.slider);
+        } else {
+            alert('Error loading slider data');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while loading the slider');
+    });
+}
+
+function showEditModal(slider) {
+    // Create edit modal dynamically
+    const modalHtml = `
+        <div class="modal fade" id="editSliderModal" tabindex="-1" aria-labelledby="editSliderModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="editSliderModalLabel">
+                            <i class="fas fa-edit"></i> Edit Slider: ${slider.title}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST" action="/admin/slider-management/edit/${slider.id}" enctype="multipart/form-data">
+                        <div class="modal-body">
+                            <input type="hidden" name="csrf_token" value="${document.querySelector('[name=csrf_token]').value}"/>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="edit_title" class="form-label fw-bold">Slider Title</label>
+                                        <input type="text" class="form-control" id="edit_title" name="title" 
+                                               value="${slider.title}" required>
+                                    </div>
+                                    
+                                    <div class="form-group mb-3">
+                                        <label for="edit_subtitle" class="form-label fw-bold">Subtitle</label>
+                                        <input type="text" class="form-control" id="edit_subtitle" name="subtitle" 
+                                               value="${slider.subtitle}">
+                                    </div>
+                                    
+                                    <div class="form-group mb-3">
+                                        <label for="edit_button_text" class="form-label fw-bold">Button Text</label>
+                                        <input type="text" class="form-control" id="edit_button_text" name="button_text" 
+                                               value="${slider.button_text}">
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="edit_button_link" class="form-label fw-bold">Button Link</label>
+                                        <select class="form-control" id="edit_button_link" name="button_link">
+                                            <option value="/menu" ${slider.button_link === '/menu' ? 'selected' : ''}>Browse Menu</option>
+                                            <option value="/food_items" ${slider.button_link === '/food_items' ? 'selected' : ''}>View Food Items</option>
+                                            <option value="/contact" ${slider.button_link === '/contact' ? 'selected' : ''}>Contact Us</option>
+                                            <option value="/about" ${slider.button_link === '/about' ? 'selected' : ''}>About Us</option>
+                                            <option value="#order" ${slider.button_link === '#order' ? 'selected' : ''}>Order Section</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group mb-3">
+                                        <label for="edit_offer_text" class="form-label fw-bold">Offer/Discount Text</label>
+                                        <input type="text" class="form-control" id="edit_offer_text" name="offer_text" 
+                                               value="${slider.offer_text}">
+                                    </div>
+                                    
+                                    <div class="form-group mb-3">
+                                        <label for="edit_display_order" class="form-label fw-bold">Display Order</label>
+                                        <input type="number" class="form-control" id="edit_display_order" name="display_order" 
+                                               min="1" value="${slider.display_order}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="edit_slider_image" class="form-label fw-bold">Replace Image (Optional)</label>
+                                        <input type="file" class="form-control" id="edit_slider_image" name="slider_image" 
+                                               accept=".jpg,.jpeg,.png,.gif">
+                                        <small class="form-text text-muted">Leave empty to keep current image</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mb-3">
+                                        <input type="checkbox" class="form-check-input" id="edit_is_active" name="is_active" 
+                                               ${slider.is_active ? 'checked' : ''}>
+                                        <label class="form-check-label fw-bold" for="edit_is_active">
+                                            Active Slider
+                                        </label>
+                                    </div>
+                                    
+                                    ${slider.image_filename ? `
+                                    <div class="current-image">
+                                        <label class="form-label fw-bold">Current Image:</label>
+                                        <img src="/static/uploads/sliders/${slider.image_filename}" 
+                                             class="img-thumbnail" style="max-height: 100px;">
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Update Slider
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('editSliderModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to page and show it
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('editSliderModal'));
+    modal.show();
+    
+    // Clean up modal when hidden
+    document.getElementById('editSliderModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+function toggleSliderStatus(sliderId, isActive) {
+    const toggle = document.getElementById(`slider-toggle-${sliderId}`);
+    
+    // Ask for confirmation
+    if (!confirm('Are you sure you want to ' + (isActive ? 'activate' : 'deactivate') + ' this slider?')) {
+        // Revert toggle if user cancels
+        toggle.checked = !isActive;
+        return;
+    }
+    
+    // Update toggle state immediately for better UX
+    const statusLabel = document.getElementById(`slider-status-label-${sliderId}`);
+    
+    fetch(`/admin/slider-management/toggle/${sliderId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+        },
+        body: JSON.stringify({active: isActive})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the status label
+            statusLabel.textContent = isActive ? 'Active' : 'Inactive';
+            statusLabel.className = `badge ${isActive ? 'bg-success' : 'bg-danger'} small`;
+            
+            // Show success message
+            showToast(data.message, 'success');
+        } else {
+            // Revert toggle on error
+            toggle.checked = !isActive;
+            showToast('Error: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Revert toggle on error
+        toggle.checked = !isActive;
+        showToast('An error occurred while updating the slider status', 'error');
+    });
+}
+
+// Helper function to show toast messages
+function showToast(message, type) {
+    // Create a simple toast notification
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 3000);
+}
+
+// File upload preview
+document.getElementById('slider_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Create preview if needed
+            console.log('File selected:', file.name);
+        }
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}

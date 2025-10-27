@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{{ invoice.invoice_number }} - BhojanXpress</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { -webkit-print-color-adjust: exact; }
+        }
+        
+        .invoice-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .company-logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .invoice-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .invoice-body {
+            margin-top: 30px;
+        }
+        
+        .customer-details {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .items-table {
+            margin-top: 30px;
+        }
+        
+        .items-table th {
+            background-color: #667eea;
+            color: white;
+            border: none;
+        }
+        
+        .total-section {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .payment-info {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+        
+        .status-badge {
+            font-size: 1.1rem;
+            padding: 8px 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container my-4">
+        <!-- Print Button -->
+        <div class="text-end mb-3 no-print">
+            <button onclick="window.print()" class="btn btn-primary me-2">
+                <i class="fas fa-print"></i> Print Invoice
+            </button>
+            <a href="{{ url_for('admin.order_details', order_id=order.id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Order
+            </a>
+        </div>
+
+        <!-- Invoice Card -->
+        <div class="card shadow-lg">
+            <!-- Header -->
+            <div class="invoice-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="company-logo">
+                            <i class="fas fa-utensils"></i> BhojanXpress
+                        </div>
+                        <p class="mb-0 mt-2">Delicious Food, Express Delivery</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <h2 class="mb-0">INVOICE</h2>
+                        <p class="mb-0">#{{ invoice.invoice_number }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Details -->
+            <div class="invoice-details">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Invoice Date:</strong><br>
+                        {{ invoice.invoice_date }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Order Date:</strong><br>
+                        {{ invoice.order_date }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Order ID:</strong><br>
+                        #{{ order.id }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Status:</strong><br>
+                        <span class="badge status-badge {{ 
+                            'bg-success' if order.status == 'delivered' else
+                            'bg-primary' if order.status == 'out_for_delivery' else
+                            'bg-warning' if order.status in ['preparing', 'confirmed'] else
+                            'bg-danger' if order.status == 'cancelled' else 'bg-secondary'
+                        }}">
+                            {{ order.status.replace('_', ' ').title() }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Body -->
+            <div class="card-body invoice-body">
+                <div class="row">
+                    <!-- Company Details -->
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-building"></i> From:</h5>
+                        <div class="customer-details">
+                            <strong>BhojanXpress Pvt Ltd</strong><br>
+                            123 Food Street, Delicious District<br>
+                            Culinary City, CC 12345<br>
+                            <i class="fas fa-phone"></i> +91 98765 43210<br>
+                            <i class="fas fa-envelope"></i> orders@bhojanxpress.com<br>
+                            <i class="fas fa-globe"></i> www.bhojanxpress.com
+                        </div>
+                    </div>
+
+                    <!-- Customer Details -->
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-user"></i> Bill To:</h5>
+                        <div class="customer-details">
+                            <strong>{{ order.customer_name }}</strong><br>
+                            {{ order.delivery_address }}<br>
+                            <i class="fas fa-phone"></i> {{ order.phone_number }}<br>
+                            {% if order.user and order.user.email %}
+                            <i class="fas fa-envelope"></i> {{ order.user.email }}<br>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Items -->
+                <div class="items-table">
+                    <h5><i class="fas fa-list"></i> Order Items</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th width="50%">Item Description</th>
+                                    <th width="15%" class="text-center">Quantity</th>
+                                    <th width="17.5%" class="text-end">Unit Price</th>
+                                    <th width="17.5%" class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.order_items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.food_item.name if item.food_item else 'N/A' }}</strong>
+                                        {% if item.food_item and item.food_item.description %}
+                                        <br><small class="text-muted">{{ item.food_item.description[:100] }}...</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td class="text-end">₹{{ "%.2f"|format(item.price) }}</td>
+                                    <td class="text-end">₹{{ "%.2f"|format(item.quantity * item.price) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Totals Section -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <!-- Payment Information -->
+                        <div class="payment-info">
+                            <h6><i class="fas fa-credit-card"></i> Payment Information</h6>
+                            <div class="row">
+                                <div class="col-6"><strong>Payment Method:</strong></div>
+                                <div class="col-6">{{ order.payment_method.replace('_', ' ').title() }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6"><strong>Payment Status:</strong></div>
+                                <div class="col-6">
+                                    <span class="badge {{ 'bg-success' if order.payment_status == 'completed' else 'bg-warning' }}">
+                                        {{ order.payment_status.title() }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% if order.delivery_boy_id %}
+                            <div class="row">
+                                <div class="col-6"><strong>Delivered By:</strong></div>
+                                <div class="col-6">{{ order.delivery_boy.username if order.delivery_boy else 'N/A' }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="total-section">
+                            <div class="row mb-2">
+                                <div class="col-6">Subtotal:</div>
+                                <div class="col-6 text-end">₹{{ "%.2f"|format(order.subtotal) }}</div>
+                            </div>
+                            {% if order.discount_amount > 0 %}
+                            <div class="row mb-2">
+                                <div class="col-6">Discount:</div>
+                                <div class="col-6 text-end text-success">-₹{{ "%.2f"|format(order.discount_amount) }}</div>
+                            </div>
+                            {% endif %}
+                            {% if order.coupon_discount > 0 %}
+                            <div class="row mb-2">
+                                <div class="col-6">Coupon Discount:</div>
+                                <div class="col-6 text-end text-success">-₹{{ "%.2f"|format(order.coupon_discount) }}</div>
+                            </div>
+                            {% endif %}
+                            {% if order.delivery_charge > 0 %}
+                            <div class="row mb-2">
+                                <div class="col-6">Delivery Charge:</div>
+                                <div class="col-6 text-end">₹{{ "%.2f"|format(order.delivery_charge) }}</div>
+                            </div>
+                            {% endif %}
+                            {% if order.gst_amount > 0 %}
+                            <div class="row mb-2">
+                                <div class="col-6">GST:</div>
+                                <div class="col-6 text-end">₹{{ "%.2f"|format(order.gst_amount) }}</div>
+                            </div>
+                            {% endif %}
+                            <hr>
+                            <div class="row">
+                                <div class="col-6"><strong>Total Amount:</strong></div>
+                                <div class="col-6 text-end"><strong>₹{{ "%.2f"|format(order.total_amount) }}</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Special Instructions -->
+                {% if order.special_instructions %}
+                <div class="mt-4">
+                    <h6><i class="fas fa-sticky-note"></i> Special Instructions:</h6>
+                    <div class="alert alert-info">
+                        {{ order.special_instructions }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p><strong>Thank you for choosing BhojanXpress!</strong></p>
+                <p>For support, contact us at support@bhojanxpress.com or call +91 98765 43210</p>
+                <small>This is a computer-generated invoice and does not require a signature.</small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
