@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify, render_template, current_app
-from flask_login import current_user
+from flask import Blueprint, request, jsonify, render_template, current_app, url_for
+from flask_login import current_user, login_required
 from app import csrf, db
-from app.models import Order, FoodItem, Category, Coupon
-from datetime import datetime
+from app.models import Order, FoodItem, Category, Coupon, CancellationRequest, User
+from app.utils.email_utils import send_email
+from datetime import datetime, timedelta
 import re
 import random
 
@@ -238,15 +239,107 @@ def chat():
         user_message = data.get('message', '').strip()
         session_id = data.get('session_id', 'default')
         end_chat = data.get('end_chat', False)
+        conversation_history = data.get('conversation_history', [])
+        current_order_id = data.get('current_order_id')
 
         if not user_message and not end_chat:
             return jsonify({'error': 'Message is required'}), 400
 
-        # Get response from chatbot
-        if end_chat:
-            bot_response = chatbot.end_conversation(session_id)
+        # Check for order ID in message
+        order_id_match = re.search(r'\b\d{4,}\b', user_message)
+        response_data = {}
+        
+        # Handle order tracking
+        if ('track' in user_message.lower() or 'status' in user_message.lower() or 'where is my order' in user_message.lower()):
+            if order_id_match and current_user.is_authenticated:
+                order_id = int(order_id_match.group())
+                order = Order.query.filter_by(id=order_id, user_id=current_user.id).first()
+                
+                if order:
+                    status_emoji = {
+                        'pending': '⏳',
+                        'confirmed': '✅',
+                        'preparing': '👨‍🍳',
+                        'out_for_delivery': '🚚',
+                        'delivered': '✅',
+                        'cancelled': '❌'
+                    }
+                    emoji = status_emoji.get(order.status, '📦')
+                    bot_response = f"{emoji} **Order #{order.id} Status**\n\n"
+                    bot_response += f"📍 Status: {order.status.replace('_', ' ').title()}\n"
+                    bot_response += f"💰 Total: ₹{order.total_amount}\n"
+                    bot_response += f"📞 Phone: {order.phone_number}\n"
+                    bot_response += f"🏠 Address: {order.delivery_address}\n"
+                    
+                    if order.estimated_delivery:
+                        time_diff = order.estimated_delivery - datetime.utcnow()
+                        if time_diff.total_seconds() > 0:
+                            minutes = int(time_diff.total_seconds() / 60)
+                            bot_response += f"\n⏰ Estimated delivery: {minutes} minutes"
+                    
+                    response_data['order_id'] = order.id
+                else:
+                    bot_response = f"❌ Sorry, I couldn't find order #{order_id} in your account. Please check the order number and try again."
+            elif current_user.is_authenticated:
+                # Show user's recent orders
+                recent_orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).limit(5).all()
+                if recent_orders:
+                    bot_response = "📦 **Your Recent Orders:**\n\n"
+                    for order in recent_orders:
+                        bot_response += f"• Order #{order.id} - {order.status.replace('_', ' ').title()} - ₹{order.total_amount}\n"
+                    bot_response += "\n💡 Please provide your order ID to track specific order."
+                else:
+                    bot_response = "You don't have any orders yet. Browse our menu and place your first order! 🍽️"
+            else:
+                bot_response = "Please log in to track your orders. 🔐"
+        
+        # Handle cancellation requests
+        elif ('cancel' in user_message.lower() and 'order' in user_message.lower()):
+            if current_user.is_authenticated:
+                if order_id_match or current_order_id:
+                    order_id = current_order_id or int(order_id_match.group())
+                    order = Order.query.filter_by(id=order_id, user_id=current_user.id).first()
+                    
+                    if order:
+                        if order.status in ['delivered', 'cancelled']:
+                            bot_response = f"❌ Sorry, Order #{order.id} has already been {order.status} and cannot be cancelled."
+                        else:
+                            # Check for existing pending request
+                            existing = CancellationRequest.query.filter_by(
+                                order_id=order.id,
+                                status='pending'
+                            ).first()
+                            
+                            if existing:
+                                bot_response = f"⚠️ You already have a pending cancellation request for Order #{order.id}. Please wait for admin review."
+                            else:
+                                bot_response = f"📝 To cancel Order #{order.id}, please select a reason below:"
+                                response_data['show_cancel_form'] = True
+                                response_data['order_id'] = order.id
+                    else:
+                        bot_response = "❌ Order not found. Please check the order number."
+                else:
+                    # Ask for order ID
+                    recent_orders = Order.query.filter_by(user_id=current_user.id).filter(
+                        Order.status.notin_(['delivered', 'cancelled'])
+                    ).order_by(Order.created_at.desc()).limit(5).all()
+                    
+                    if recent_orders:
+                        bot_response = "📦 **Your Active Orders:**\n\n"
+                        for order in recent_orders:
+                            bot_response += f"• Order #{order.id} - {order.status.replace('_', ' ').title()} - ₹{order.total_amount}\n"
+                        bot_response += "\n💡 Which order would you like to cancel? Please provide the order number."
+                    else:
+                        bot_response = "You don't have any active orders to cancel."
+            else:
+                bot_response = "Please log in to cancel orders. 🔐"
+        
+        # Get response from chatbot for other queries
         else:
-            bot_response = chatbot.get_response(user_message)
+            if end_chat:
+                bot_response = chatbot.end_conversation(session_id)
+            else:
+                bot_response = chatbot.get_response(user_message)
 
         # Store conversation in session (optional)
         if session_id not in chat_sessions:
@@ -265,7 +358,8 @@ def chat():
         return jsonify({
             'response': bot_response,
             'session_id': session_id,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            **response_data
         })
 
     except Exception as e:
@@ -284,3 +378,132 @@ def clear_chat_history(session_id):
     if session_id in chat_sessions:
         del chat_sessions[session_id]
     return jsonify({'message': 'Chat history cleared'})
+
+@chatbot_bp.route('/track-order/<int:order_id>', methods=['GET'])
+@login_required
+def track_order(order_id):
+    """Get detailed order status"""
+    try:
+        order = Order.query.filter_by(id=order_id, user_id=current_user.id).first()
+        
+        if not order:
+            return jsonify({'error': 'Order not found'}), 404
+        
+        # Calculate estimated delivery time
+        time_remaining = "Calculating..."
+        if order.estimated_delivery:
+            now = datetime.utcnow()
+            diff = order.estimated_delivery - now
+            if diff.total_seconds() > 0:
+                minutes = int(diff.total_seconds() / 60)
+                time_remaining = f"{minutes} minutes"
+            else:
+                time_remaining = "Arriving soon"
+        
+        order_info = {
+            'order_id': order.id,
+            'status': order.status,
+            'payment_status': order.payment_status,
+            'total_amount': order.total_amount,
+            'delivery_address': order.delivery_address,
+            'phone_number': order.phone_number,
+            'estimated_delivery': time_remaining,
+            'created_at': order.created_at.strftime('%d %b %Y, %I:%M %p'),
+            'items': [
+                {
+                    'name': item.food_item.name if item.food_item else 'Unknown',
+                    'quantity': item.quantity,
+                    'price': item.price
+                } for item in order.items
+            ]
+        }
+        
+        return jsonify({'success': True, 'order': order_info})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@chatbot_bp.route('/cancel-order', methods=['POST'])
+@csrf.exempt
+@login_required
+def cancel_order_request():
+    """Submit order cancellation request"""
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        reason = data.get('reason')
+        details = data.get('details', '')
+        
+        if not order_id or not reason:
+            return jsonify({'error': 'Order ID and reason are required'}), 400
+        
+        # Verify order belongs to user
+        order = Order.query.filter_by(id=order_id, user_id=current_user.id).first()
+        
+        if not order:
+            return jsonify({'error': 'Order not found'}), 404
+        
+        # Check if order can be cancelled
+        if order.status in ['delivered', 'cancelled']:
+            return jsonify({'error': f'Cannot cancel order. Order is already {order.status}'}), 400
+        
+        # Check if already has pending cancellation request
+        existing_request = CancellationRequest.query.filter_by(
+            order_id=order_id,
+            status='pending'
+        ).first()
+        
+        if existing_request:
+            return jsonify({'error': 'You already have a pending cancellation request for this order'}), 400
+        
+        # Create cancellation request
+        cancellation = CancellationRequest(
+            order_id=order_id,
+            user_id=current_user.id,
+            reason=reason,
+            details=details,
+            status='pending'
+        )
+        
+        db.session.add(cancellation)
+        db.session.commit()
+        
+        # Send email notification to admin
+        try:
+            admin_users = User.query.filter_by(is_admin=True).all()
+            for admin in admin_users:
+                send_email(
+                    to_email=admin.email,
+                    subject=f'New Cancellation Request - Order #{order_id}',
+                    template='emails/cancellation_request_admin.html',
+                    user=current_user,
+                    order=order,
+                    cancellation=cancellation,
+                    admin_url=url_for('admin.manage_cancellations', _external=True)
+                )
+        except Exception as e:
+            current_app.logger.error(f'Failed to send admin notification: {e}')
+        
+        # Send confirmation email to user
+        try:
+            send_email(
+                to_email=current_user.email,
+                subject=f'Cancellation Request Received - Order #{order_id}',
+                template='emails/cancellation_request_user.html',
+                user=current_user,
+                order=order,
+                cancellation=cancellation
+            )
+        except Exception as e:
+            current_app.logger.error(f'Failed to send user confirmation: {e}')
+        
+        return jsonify({
+            'success': True,
+            'message': '✅ Your cancellation request has been submitted. Our team will review it shortly.',
+            'request_id': cancellation.id
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Cancellation request error: {e}')
+        return jsonify({'error': 'Failed to submit cancellation request'}), 500

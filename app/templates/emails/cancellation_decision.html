@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        .header {
+            {% if decision == 'approve' %}
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            {% else %}
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+            {% endif %}
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .order-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+        {% if decision == 'approve' %}
+        .status-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        {% else %}
+        .status-box {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        {% endif %}
+        .footer {
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if decision == 'approve' %}
+            <h1>✅ Cancellation Approved</h1>
+            {% else %}
+            <h1>❌ Cancellation Rejected</h1>
+            {% endif %}
+        </div>
+        <div class="content">
+            <p>Hello {{ user.username }},</p>
+            
+            {% if decision == 'approve' %}
+            <p>Your cancellation request for Order #{{ order.id }} has been <strong>approved</strong>.</p>
+            {% else %}
+            <p>Your cancellation request for Order #{{ order.id }} has been <strong>rejected</strong>.</p>
+            {% endif %}
+            
+            <div class="order-details">
+                <h3>Order Information</h3>
+                <div class="detail-row">
+                    <span class="label">Order ID:</span>
+                    <span>#{{ order.id }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Order Total:</span>
+                    <span>₹{{ order.total_amount }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Order Status:</span>
+                    <span>{{ order.status|replace('_', ' ')|title }}</span>
+                </div>
+            </div>
+
+            {% if cancellation.admin_notes %}
+            <div class="order-details">
+                <h3>Admin Message</h3>
+                <p>{{ cancellation.admin_notes }}</p>
+            </div>
+            {% endif %}
+
+            {% if decision == 'approve' %}
+            <div class="status-box">
+                <strong>✅ What happens next?</strong>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Your order has been cancelled successfully</li>
+                    {% if order.payment_method != 'cash' %}
+                    <li>Refund will be processed within 3-5 business days</li>
+                    <li>You'll receive a confirmation once the refund is initiated</li>
+                    {% else %}
+                    <li>Since this was a cash order, no refund processing needed</li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% else %}
+            <div class="status-box">
+                <strong>ℹ️ Why was this rejected?</strong>
+                <p>Your cancellation request was reviewed but could not be approved. This may be due to:</p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Order is too far in the preparation process</li>
+                    <li>Order has already been dispatched</li>
+                    <li>Cancellation window has expired</li>
+                    <li>Other operational reasons</li>
+                </ul>
+            </div>
+            {% endif %}
+
+            <p style="margin-top: 30px;">
+                <strong>Need assistance?</strong><br>
+                📞 Call/WhatsApp: +91 84317 29319<br>
+                📧 Email: support@bhojanxpress.com
+            </p>
+
+            {% if decision == 'approve' %}
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                Thank you for your understanding. We hope to serve you again soon!
+            </p>
+            {% else %}
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                We apologize for any inconvenience. Your order will be processed as originally planned.
+            </p>
+            {% endif %}
+        </div>
+        <div class="footer">
+            <p>© 2025 BhojanXpress. All rights reserved.</p>
+            <p>This is an automated notification regarding your cancellation request.</p>
+        </div>
+    </div>
+</body>
+</html>

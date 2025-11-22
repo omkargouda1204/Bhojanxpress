@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar-styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/reviews.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot-widget.css') }}">
     <!-- Global Theme System -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/global-theme.css') }}">
     <!-- Ensure proper layout positioning -->
@@ -886,6 +887,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Floating Chatbot Widget -->
+    {% include 'components/chatbot_widget.html' %}
 
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

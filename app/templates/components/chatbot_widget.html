@@ -1,0 +1,335 @@
+<!-- Floating Chatbot Widget -->
+<div class="chatbot-widget">
+    <!-- Chat Toggle Button -->
+    <button class="chatbot-toggle-btn" id="chatbotToggle" aria-label="Toggle Chat">
+        <i class="fas fa-comments chat-icon"></i>
+        <i class="fas fa-times close-icon"></i>
+        <span class="chatbot-badge" id="chatbotBadge" style="display: none;">0</span>
+    </button>
+
+    <!-- Chat Window -->
+    <div class="chatbot-window" id="chatbotWindow">
+        <!-- Chat Header -->
+        <div class="chatbot-header">
+            <div class="chatbot-header-info">
+                <div class="chatbot-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="chatbot-header-text">
+                    <h4>BhojanXpress Assistant</h4>
+                    <div class="chatbot-status">
+                        <span class="status-dot"></span>
+                        <span>Online</span>
+                    </div>
+                </div>
+            </div>
+            <button class="chatbot-minimize" id="chatbotMinimize" aria-label="Minimize Chat">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions" id="quickActions">
+            <button class="quick-action-btn" data-action="track">📦 Track Order</button>
+            <button class="quick-action-btn" data-action="menu">🍕 View Menu</button>
+            <button class="quick-action-btn" data-action="cancel">❌ Cancel Order</button>
+            <button class="quick-action-btn" data-action="help">❓ Help</button>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="chatbot-messages" id="chatbotMessages">
+            <!-- Welcome message will be inserted here by JavaScript -->
+        </div>
+
+        <!-- Chat Input -->
+        <div class="chatbot-input-area">
+            <input type="text" 
+                   class="chatbot-input" 
+                   id="chatbotInput" 
+                   placeholder="Type your message..." 
+                   autocomplete="off">
+            <button class="chatbot-send-btn" id="chatbotSend" aria-label="Send Message">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Chatbot Widget JavaScript
+(function() {
+    const chatbotToggle = document.getElementById('chatbotToggle');
+    const chatbotWindow = document.getElementById('chatbotWindow');
+    const chatbotMinimize = document.getElementById('chatbotMinimize');
+    const chatbotMessages = document.getElementById('chatbotMessages');
+    const chatbotInput = document.getElementById('chatbotInput');
+    const chatbotSend = document.getElementById('chatbotSend');
+    const quickActions = document.querySelectorAll('.quick-action-btn');
+    
+    let conversationHistory = [];
+    let currentOrderId = null;
+    let awaitingCancellation = false;
+
+    // Toggle chat window
+    function toggleChat() {
+        chatbotWindow.classList.toggle('active');
+        chatbotToggle.classList.toggle('active');
+        
+        if (chatbotWindow.classList.contains('active')) {
+            chatbotInput.focus();
+            // Show welcome message if first time
+            if (conversationHistory.length === 0) {
+                addBotMessage("👋 Hello! I'm your BhojanXpress assistant. How can I help you today?");
+            }
+        }
+    }
+
+    chatbotToggle.addEventListener('click', toggleChat);
+    chatbotMinimize.addEventListener('click', toggleChat);
+
+    // Add message to chat
+    function addMessage(text, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+        
+        const now = new Date();
+        const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        
+        messageDiv.innerHTML = `
+            ${!isUser ? '<div class="message-avatar"><i class="fas fa-robot"></i></div>' : ''}
+            <div class="message-content">
+                ${text}
+                <div class="message-time">${time}</div>
+            </div>
+            ${isUser ? '<div class="message-avatar"><i class="fas fa-user"></i></div>' : ''}
+        `;
+        
+        chatbotMessages.appendChild(messageDiv);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+    }
+
+    function addBotMessage(text) {
+        addMessage(text, false);
+    }
+
+    function addUserMessage(text) {
+        addMessage(text, true);
+    }
+
+    // Show typing indicator
+    function showTypingIndicator() {
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message bot';
+        typingDiv.id = 'typing-indicator';
+        typingDiv.innerHTML = `
+            <div class="message-avatar"><i class="fas fa-robot"></i></div>
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+        chatbotMessages.appendChild(typingDiv);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const typingDiv = document.getElementById('typing-indicator');
+        if (typingDiv) {
+            typingDiv.remove();
+        }
+    }
+
+    // Send message to backend
+    async function sendMessage(message) {
+        if (!message.trim()) return;
+        
+        addUserMessage(message);
+        chatbotInput.value = '';
+        chatbotInput.disabled = true;
+        chatbotSend.disabled = true;
+        
+        showTypingIndicator();
+        
+        try {
+            const response = await fetch('/chatbot/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({
+                    message: message,
+                    conversation_history: conversationHistory,
+                    current_order_id: currentOrderId
+                })
+            });
+            
+            const data = await response.json();
+            removeTypingIndicator();
+            
+            if (data.response) {
+                addBotMessage(data.response);
+                conversationHistory.push({user: message, bot: data.response});
+                
+                // Handle special cases
+                if (data.order_id) {
+                    currentOrderId = data.order_id;
+                }
+                
+                if (data.show_cancel_form) {
+                    showCancellationForm(data.order_id);
+                }
+            } else if (data.error) {
+                addBotMessage(`❌ Sorry, I encountered an error: ${data.error}`);
+            }
+            
+        } catch (error) {
+            removeTypingIndicator();
+            addBotMessage('❌ Sorry, I\'m having trouble connecting. Please try again in a moment.');
+            console.error('Chat error:', error);
+        } finally {
+            chatbotInput.disabled = false;
+            chatbotSend.disabled = false;
+            chatbotInput.focus();
+        }
+    }
+
+    // Show cancellation form
+    function showCancellationForm(orderId) {
+        const formHtml = `
+            <div class="cancel-order-form" id="cancelOrderForm">
+                <h6 style="margin-bottom: 12px; color: #333;">📝 Cancel Order #${orderId}</h6>
+                <form id="cancelForm">
+                    <div class="mb-2">
+                        <label class="form-label">Reason for cancellation *</label>
+                        <select class="form-select" id="cancelReason" required>
+                            <option value="">Select a reason...</option>
+                            <option value="changed_mind">Changed my mind</option>
+                            <option value="wrong_order">Ordered wrong items</option>
+                            <option value="too_expensive">Too expensive</option>
+                            <option value="delivery_delay">Delivery taking too long</option>
+                            <option value="found_better_deal">Found a better deal</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Additional details</label>
+                        <textarea class="form-control" id="cancelDetails" rows="2" 
+                                  placeholder="Please provide more information..."></textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                            <i class="fas fa-check"></i> Submit Request
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('cancelOrderForm').remove()">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+        
+        const formDiv = document.createElement('div');
+        formDiv.className = 'message bot';
+        formDiv.innerHTML = `
+            <div class="message-avatar"><i class="fas fa-robot"></i></div>
+            <div class="message-content" style="max-width: 90%;">
+                ${formHtml}
+            </div>
+        `;
+        
+        chatbotMessages.appendChild(formDiv);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        
+        // Handle form submission
+        document.getElementById('cancelForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const reason = document.getElementById('cancelReason').value;
+            const details = document.getElementById('cancelDetails').value;
+            
+            if (!reason) {
+                alert('Please select a reason for cancellation');
+                return;
+            }
+            
+            await submitCancellation(orderId, reason, details);
+        });
+    }
+
+    // Submit cancellation request
+    async function submitCancellation(orderId, reason, details) {
+        showTypingIndicator();
+        
+        try {
+            const response = await fetch('/chatbot/cancel-order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({
+                    order_id: orderId,
+                    reason: reason,
+                    details: details
+                })
+            });
+            
+            const data = await response.json();
+            removeTypingIndicator();
+            document.getElementById('cancelOrderForm')?.remove();
+            
+            if (data.success) {
+                addBotMessage(data.message || '✅ Your cancellation request has been submitted successfully. Our admin team will review it shortly.');
+            } else {
+                addBotMessage(data.error || '❌ Unable to process cancellation request. Please try again or contact support.');
+            }
+            
+        } catch (error) {
+            removeTypingIndicator();
+            addBotMessage('❌ Error submitting cancellation request. Please try again.');
+            console.error('Cancellation error:', error);
+        }
+    }
+
+    // Quick actions
+    quickActions.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            let message = '';
+            
+            switch(action) {
+                case 'track':
+                    message = 'I want to track my order';
+                    break;
+                case 'menu':
+                    message = 'Show me the menu';
+                    break;
+                case 'cancel':
+                    message = 'I want to cancel my order';
+                    break;
+                case 'help':
+                    message = 'I need help';
+                    break;
+            }
+            
+            if (message) {
+                sendMessage(message);
+            }
+        });
+    });
+
+    // Send button click
+    chatbotSend.addEventListener('click', () => {
+        sendMessage(chatbotInput.value);
+    });
+
+    // Enter key to send
+    chatbotInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage(chatbotInput.value);
+        }
+    });
+})();
+</script>

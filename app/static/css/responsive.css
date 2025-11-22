@@ -167,6 +167,13 @@ body {
   
   .filter-title {
     font-size: 0.95rem !important;
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+  }
+  
+  .filter-sidebar .form-check-label {
+    font-size: 0.9rem !important;
+    color: #495057 !important;
   }
   
   /* Adjust spacing in food item containers */

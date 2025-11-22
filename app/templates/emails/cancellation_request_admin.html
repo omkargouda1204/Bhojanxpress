@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .order-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 New Cancellation Request</h1>
+        </div>
+        <div class="content">
+            <p>Hello Admin,</p>
+            <p>A customer has submitted a cancellation request for their order.</p>
+            
+            <div class="order-details">
+                <h3>Order Information</h3>
+                <div class="detail-row">
+                    <span class="label">Order ID:</span>
+                    <span>#{{ order.id }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Customer:</span>
+                    <span>{{ user.username }} ({{ user.email }})</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Order Total:</span>
+                    <span>₹{{ order.total_amount }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Order Status:</span>
+                    <span>{{ order.status|replace('_', ' ')|title }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Order Date:</span>
+                    <span>{{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                </div>
+            </div>
+
+            <div class="order-details">
+                <h3>Cancellation Details</h3>
+                <div class="detail-row">
+                    <span class="label">Reason:</span>
+                    <span>{{ cancellation.reason|replace('_', ' ')|title }}</span>
+                </div>
+                {% if cancellation.details %}
+                <div class="detail-row">
+                    <span class="label">Additional Details:</span>
+                </div>
+                <p style="background: white; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                    {{ cancellation.details }}
+                </p>
+                {% endif %}
+                <div class="detail-row">
+                    <span class="label">Request Date:</span>
+                    <span>{{ cancellation.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                </div>
+            </div>
+
+            <p style="text-align: center;">
+                <a href="{{ admin_url }}" class="button">Review Cancellation Request</a>
+            </p>
+
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                Please review this request and take appropriate action in the admin dashboard.
+            </p>
+        </div>
+        <div class="footer">
+            <p>© 2025 BhojanXpress. All rights reserved.</p>
+            <p>This is an automated notification from BhojanXpress Admin System.</p>
+        </div>
+    </div>
+</body>
+</html>

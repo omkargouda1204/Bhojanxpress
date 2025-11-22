@@ -534,18 +534,35 @@ footer a:hover {
 .filter-sidebar h4,
 .filter-sidebar h5,
 .filter-title {
-    color: white !important;
+    color: #2c3e50 !important;
     font-weight: 600;
+    text-shadow: none !important;
 }
 
 .filter-sidebar .form-check-label {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: #495057 !important;
     font-weight: 500;
+    text-shadow: none !important;
+}
+
+.filter-sidebar .form-check-input {
+    border: 2px solid #495057 !important;
 }
 
 .filter-sidebar .form-check-input:checked {
-    background-color: #ffffff !important;
-    border-color: #ffffff !important;
+    background-color: #667eea !important;
+    border-color: #667eea !important;
+}
+
+.filter-sidebar .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25) !important;
+    border-color: #667eea !important;
+}
+
+.filter-sidebar {
+    background: #ffffff !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 10px !important;
 }
 
 .filter-sidebar .form-select {

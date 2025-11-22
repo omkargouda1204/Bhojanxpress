@@ -87,13 +87,18 @@ CREATE TABLE IF NOT EXISTS review (
 
 CREATE TABLE IF NOT EXISTS slider_image (
     id SERIAL PRIMARY KEY,
-    title VARCHAR(100),
-    description TEXT,
-    image_url VARCHAR(255) NOT NULL,
-    link_url VARCHAR(255),
-    display_order INT DEFAULT 0,
+    title VARCHAR(100) NOT NULL,
+    subtitle VARCHAR(200),
+    image_filename VARCHAR(255) NOT NULL,
+    image_url VARCHAR(500),
+    button_text VARCHAR(50) DEFAULT 'ORDER NOW',
+    button_link VARCHAR(200) DEFAULT '/menu',
+    button_color VARCHAR(20) DEFAULT 'warning',
+    offer_text VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    display_order INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insert default categories

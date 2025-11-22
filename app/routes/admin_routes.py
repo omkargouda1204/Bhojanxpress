@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
 from app import db, csrf
-from app.models import User, FoodItem, Order, OrderItem, Category, Coupon, ContactMessage, NutritionalInfo, Notification
+from app.models import User, FoodItem, Order, OrderItem, Category, Coupon, ContactMessage, NutritionalInfo, Notification, CancellationRequest
 from app.forms import FoodItemForm, OrderStatusForm, CategoryForm
 from app.utils.decorators import admin_required
 from app.utils.helpers import format_currency, flash_errors, paginate_query
@@ -2301,5 +2301,95 @@ def food_item_details(food_id):
                          reviews=reviews, 
                          recent_orders=recent_orders,
                          food_stats=food_stats)
+
+@admin_bp.route('/cancellations')
+@login_required
+@admin_required
+def manage_cancellations():
+    """Manage order cancellation requests"""
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', 'all')
+    
+    query = CancellationRequest.query
+    
+    if status_filter != 'all':
+        query = query.filter_by(status=status_filter)
+    
+    cancellations = query.order_by(CancellationRequest.created_at.desc()).paginate(
+        page=page, 
+        per_page=20, 
+        error_out=False
+    )
+    
+    # Get statistics
+    stats = {
+        'pending': CancellationRequest.query.filter_by(status='pending').count(),
+        'approved': CancellationRequest.query.filter_by(status='approved').count(),
+        'rejected': CancellationRequest.query.filter_by(status='rejected').count(),
+        'total': CancellationRequest.query.count()
+    }
+    
+    return render_template('admin/cancellations.html', 
+                         cancellations=cancellations, 
+                         stats=stats,
+                         current_status=status_filter)
+
+@admin_bp.route('/cancellations/<int:request_id>/review', methods=['POST'])
+@login_required
+@admin_required
+@csrf.exempt
+def review_cancellation(request_id):
+    """Approve or reject cancellation request"""
+    try:
+        cancellation = CancellationRequest.query.get_or_404(request_id)
+        
+        if cancellation.status != 'pending':
+            flash('This cancellation request has already been reviewed.', 'warning')
+            return redirect(url_for('admin.manage_cancellations'))
+        
+        action = request.form.get('action')
+        admin_notes = request.form.get('admin_notes', '')
+        
+        if action not in ['approve', 'reject']:
+            flash('Invalid action.', 'error')
+            return redirect(url_for('admin.manage_cancellations'))
+        
+        # Update cancellation request
+        cancellation.status = 'approved' if action == 'approve' else 'rejected'
+        cancellation.admin_notes = admin_notes
+        cancellation.reviewed_at = datetime.utcnow()
+        cancellation.reviewed_by = current_user.id
+        
+        # Update order status if approved
+        if action == 'approve':
+            order = cancellation.order
+            order.status = 'cancelled'
+            order.payment_status = 'refunded' if order.payment_method != 'cash' else order.payment_status
+        
+        db.session.commit()
+        
+        # Send notification to user
+        try:
+            from app.utils.email_utils import send_email
+            
+            send_email(
+                to_email=cancellation.user.email,
+                subject=f'Cancellation Request {"Approved" if action == "approve" else "Rejected"} - Order #{cancellation.order.id}',
+                template='emails/cancellation_decision.html',
+                user=cancellation.user,
+                order=cancellation.order,
+                cancellation=cancellation,
+                decision=action
+            )
+        except Exception as e:
+            current_app.logger.error(f'Failed to send cancellation decision email: {e}')
+        
+        flash(f'Cancellation request has been {"approved" if action == "approve" else "rejected"}.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error processing cancellation request: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.manage_cancellations'))
 
 

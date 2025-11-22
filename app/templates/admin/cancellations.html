@@ -1,0 +1,317 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Manage Cancellations - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-times-circle text-danger"></i> Order Cancellations</h2>
+            <div class="d-flex gap-2">
+                <select class="form-select" id="statusFilter" onchange="filterByStatus(this.value)">
+                    <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Requests</option>
+                    <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending Review</option>
+                    <option value="approved" {% if current_status == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if current_status == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Pending</h5>
+                                <h3>{{ stats.pending }}</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Approved</h5>
+                                <h3>{{ stats.approved }}</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Rejected</h5>
+                                <h3>{{ stats.rejected }}</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-times fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Total</h5>
+                                <h3>{{ stats.total }}</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-list fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cancellations Table -->
+        <div class="card">
+            <div class="card-body">
+                {% if cancellations.items %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Order</th>
+                                <th>Customer</th>
+                                <th>Reason</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cancellation in cancellations.items %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-secondary">#{{ cancellation.id }}</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('admin.order_details', order_id=cancellation.order.id) }}" 
+                                       class="text-decoration-none">
+                                        Order #{{ cancellation.order.id }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ cancellation.order.status|replace('_', ' ')|title }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ cancellation.user.username }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ cancellation.user.email }}</small>
+                                </td>
+                                <td>
+                                    <span class="text-capitalize">{{ cancellation.reason|replace('_', ' ') }}</span>
+                                    {% if cancellation.details %}
+                                    <br>
+                                    <small class="text-muted">{{ cancellation.details[:50] }}{% if cancellation.details|length > 50 %}...{% endif %}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong class="text-primary">₹{{ cancellation.order.total_amount }}</strong>
+                                </td>
+                                <td>
+                                    {% if cancellation.status == 'pending' %}
+                                        <span class="badge bg-warning">⏳ Pending</span>
+                                    {% elif cancellation.status == 'approved' %}
+                                        <span class="badge bg-success">✅ Approved</span>
+                                    {% elif cancellation.status == 'rejected' %}
+                                        <span class="badge bg-danger">❌ Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ cancellation.created_at.strftime('%d %b %Y') }}</small>
+                                    <br>
+                                    <small class="text-muted">{{ cancellation.created_at.strftime('%I:%M %p') }}</small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="viewDetails({{ cancellation.id }}, '{{ cancellation.reason|replace('_', ' ')|title }}', '{{ cancellation.details or '' }}', '{{ cancellation.order.id }}', '{{ cancellation.user.username }}', '{{ cancellation.status }}')">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    {% if cancellation.status == 'pending' %}
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-sm btn-success" 
+                                                onclick="reviewCancellation({{ cancellation.id }}, 'approve')">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" 
+                                                onclick="reviewCancellation({{ cancellation.id }}, 'reject')">
+                                            <i class="fas fa-times"></i> Reject
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if cancellations.pages > 1 %}
+                <nav aria-label="Cancellations pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if cancellations.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.manage_cancellations', page=cancellations.prev_num, status=current_status) }}">Previous</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in cancellations.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != cancellations.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.manage_cancellations', page=page_num, status=current_status) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if cancellations.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.manage_cancellations', page=cancellations.next_num, status=current_status) }}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No cancellation requests found</h5>
+                    <p class="text-muted">{% if current_status != 'all' %}Try changing the filter or {% endif %}check back later for new requests.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancellation Request Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsContent">
+                <!-- Content will be loaded by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="reviewForm" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reviewModalTitle">Review Cancellation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="admin_notes" class="form-label">Admin Notes (Optional)</label>
+                        <textarea class="form-control" id="admin_notes" name="admin_notes" rows="3" 
+                                  placeholder="Add any notes or comments..."></textarea>
+                    </div>
+                    <input type="hidden" name="action" id="reviewAction">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn" id="reviewSubmitBtn">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterByStatus(status) {
+    window.location.href = "{{ url_for('admin.manage_cancellations') }}?status=" + status;
+}
+
+function viewDetails(id, reason, details, orderId, username, status) {
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Request Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Request ID:</strong></td><td>#${id}</td></tr>
+                    <tr><td><strong>Order ID:</strong></td><td>#${orderId}</td></tr>
+                    <tr><td><strong>Customer:</strong></td><td>${username}</td></tr>
+                    <tr><td><strong>Status:</strong></td><td>${status.charAt(0).toUpperCase() + status.slice(1)}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Cancellation Details</h6>
+                <p><strong>Reason:</strong> ${reason}</p>
+                ${details ? `<p><strong>Details:</strong><br>${details}</p>` : ''}
+            </div>
+        </div>
+    `;
+    document.getElementById('detailsContent').innerHTML = content;
+    new bootstrap.Modal(document.getElementById('detailsModal')).show();
+}
+
+function reviewCancellation(id, action) {
+    const form = document.getElementById('reviewForm');
+    const title = document.getElementById('reviewModalTitle');
+    const submitBtn = document.getElementById('reviewSubmitBtn');
+    
+    form.action = `/admin/cancellations/${id}/review`;
+    document.getElementById('reviewAction').value = action;
+    
+    if (action === 'approve') {
+        title.textContent = 'Approve Cancellation';
+        submitBtn.textContent = 'Approve';
+        submitBtn.className = 'btn btn-success';
+    } else {
+        title.textContent = 'Reject Cancellation';
+        submitBtn.textContent = 'Reject';
+        submitBtn.className = 'btn btn-danger';
+    }
+    
+    new bootstrap.Modal(document.getElementById('reviewModal')).show();
+}
+
+// Auto-refresh for pending requests
+{% if current_status == 'pending' %}
+setTimeout(function() {
+    location.reload();
+}, 30000); // Refresh every 30 seconds
+{% endif %}
+</script>
+{% endblock %}
