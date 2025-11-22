@@ -1,0 +1,415 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Admin Notifications | BhojanXpress{% endblock %}
+
+{% block content %}
+<!-- Toast for notification feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i class="fas fa-info-circle text-primary me-2"></i>
+            <strong class="me-auto">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="notificationToastBody">
+            Notifications updated.
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0"><i class="fas fa-bell me-2"></i> Admin Notifications</h5>
+                    <button type="button" class="btn btn-light btn-sm" id="markAllRead">
+                        <i class="fas fa-check-double me-1"></i>Mark All Read
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="notificationsTabContent">
+                        <div class="tab-pane fade show active" id="all">
+                            <div class="notifications-container" id="allNotifications">
+                                {% if all_notifications %}
+                                    {% for notification in all_notifications %}
+                                    <div class="notification-card mb-3" data-notification-id="{{ loop.index0 }}">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="card-title mb-1">
+                                                            <i class="fas fa-{{ 'shopping-cart' if notification.type == 'order' else 'envelope' }} me-2 text-primary"></i>
+                                                            {{ notification.title }}
+                                                        </h6>
+                                                        <p class="card-text text-muted mb-2">{{ notification.message }}</p>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-clock me-1"></i>{{ notification.timestamp }}
+                                                        </small>
+                                                    </div>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li><a class="dropdown-item" href="#" onclick="markNotificationRead({{ loop.index0 }})">
+                                                                <i class="fas fa-check me-2"></i>Mark as Read
+                                                            </a></li>
+                                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteNotification({{ loop.index0 }})">
+                                                                <i class="fas fa-trash me-2"></i>Delete
+                                                            </a></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center py-5">
+                                        <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No notifications available</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mark single notification as read
+        window.markNotificationRead = function(notificationId) {
+            fetch(`/admin/mark_notification_read/${notificationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                    if (notificationElement) {
+                        notificationElement.style.opacity = '0.7';
+                        notificationElement.classList.add('read');
+                    }
+                    showToast('Notification marked as read');
+                }
+            })
+            .catch(error => console.error('Error marking notification read:', error));
+        };
+        
+        // Delete notification
+        window.deleteNotification = function(notificationId) {
+            if (confirm('Are you sure you want to delete this notification?')) {
+                fetch(`/admin/delete_notification/${notificationId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                        if (notificationElement) {
+                            notificationElement.remove();
+                        }
+                        showToast('Notification deleted successfully');
+                    }
+                })
+                .catch(error => console.error('Error deleting notification:', error));
+            }
+        };
+        
+        // Mark all notifications as read
+        const markAllReadBtn = document.getElementById('markAllRead');
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function() {
+                fetch('/admin/mark_all_admin_notifications_read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Mark all visible notifications as read
+                        document.querySelectorAll('.notification-card').forEach(card => {
+                            card.style.opacity = '0.7';
+                            card.classList.add('read');
+                        });
+                        showToast('All notifications marked as read');
+                    }
+                })
+                .catch(error => console.error('Error marking all notifications read:', error));
+            });
+        }
+        
+        // Helper function to show toast messages
+        function showToast(message) {
+            const toastBody = document.getElementById('notificationToastBody');
+            if (toastBody) {
+                toastBody.innerText = message;
+                const toast = new bootstrap.Toast(document.getElementById('notificationToast'));
+                toast.show();
+            }
+        }
+    });
+</script>
+{% endblock %}
+                                                <h5 class="card-title">
+                                                    {% if notification.type == 'order' %}
+                                                    <i class="fas fa-shopping-cart text-primary me-2"></i>
+                                                    {% elif notification.type == 'message' %}
+                                                    <i class="fas fa-envelope text-info me-2"></i>
+                                                    {% elif notification.type == 'review' %}
+                                                    <i class="fas fa-star text-warning me-2"></i>
+                                                    {% endif %}
+                                                    {{ notification.title }}
+                                                </h5>
+                                                <p class="card-text">{{ notification.message }}</p>
+                                                <div class="d-flex justify-content-between">
+                                                    <small class="text-muted">{{ notification.timestamp }}</small>
+                                                    {% if notification.link %}
+                                                    <a href="{{ notification.link }}" class="btn btn-sm btn-primary">View Details</a>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i> No notifications available.
+                                    </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="orders">
+                            <div class="notifications-container" id="orderNotifications">
+                                {% if order_notifications %}
+                                    {% for notification in order_notifications %}
+                                    <div class="notification-card mb-3">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-shopping-cart text-primary me-2"></i>
+                                                    {{ notification.title }}
+                                                </h5>
+                                                <p class="card-text">{{ notification.message }}</p>
+                                                <div class="d-flex justify-content-between">
+                                                    <small class="text-muted">{{ notification.timestamp }}</small>
+                                                    {% if notification.link %}
+                                                    <a href="{{ notification.link }}" class="btn btn-sm btn-primary">View Order</a>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i> No order notifications available.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="messages">
+                            <div class="notifications-container" id="messageNotifications">
+                                {% if message_notifications %}
+                                    {% for notification in message_notifications %}
+                                    <div class="notification-card mb-3">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-envelope text-info me-2"></i>
+                                                    {{ notification.title }}
+                                                </h5>
+                                                <p class="card-text">{{ notification.message }}</p>
+                                                <div class="d-flex justify-content-between">
+                                                    <small class="text-muted">{{ notification.timestamp }}</small>
+                                                    {% if notification.link %}
+                                                    <a href="{{ notification.link }}" class="btn btn-sm btn-primary">View Message</a>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i> No message notifications available.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="reviews">
+                            <div class="notifications-container" id="reviewNotifications">
+                                {% if review_notifications %}
+                                    {% for notification in review_notifications %}
+                                    <div class="notification-card mb-3">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-star text-warning me-2"></i>
+                                                    {{ notification.title }}
+                                                </h5>
+                                                <p class="card-text">{{ notification.message }}</p>
+                                                <div class="d-flex justify-content-between">
+                                                    <small class="text-muted">{{ notification.timestamp }}</small>
+                                                    {% if notification.link %}
+                                                    <a href="{{ notification.link }}" class="btn btn-sm btn-primary">View Review</a>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i> No review notifications available.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="button" id="markAllRead" class="btn btn-secondary">
+                        <i class="fas fa-check-double me-1"></i> Mark All as Read
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle notification click
+        window.handleNotificationClick = function(notificationId) {
+            // Mark notification as read
+            fetch(`/admin/mark_notification_read/${notificationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update notification appearance
+                    const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                    if (notificationElement) {
+                        notificationElement.classList.add('read');
+                        notificationElement.style.opacity = '0.7';
+                    }
+                }
+            })
+            .catch(error => console.error('Error marking notification read:', error));
+        };
+        
+        // Handle delete notification
+        window.deleteNotification = function(notificationId) {
+            if (confirm('Are you sure you want to delete this notification?')) {
+                fetch(`/admin/delete_notification/${notificationId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove notification from UI
+                        const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                        if (notificationElement) {
+                            notificationElement.remove();
+                        }
+                        
+                        // Show success toast
+                        showToast('Notification deleted successfully');
+                    }
+                })
+                .catch(error => console.error('Error deleting notification:', error));
+            }
+        };
+        
+        // Handle mark all as read button
+        const markAllReadBtn = document.getElementById('markAllRead');
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function() {
+                fetch("{{ url_for('admin.mark_all_admin_notifications_read') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the UI to reflect all notifications being read
+                        const badge = document.getElementById('adminNotificationBadge');
+                        if (badge) badge.style.display = 'none';
+                        
+                        // Mark all visible notifications as read
+                        document.querySelectorAll('.notification-card').forEach(card => {
+                            card.classList.add('read');
+                            card.style.opacity = '0.7';
+                        });
+                        
+                        // Show success toast
+                        showToast('All notifications marked as read');
+                    }
+                })
+                .catch(error => console.error('Error marking notifications read:', error));
+            });
+        }
+        
+        // Helper function to show toast messages
+        function showToast(message) {
+            const toastBody = document.getElementById('notificationToastBody');
+            if (toastBody) {
+                toastBody.innerText = message;
+                const toast = new bootstrap.Toast(document.getElementById('notificationToast'));
+                toast.show();
+            }
+        }
+        
+        // Add notification action buttons to each notification card
+        document.querySelectorAll('.notification-card').forEach(function(card, index) {
+            const cardBody = card.querySelector('.card-body');
+            if (cardBody && !card.querySelector('.notification-actions')) {
+                const actions = document.createElement('div');
+                actions.className = 'notification-actions mt-2';
+                actions.innerHTML = `
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="handleNotificationClick(${index})">
+                        <i class="fas fa-check"></i> Mark as Read
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteNotification(${index})">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                `;
+                cardBody.appendChild(actions);
+                card.setAttribute('data-notification-id', index);
+            }
+        });
+    });
+</script>

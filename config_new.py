@@ -42,6 +42,12 @@ class Config:
     POSTS_PER_PAGE = int(os.environ.get('POSTS_PER_PAGE', 10))
     WTF_CSRF_TIME_LIMIT = None
     
+    # Supabase Configuration
+    SUPABASE_URL = os.environ.get('SUPABASE_URL')
+    SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+    SUPABASE_STORAGE_BUCKET = os.environ.get('SUPABASE_STORAGE_BUCKET', 'bhojanaxpress')
+    SUPABASE_STORAGE_URL = os.environ.get('SUPABASE_STORAGE_URL')
+    
 class DevelopmentConfig(Config):
     DEBUG = True
     

@@ -1,0 +1,408 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Review Management - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .review-management-container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 25px;
+        padding: 2rem;
+        margin: 1rem 0;
+    }
+
+    .review-card {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .review-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .review-header {
+        display: flex;
+        justify-content: between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .user-name {
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .review-date {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.85rem;
+    }
+
+    .rating-stars {
+        color: #ffc107;
+        font-size: 1.2rem;
+        margin: 0.5rem 0;
+    }
+
+    .review-content {
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.6;
+        margin: 1rem 0;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        border-left: 4px solid rgba(80, 170, 241, 0.5);
+    }
+
+    .admin-reply-section {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(76, 217, 100, 0.1);
+        border: 1px solid rgba(76, 217, 100, 0.2);
+        border-radius: 10px;
+    }
+
+    .admin-reply-content {
+        color: #ffffff;
+        font-style: italic;
+    }
+
+    .reply-form {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin-top: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+
+    .btn-glass {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-glass:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+        color: #ffffff;
+    }
+
+    .btn-approve { border-color: rgba(76, 217, 100, 0.3); }
+    .btn-approve:hover { background: rgba(76, 217, 100, 0.2); }
+
+    .btn-reject { border-color: rgba(244, 67, 54, 0.3); }
+    .btn-reject:hover { background: rgba(244, 67, 54, 0.2); }
+
+    .btn-reply { border-color: rgba(80, 170, 241, 0.3); }
+    .btn-reply:hover { background: rgba(80, 170, 241, 0.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="review-management-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white"><i class="fas fa-star me-2"></i>Review Management</h2>
+        <div class="btn-group" role="group">
+            <a class="btn btn-glass {{ 'active' if status_filter == 'all' else '' }}"
+               href="{{ url_for('reviews.admin_reviews', status='all') }}">
+                All Reviews
+            </a>
+            <a class="btn btn-glass {{ 'active' if status_filter == 'pending' else '' }}"
+               href="{{ url_for('reviews.admin_reviews', status='pending') }}">
+                Pending
+            </a>
+            <a class="btn btn-glass {{ 'active' if status_filter == 'approved' else '' }}"
+               href="{{ url_for('reviews.admin_reviews', status='approved') }}">
+                Approved
+            </a>
+        </div>
+    </div>
+
+    {% if reviews.items %}
+        {% for review in reviews.items %}
+        <div class="review-card" id="review-{{ review.id }}">
+            <div class="review-header">
+                <div class="user-info">
+                    <div class="user-name">
+                        <i class="fas fa-user-circle me-2"></i>{{ review.user.username }}
+                    </div>
+                    <div class="review-date">
+                        <i class="fas fa-calendar me-1"></i>{{ review.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    </div>
+                    <div class="rating-stars">
+                        {% for i in range(1, 6) %}
+                            <i class="fas fa-star{% if i > review.rating %}-o{% endif %}"></i>
+                        {% endfor %}
+                        <span class="ms-2 text-white">({{ review.rating }}/5)</span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    {% if not review.is_approved %}
+                    <button class="btn btn-glass btn-approve" onclick="moderateReview({{ review.id }}, 'approve')">
+                        <i class="fas fa-check me-1"></i>Approve
+                    </button>
+                    {% endif %}
+
+                    <button class="btn btn-glass btn-reject" onclick="moderateReview({{ review.id }}, 'reject')">
+                        <i class="fas fa-times me-1"></i>Reject
+                    </button>
+
+                    <button class="btn btn-glass btn-reply" onclick="openReplyModal({{ review.id }})">
+                        <i class="fas fa-reply me-1"></i>Reply
+                    </button>
+
+                    <button class="btn btn-glass" onclick="moderateReview({{ review.id }}, 'delete')">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </div>
+            </div>
+
+            <div class="review-content">
+                <strong>Food Item:</strong> {{ review.food_item.name }}<br>
+                <strong>Comment:</strong> {{ review.comment or 'No comment provided' }}
+            </div>
+
+            {% if review.admin_reply %}
+            <div class="admin-reply-section">
+                <h6 class="text-white mb-2">
+                    <i class="fas fa-user-shield me-2"></i>Admin Reply
+                </h6>
+                <div class="admin-reply-content">{{ review.admin_reply }}</div>
+                <small class="text-white-50">
+                    Replied on {{ review.admin_reply_at.strftime('%B %d, %Y at %I:%M %p') if review.admin_reply_at }}
+                </small>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- Pagination -->
+        {% if reviews.pages > 1 %}
+        <nav aria-label="Reviews pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if reviews.has_prev %}
+                <li class="page-item">
+                    <a class="page-link btn-glass" href="{{ url_for('reviews.admin_reviews', page=reviews.prev_num, status=status_filter) }}">
+                        Previous
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for page_num in reviews.iter_pages() %}
+                    {% if page_num %}
+                        <li class="page-item {{ 'active' if page_num == reviews.page else '' }}">
+                            <a class="page-link btn-glass" href="{{ url_for('reviews.admin_reviews', page=page_num, status=status_filter) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if reviews.has_next %}
+                <li class="page-item">
+                    <a class="page-link btn-glass" href="{{ url_for('reviews.admin_reviews', page=reviews.next_num, status=status_filter) }}">
+                        Next
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-star fa-3x text-white mb-3"></i>
+            <h4 class="text-white">No reviews found</h4>
+            <p class="text-white-50">No reviews match the current filter criteria.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Admin Reply Modal -->
+<div class="modal fade" id="adminReplyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.2);">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-white">Reply to Review</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adminReplyForm">
+                    <input type="hidden" id="replyReviewId" name="review_id">
+                    <div class="mb-3">
+                        <label class="form-label text-white">Your Reply</label>
+                        <textarea id="adminReplyText" name="admin_reply" class="form-control" rows="4"
+                                  placeholder="Write your professional reply to this review..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-glass" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-glass btn-reply" onclick="sendAdminReply()">
+                    <i class="fas fa-paper-plane me-2"></i>Send Reply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function moderateReview(reviewId, action) {
+    let confirmMessage = '';
+    switch(action) {
+        case 'approve':
+            confirmMessage = 'Approve this review?';
+            break;
+        case 'reject':
+            confirmMessage = 'Reject this review?';
+            break;
+        case 'delete':
+            confirmMessage = 'Permanently delete this review?';
+            break;
+    }
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    fetch(`/reviews/admin/moderate/${reviewId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ action: action })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('error', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error moderating review:', error);
+        showAlert('error', 'Failed to moderate review');
+    });
+}
+
+function openReplyModal(reviewId) {
+    document.getElementById('replyReviewId').value = reviewId;
+    document.getElementById('adminReplyText').value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('adminReplyModal'));
+    modal.show();
+}
+
+function sendAdminReply() {
+    const form = document.getElementById('adminReplyForm');
+    const formData = new FormData(form);
+    const reviewId = formData.get('review_id');
+    const adminReply = formData.get('admin_reply').trim();
+
+    if (!adminReply) {
+        showAlert('error', 'Please enter a reply message');
+        return;
+    }
+    
+    fetch(`/reviews/admin/reviews/${reviewId}/reply`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ admin_reply: adminReply })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('adminReplyModal'));
+            modal.hide();
+
+            // Refresh to show the reply
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('error', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error sending reply:', error);
+        showAlert('error', 'Failed to send reply');
+    });
+}
+
+function showAlert(type, message) {
+    const alertContainer = document.querySelector('#alert-container') || createAlertContainer();
+
+    const alertElement = document.createElement('div');
+    alertElement.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+    alertElement.style.cssText = `
+        background: rgba(${type === 'success' ? '76, 217, 100' : '244, 67, 54'}, 0.2);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(${type === 'success' ? '76, 217, 100' : '244, 67, 54'}, 0.3);
+        color: #ffffff;
+    `;
+    alertElement.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+    `;
+
+    alertContainer.appendChild(alertElement);
+
+    setTimeout(() => {
+        if (alertElement.parentNode) {
+            alertElement.remove();
+        }
+    }, 5000);
+}
+
+function createAlertContainer() {
+    const container = document.createElement('div');
+    container.id = 'alert-container';
+    container.className = 'position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '10000';
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+{% endblock %}

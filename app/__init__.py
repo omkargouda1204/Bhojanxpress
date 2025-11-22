@@ -4,12 +4,10 @@ from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
-import pymysql
 import os
 import glob
 
-# Use PyMySQL as MySQL driver
-pymysql.install_as_MySQLdb()
+# Using PostgreSQL with psycopg2 driver (no special setup needed)
 
 # Ensure no SQLite related modules are loaded
 os.environ['SQLALCHEMY_WARN_20'] = '1'

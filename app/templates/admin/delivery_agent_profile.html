@@ -1,0 +1,466 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ agent.username }} - Agent Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Transparent glass-morphism design matching project theme */
+    .container-fluid {
+        background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(80, 200, 120, 0.1));
+        min-height: 100vh;
+        padding: 2rem;
+    }
+
+    .agent-profile-container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 25px;
+        padding: 2rem;
+        margin: 2rem 0;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .agent-header {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .agent-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(80, 170, 241, 0.8), rgba(76, 217, 100, 0.8));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 3rem;
+        color: white;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .agent-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+    }
+
+    .info-card {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 20px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .info-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .info-label {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .info-value {
+        color: #ffffff;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .status-online {
+        background: rgba(76, 217, 100, 0.2);
+        color: rgba(76, 217, 100, 1);
+        border: 1px solid rgba(76, 217, 100, 0.3);
+    }
+
+    .status-offline {
+        background: rgba(244, 67, 54, 0.2);
+        color: rgba(244, 67, 54, 1);
+        border: 1px solid rgba(244, 67, 54, 0.3);
+    }
+
+    .status-busy {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 1);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #ffffff;
+        display: block;
+    }
+
+    .stat-label {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin: 2rem 0;
+        flex-wrap: wrap;
+    }
+
+    .btn-glass {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        padding: 0.8rem 2rem;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-glass:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        color: #ffffff;
+    }
+
+    .recent-activity {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .activity-item {
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(80, 170, 241, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(80, 170, 241, 1);
+    }
+
+    .activity-content {
+        flex: 1;
+    }
+
+    .activity-title {
+        color: #ffffff;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .activity-time {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.85rem;
+    }
+
+    .page-title {
+        color: white;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .agent-info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title h3 mb-0"><i class="fas fa-user-tie me-2"></i>Agent Profile</h1>
+        <a href="{{ url_for('admin.delivery_agents') }}" class="btn-glass">
+            <i class="fas fa-arrow-left me-1"></i>Back to Agents
+        </a>
+    </div>
+
+    <div class="agent-profile-container">
+        <!-- Agent Header -->
+        <div class="agent-header">
+            <div class="agent-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <h2 class="text-white mb-2">{{ agent.username }}</h2>
+            <div class="status-badge status-{% if agent.is_active %}online{% else %}offline{% endif %}">
+                <i class="fas fa-circle me-2"></i>
+                {% if agent.is_active %}Available{% else %}Unavailable{% endif %}
+            </div>
+        </div>
+
+        <!-- Agent Information Grid -->
+        <div class="agent-info-grid">
+            <div class="info-card">
+                <div class="info-label">Full Name</div>
+                <div class="info-value">{{ agent.username }}</div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-label">Email Address</div>
+                <div class="info-value">{{ agent.email }}</div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ agent.phone or 'Not provided' }}</div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-label">Role</div>
+                <div class="info-value">
+                    {% if agent.is_delivery_boy %}
+                        <i class="fas fa-motorcycle me-2"></i>Delivery Agent
+                    {% elif agent.is_admin %}
+                        <i class="fas fa-crown me-2"></i>Administrator
+                    {% else %}
+                        <i class="fas fa-user me-2"></i>User
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-label">Join Date</div>
+                <div class="info-value">{{ agent.created_at.strftime('%B %d, %Y') if agent.created_at else 'N/A' }}</div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-label">Account Status</div>
+                <div class="info-value">
+                    {% if agent.is_active %}
+                        <span class="text-success"><i class="fas fa-check-circle me-2"></i>Active</span>
+                    {% else %}
+                        <span class="text-warning"><i class="fas fa-pause-circle me-2"></i>Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Statistics -->
+        {% if agent.is_delivery_boy %}
+        <h4 class="text-white mb-3"><i class="fas fa-chart-line me-2"></i>Performance Statistics</h4>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-number">{{ agent.delivery_assignments|length }}</span>
+                <div class="stat-label">Total Deliveries</div>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-number">
+                    {{ agent.delivery_assignments|selectattr('status', 'equalto', 'delivered')|list|length }}
+                </span>
+                <div class="stat-label">Completed Deliveries</div>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-number">
+                    {% set total = agent.delivery_assignments|length %}
+                    {% set completed = agent.delivery_assignments|selectattr('status', 'equalto', 'delivered')|list|length %}
+                    {% if total > 0 %}
+                        {{ "%.1f"|format((completed/total)*100) }}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </span>
+                <div class="stat-label">Success Rate</div>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-number">4.8</span>
+                <div class="stat-label">Average Rating</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <a href="{{ url_for('admin.edit_delivery_agent', agent_id=agent.id) }}" class="btn btn-glass">
+                <i class="fas fa-edit me-2"></i>Edit Profile
+            </a>
+
+            {% if agent.is_delivery_boy %}
+            <a href="{{ url_for('admin.orders') }}?agent_id={{ agent.id }}" class="btn btn-glass">
+                <i class="fas fa-list me-2"></i>View Orders
+            </a>
+            {% endif %}
+
+            <button class="btn btn-glass" onclick="sendNotification({{ agent.id }})">
+                <i class="fas fa-bell me-2"></i>Send Notification
+            </button>
+
+            <button class="btn btn-glass" onclick="resetPassword({{ agent.id }})">
+                <i class="fas fa-key me-2"></i>Reset Password
+            </button>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="recent-activity">
+            <h5 class="text-white mb-3"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+
+            {% if agent.is_delivery_boy and agent.delivery_assignments %}
+                {% for order in agent.delivery_assignments[:5] %}
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-{% if order.status == 'delivered' %}check{% elif order.status == 'out_for_delivery' %}truck{% else %}clock{% endif %}"></i>
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">
+                            {% if order.status == 'delivered' %}
+                                Delivered order #{{ order.id }}
+                            {% elif order.status == 'out_for_delivery' %}
+                                Out for delivery - Order #{{ order.id }}
+                            {% else %}
+                                Assigned order #{{ order.id }}
+                            {% endif %}
+                        </div>
+                        <div class="activity-time">
+                            {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') if order.created_at else 'N/A' }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title">No recent activity</div>
+                    <div class="activity-time">No activity records found</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function sendNotification(agentId) {
+    // Implement send notification functionality
+    const message = prompt('Enter notification message:');
+    if (message) {
+        fetch('/admin/send-notification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                agent_id: agentId,
+                message: message
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Notification sent successfully!');
+            } else {
+                alert('Failed to send notification: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while sending notification');
+        });
+    }
+}
+
+function resetPassword(agentId) {
+    if (confirm('Are you sure you want to reset this agent\'s password?')) {
+        fetch('/admin/reset-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                agent_id: agentId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Password reset successfully! New password: ' + data.new_password);
+            } else {
+                alert('Failed to reset password: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while resetting password');
+        });
+    }
+}
+</script>
+{% endblock %}
