@@ -28,12 +28,9 @@
             </button>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="quick-actions" id="quickActions">
-            <button class="quick-action-btn" data-action="track">📦 Track Order</button>
-            <button class="quick-action-btn" data-action="menu">🍕 View Menu</button>
-            <button class="quick-action-btn" data-action="cancel">❌ Cancel Order</button>
-            <button class="quick-action-btn" data-action="help">❓ Help</button>
+        <!-- Quick Actions - Dynamic -->
+        <div class="quick-actions" id="quickActions" style="display: none;">
+            <!-- Quick action buttons will be dynamically inserted here -->
         </div>
 
         <!-- Messages Area -->
@@ -56,7 +53,7 @@
 </div>
 
 <script>
-// Chatbot Widget JavaScript
+// Advanced Chatbot Widget JavaScript
 (function() {
     const chatbotToggle = document.getElementById('chatbotToggle');
     const chatbotWindow = document.getElementById('chatbotWindow');
@@ -64,11 +61,10 @@
     const chatbotMessages = document.getElementById('chatbotMessages');
     const chatbotInput = document.getElementById('chatbotInput');
     const chatbotSend = document.getElementById('chatbotSend');
-    const quickActions = document.querySelectorAll('.quick-action-btn');
+    const quickActionsContainer = document.getElementById('quickActions');
     
     let conversationHistory = [];
-    let currentOrderId = null;
-    let awaitingCancellation = false;
+    let sessionId = null;
 
     // Toggle chat window
     function toggleChat() {
@@ -87,6 +83,23 @@
     chatbotToggle.addEventListener('click', toggleChat);
     chatbotMinimize.addEventListener('click', toggleChat);
 
+    // Format message text with proper HTML rendering
+    function formatMessageText(text) {
+        // Convert newlines to <br> tags
+        text = text.replace(/\n/g, '<br>');
+        
+        // Convert **bold** to <strong>
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        
+        // Convert bullet points • to proper list items
+        text = text.replace(/^• (.+)$/gm, '<div style="margin-left: 10px;">• $1</div>');
+        
+        // Add spacing after headers (emoji + text)
+        text = text.replace(/(^|\n)([\u{1F300}-\u{1F9FF}].+?)(\n)/gu, '$1<div style="margin-bottom: 8px; font-weight: 600;">$2</div>$3');
+        
+        return text;
+    }
+
     // Add message to chat
     function addMessage(text, isUser = false) {
         const messageDiv = document.createElement('div');
@@ -95,10 +108,13 @@
         const now = new Date();
         const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         
+        // Format bot messages, keep user messages as-is
+        const formattedText = isUser ? text : formatMessageText(text);
+        
         messageDiv.innerHTML = `
             ${!isUser ? '<div class="message-avatar"><i class="fas fa-robot"></i></div>' : ''}
             <div class="message-content">
-                ${text}
+                ${formattedText}
                 <div class="message-time">${time}</div>
             </div>
             ${isUser ? '<div class="message-avatar"><i class="fas fa-user"></i></div>' : ''}
@@ -141,10 +157,12 @@
     }
 
     // Send message to backend
-    async function sendMessage(message) {
-        if (!message.trim()) return;
+    async function sendMessage(message, action = null) {
+        if (!message.trim() && !action) return;
         
-        addUserMessage(message);
+        if (message.trim()) {
+            addUserMessage(message);
+        }
         chatbotInput.value = '';
         chatbotInput.disabled = true;
         chatbotSend.disabled = true;
@@ -159,34 +177,75 @@
                     'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
                 },
                 body: JSON.stringify({
-                    message: message,
-                    conversation_history: conversationHistory,
-                    current_order_id: currentOrderId
+                    message: message || '',
+                    action: action,
+                    session_id: sessionId
                 })
             });
             
             const data = await response.json();
             removeTypingIndicator();
             
+            // Store session ID
+            if (data.session_id) {
+                sessionId = data.session_id;
+            }
+            
+            // Show bot response text
             if (data.response) {
                 addBotMessage(data.response);
-                conversationHistory.push({user: message, bot: data.response});
-                
-                // Handle special cases
-                if (data.order_id) {
-                    currentOrderId = data.order_id;
-                }
-                
-                if (data.show_cancel_form) {
-                    showCancellationForm(data.order_id);
-                }
-            } else if (data.error) {
-                addBotMessage(`❌ Sorry, I encountered an error: ${data.error}`);
+            }
+            
+            // Render main menu buttons
+            if (data.show_main_menu && data.quick_actions) {
+                renderQuickActions(data.quick_actions);
+            } else {
+                quickActionsContainer.style.display = 'none';
+            }
+            
+            // Render order list
+            if (data.order_list && data.order_list.length > 0) {
+                renderOrderList(data.order_list);
+            }
+            
+            // Render order detail
+            if (data.order_detail) {
+                renderOrderDetail(data.order_detail);
+            }
+            
+            // Render cancellable orders
+            if (data.cancel_order_list && data.cancel_order_list.length > 0) {
+                renderCancelOrderList(data.cancel_order_list);
+            }
+            
+            // Show cancellation form
+            if (data.show_cancel_form) {
+                renderCancellationForm(data.order_id, data.cancel_reasons);
+            }
+            
+            // Show issue form
+            if (data.show_issue_form) {
+                renderIssueForm(data.issue_types);
+            }
+            
+            // Render coupons
+            if (data.coupon_list && data.coupon_list.length > 0) {
+                renderCouponList(data.coupon_list);
+            }
+            
+            // Show contact buttons
+            if (data.show_contact_buttons) {
+                renderContactButtons();
+            }
+            
+            // Handle errors
+            if (data.error) {
+                addBotMessage(`❌ ${data.error}`);
             }
             
         } catch (error) {
             removeTypingIndicator();
-            addBotMessage('❌ Sorry, I\'m having trouble connecting. Please try again in a moment.');
+            addBotMessage('❌ Sorry, I\'m having trouble connecting. Please try again.');
             console.error('Chat error:', error);
         } finally {
             chatbotInput.disabled = false;
@@ -195,34 +254,145 @@
         }
     }
 
-    // Show cancellation form
-    function showCancellationForm(orderId) {
+    // Render quick actions (main menu buttons)
+    function renderQuickActions(actions) {
+        quickActionsContainer.innerHTML = '';
+        quickActionsContainer.style.display = 'flex';
+        
+        actions.forEach(actionBtn => {
+            const btn = document.createElement('button');
+            btn.className = 'quick-action-btn';
+            btn.textContent = actionBtn.label;
+            btn.onclick = () => sendMessage('', actionBtn.action);
+            quickActionsContainer.appendChild(btn);
+        });
+    }
+    
+    // Render order list
+    function renderOrderList(orders) {
+        const orderListHtml = orders.map(order => `
+            <div class="order-card" onclick="sendMessage('', 'view_order_${order.id}')">
+                <div class="order-card-header">
+                    <span class="order-id">#${order.id}</span>
+                    <span class="order-status status-${order.status.toLowerCase().replace(' ', '-')}">${order.status_emoji} ${order.status}</span>
+                </div>
+                <div class="order-card-body">
+                    <div class="order-info">
+                        <i class="fas fa-calendar"></i> ${order.date}
+                    </div>
+                    <div class="order-info">
+                        <i class="fas fa-rupee-sign"></i> ₹${order.total}
+                    </div>
+                    ${order.items_count ? `<div class="order-info"><i class="fas fa-utensils"></i> ${order.items_count} items</div>` : ''}
+                </div>
+                <div class="order-card-footer">
+                    <small>Click to view details</small>
+                </div>
+            </div>
+        `).join('');
+        
+        addBotCard(orderListHtml);
+    }
+    
+    // Render order detail
+    function renderOrderDetail(order) {
+        const timelineHtml = order.timeline ? `
+            <div class="order-timeline">
+                ${order.timeline.map(step => `
+                    <div class="timeline-step ${step.completed ? 'completed' : ''} ${step.current ? 'current' : ''}">
+                        <div class="timeline-dot">${step.emoji}</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${step.status}</div>
+                            ${step.time ? `<div class="timeline-time">${step.time}</div>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        ` : '';
+        
+        const itemsHtml = order.items ? `
+            <div class="order-items-list">
+                <strong>Order Items:</strong>
+                ${order.items.map(item => `
+                    <div class="order-item">
+                        <span>${item.quantity}x ${item.name}</span>
+                        <span>₹${item.price}</span>
+                    </div>
+                `).join('')}
+            </div>
+        ` : '';
+        
+        const detailHtml = `
+            <div class="order-detail-card">
+                <div class="order-detail-header">
+                    <h6>Order #${order.id}</h6>
+                    <span class="order-status status-${order.status.toLowerCase().replace(' ', '-')}">${order.status}</span>
+                </div>
+                ${timelineHtml}
+                ${itemsHtml}
+                <div class="order-detail-info">
+                    ${order.total ? `<div><strong>Total:</strong> ₹${order.total}</div>` : ''}
+                    ${order.payment_method ? `<div><strong>Payment:</strong> ${order.payment_method}</div>` : ''}
+                    ${order.delivery_address ? `<div><strong>Address:</strong> ${order.delivery_address}</div>` : ''}
+                    ${order.delivery_time ? `<div><strong>Estimated Delivery:</strong> ${order.delivery_time}</div>` : ''}
+                </div>
+            </div>
+        `;
+        
+        addBotCard(detailHtml);
+    }
+    
+    // Render cancel order list
+    function renderCancelOrderList(orders) {
+        const cancelListHtml = orders.map(order => `
+            <div class="cancel-order-card" onclick="sendMessage('', 'show_cancel_form_${order.id}')">
+                <div class="cancel-card-header">
+                    <span class="order-id">#${order.id}</span>
+                    <span class="order-amount">₹${order.total}</span>
+                </div>
+                <div class="cancel-card-body">
+                    <div>${order.items_count} items • ${order.date}</div>
+                    <div class="cancel-hint">Click to request cancellation</div>
+                </div>
+            </div>
+        `).join('');
+        
+        addBotCard(cancelListHtml);
+    }
+    
+    // Render cancellation form
+    function renderCancellationForm(orderId, reasons) {
+        const reasonOptions = reasons.map(r => `<option value="${r.value}">${r.label}</option>`).join('');
+        
         const formHtml = `
-            <div class="cancel-order-form" id="cancelOrderForm">
-                <h6 style="margin-bottom: 12px; color: #333;">📝 Cancel Order #${orderId}</h6>
+            <div class="cancel-order-form">
+                <h6 style="margin-bottom: 12px;">📝 Cancel Order #${orderId}</h6>
                 <form id="cancelForm">
-                    <div class="mb-2">
-                        <label class="form-label">Reason for cancellation *</label>
-                        <select class="form-select" id="cancelReason" required>
+                    <div class="form-group">
+                        <label>Reason for cancellation *</label>
+                        <select id="cancelReason" required>
                             <option value="">Select a reason...</option>
-                            <option value="changed_mind">Changed my mind</option>
-                            <option value="wrong_order">Ordered wrong items</option>
-                            <option value="too_expensive">Too expensive</option>
-                            <option value="delivery_delay">Delivery taking too long</option>
-                            <option value="found_better_deal">Found a better deal</option>
-                            <option value="other">Other</option>
+                            ${reasonOptions}
                         </select>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label">Additional details</label>
-                        <textarea class="form-control" id="cancelDetails" rows="2" 
-                                  placeholder="Please provide more information..."></textarea>
+                    <div class="form-group">
+                        <label>Refund Method *</label>
+                        <select id="refundMethod" required>
+                            <option value="">Select refund method...</option>
+                            <option value="wallet">BhojanXpress Wallet</option>
+                            <option value="bank">Bank Account</option>
+                            <option value="upi">UPI</option>
+                        </select>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                    <div class="form-group">
+                        <label>Additional details</label>
+                        <textarea id="cancelDetails" rows="2" placeholder="Please provide more information..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit">
                             <i class="fas fa-check"></i> Submit Request
                         </button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('cancelOrderForm').remove()">
+                        <button type="button" class="btn-cancel" onclick="this.closest('.cancel-order-form').parentElement.remove()">
                             <i class="fas fa-times"></i> Cancel
                         </button>
                     </div>
@@ -230,36 +400,149 @@
             </div>
         `;
         
-        const formDiv = document.createElement('div');
-        formDiv.className = 'message bot';
-        formDiv.innerHTML = `
-            <div class="message-avatar"><i class="fas fa-robot"></i></div>
-            <div class="message-content" style="max-width: 90%;">
-                ${formHtml}
+        addBotCard(formHtml);
+        
+        // Handle form submission
+        setTimeout(() => {
+            const form = document.getElementById('cancelForm');
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const reason = document.getElementById('cancelReason').value;
+                    const refundMethod = document.getElementById('refundMethod').value;
+                    const details = document.getElementById('cancelDetails').value;
+                    
+                    if (!reason || !refundMethod) {
+                        alert('Please fill all required fields');
+                        return;
+                    }
+                    
+                    await submitCancellation(orderId, reason, refundMethod, details);
+                });
+            }
+        }, 100);
+    }
+    
+    // Render issue form
+    function renderIssueForm(issueTypes) {
+        const issueOptions = issueTypes.map(type => `<option value="${type.value}">${type.label}</option>`).join('');
+        
+        const formHtml = `
+            <div class="issue-report-form">
+                <h6 style="margin-bottom: 12px;">🔧 Report an Issue</h6>
+                <form id="issueForm">
+                    <div class="form-group">
+                        <label>Issue Type *</label>
+                        <select id="issueType" required>
+                            <option value="">Select issue type...</option>
+                            ${issueOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Order ID (optional)</label>
+                        <input type="text" id="issueOrderId" placeholder="e.g., 123">
+                    </div>
+                    <div class="form-group">
+                        <label>Description *</label>
+                        <textarea id="issueDescription" rows="3" required placeholder="Please describe the issue in detail..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit">
+                            <i class="fas fa-paper-plane"></i> Submit Issue
+                        </button>
+                        <button type="button" class="btn-cancel" onclick="this.closest('.issue-report-form').parentElement.remove()">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </form>
             </div>
         `;
         
-        chatbotMessages.appendChild(formDiv);
-        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        addBotCard(formHtml);
         
         // Handle form submission
-        document.getElementById('cancelForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const reason = document.getElementById('cancelReason').value;
-            const details = document.getElementById('cancelDetails').value;
-            
-            if (!reason) {
-                alert('Please select a reason for cancellation');
-                return;
+        setTimeout(() => {
+            const form = document.getElementById('issueForm');
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const issueType = document.getElementById('issueType').value;
+                    const orderId = document.getElementById('issueOrderId').value;
+                    const description = document.getElementById('issueDescription').value;
+                    
+                    if (!issueType || !description) {
+                        alert('Please fill all required fields');
+                        return;
+                    }
+                    
+                    await submitIssue(issueType, orderId, description);
+                });
             }
-            
-            await submitCancellation(orderId, reason, details);
-        });
+        }, 100);
+    }
+    
+    // Render coupon list
+    function renderCouponList(coupons) {
+        const couponHtml = coupons.map(coupon => `
+            <div class="coupon-card ${coupon.eligible ? '' : 'coupon-disabled'}">
+                <div class="coupon-header">
+                    <div class="coupon-code">${coupon.code}</div>
+                    ${coupon.eligible ? '<span class="coupon-eligible">✓ Eligible</span>' : '<span class="coupon-not-eligible">Not Eligible</span>'}
+                </div>
+                <div class="coupon-body">
+                    <div class="coupon-discount">${coupon.discount_text}</div>
+                    <div class="coupon-details">
+                        ${coupon.min_order ? `Min order: ₹${coupon.min_order}` : ''}
+                        ${coupon.max_discount ? ` • Max: ₹${coupon.max_discount}` : ''}
+                    </div>
+                    <div class="coupon-expiry">Valid until: ${coupon.expiry}</div>
+                </div>
+                ${coupon.eligible ? `<div class="coupon-footer"><small>Click to copy: <code onclick="navigator.clipboard.writeText('${coupon.code}')">${coupon.code}</code></small></div>` : ''}
+            </div>
+        `).join('');
+        
+        addBotCard(couponHtml);
+    }
+    
+    // Render contact buttons
+    function renderContactButtons() {
+        const contactHtml = `
+            <div class="contact-buttons">
+                <a href="tel:+919876543210" class="contact-btn">
+                    <i class="fas fa-phone"></i> Call Us
+                </a>
+                <a href="mailto:support@bhojanxpress.com" class="contact-btn">
+                    <i class="fas fa-envelope"></i> Email Us
+                </a>
+            </div>
+        `;
+        
+        addBotCard(contactHtml);
+    }
+    
+    // Add bot card (for complex HTML content)
+    function addBotCard(htmlContent) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot';
+        
+        messageDiv.innerHTML = `
+            <div class="message-avatar"><i class="fas fa-robot"></i></div>
+            <div class="message-content message-card">
+                ${htmlContent}
+            </div>
+        `;
+        
+        chatbotMessages.appendChild(messageDiv);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
     }
 
     // Submit cancellation request
-    async function submitCancellation(orderId, reason, details) {
+    async function submitCancellation(orderId, reason, refundMethod, details) {
         showTypingIndicator();
+        
+        // Remove form
+        const form = document.querySelector('.cancel-order-form');
+        if (form) form.parentElement.remove();
         
         try {
             const response = await fetch('/chatbot/cancel-order', {
@@ -271,18 +554,20 @@
                 body: JSON.stringify({
                     order_id: orderId,
                     reason: reason,
+                    refund_method: refundMethod,
                     details: details
                 })
             });
             
             const data = await response.json();
             removeTypingIndicator();
-            document.getElementById('cancelOrderForm')?.remove();
             
             if (data.success) {
                 addBotMessage(data.message || '✅ Your cancellation request has been submitted successfully. Our admin team will review it shortly.');
+                // Show main menu again
+                setTimeout(() => sendMessage('', 'main_menu'), 1500);
             } else {
-                addBotMessage(data.error || '❌ Unable to process cancellation request. Please try again or contact support.');
+                addBotMessage(data.error || '❌ Unable to process cancellation request. Please try again.');
             }
             
         } catch (error) {
@@ -291,33 +576,46 @@
             console.error('Cancellation error:', error);
         }
     }
-
-    // Quick actions
-    quickActions.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const action = btn.dataset.action;
-            let message = '';
+    
+    // Submit issue report
+    async function submitIssue(issueType, orderId, description) {
+        showTypingIndicator();
+        
+        // Remove form
+        const form = document.querySelector('.issue-report-form');
+        if (form) form.parentElement.remove();
+        
+        try {
+            const response = await fetch('/chatbot/submit-issue', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({
+                    issue_type: issueType,
+                    order_id: orderId || null,
+                    description: description
+                })
+            });
             
-            switch(action) {
-                case 'track':
-                    message = 'I want to track my order';
-                    break;
-                case 'menu':
-                    message = 'Show me the menu';
-                    break;
-                case 'cancel':
-                    message = 'I want to cancel my order';
-                    break;
-                case 'help':
-                    message = 'I need help';
-                    break;
+            const data = await response.json();
+            removeTypingIndicator();
+            
+            if (data.success) {
+                addBotMessage(data.message || '✅ Your issue has been reported. We will get back to you soon!');
+                // Show main menu again
+                setTimeout(() => sendMessage('', 'main_menu'), 1500);
+            } else {
+                addBotMessage(data.error || '❌ Unable to submit issue report. Please try again.');
             }
             
-            if (message) {
-                sendMessage(message);
-            }
-        });
-    });
+        } catch (error) {
+            removeTypingIndicator();
+            addBotMessage('❌ Error submitting issue report. Please try again.');
+            console.error('Issue submission error:', error);
+        }
+    }
 
     // Send button click
     chatbotSend.addEventListener('click', () => {
@@ -331,5 +629,24 @@
             sendMessage(chatbotInput.value);
         }
     });
+    
+    // Initialize chatbot with welcome message
+    function initChatbot() {
+        if (conversationHistory.length === 0) {
+            addBotMessage("👋 Hello! I'm your BhojanXpress assistant. How can I help you today?");
+            // Trigger main menu
+            setTimeout(() => sendMessage('', 'main_menu'), 500);
+        }
+    }
+    
+    // Override toggle to init on first open
+    const originalToggle = toggleChat;
+    toggleChat = function() {
+        const wasActive = chatbotWindow.classList.contains('active');
+        originalToggle();
+        if (!wasActive && chatbotWindow.classList.contains('active')) {
+            initChatbot();
+        }
+    };
 })();
 </script>

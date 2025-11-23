@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, render_template, current_app, url_for
 from flask_login import current_user, login_required
 from app import csrf, db
-from app.models import Order, FoodItem, Category, Coupon, CancellationRequest, User
+from app.models import Order, FoodItem, Category, Coupon, CancellationRequest, User, Notification
 from app.utils.email_utils import send_email
 from datetime import datetime, timedelta
 import re
@@ -14,6 +14,18 @@ chat_sessions = {}
 
 class BhojanXpressChatbot:
     def __init__(self):
+        # Conversation memory per session
+        self.conversation_memory = {}
+        
+        # Quick reply suggestions
+        self.quick_replies = {
+            'greeting': ['📋 Check Order Status', '🍽️ Browse Menu', '🎉 View Offers', '📞 Contact Support'],
+            'order_status': ['🚚 Track Delivery', '❌ Cancel Order', '📞 Call Support', '🔙 Main Menu'],
+            'menu': ['🏷️ View Categories', '🔍 Search Items', '🛒 View Cart', '🔙 Main Menu'],
+            'cancel': ['📋 View Cancellation Policy', '📞 Contact Support', '🔙 Main Menu'],
+            'default': ['📋 Order Status', '🍽️ Menu', '🎉 Offers', '❓ Help']
+        }
+        
         self.responses = {
             # Greetings - Enhanced with more variety
             'hello|hi|hey|good morning|good afternoon|good evening|namaste|hey there': [
@@ -141,16 +153,20 @@ class BhojanXpressChatbot:
     def get_categories(self):
         """Get available food categories"""
         try:
-            categories = Category.query.filter_by(is_active=True).all()
+            # Filter by is_active if the column exists
+            categories = Category.query.filter_by(is_active=True).all() if hasattr(Category, 'is_active') else Category.query.all()
+            
             if categories:
                 result = "🏷️ **Available Food Categories:**\n\n"
                 for cat in categories:
-                    result += f"• {cat.name}\n"
+                    display = cat.display_name if hasattr(cat, 'display_name') and cat.display_name else cat.name
+                    result += f"• {display}\n"
                 result += "\n💡 **Browse by category to find your favorite dishes!**"
                 return result
             else:
                 return "🍽️ **Popular Categories:** Appetizers, Main Course, Biryani, Chinese, Desserts, Beverages"
-        except:
+        except Exception as e:
+            # Fallback if there's any error
             return "🏷️ **Popular Categories:** Appetizers, Main Course, Biryani, Chinese, Desserts, Beverages"
 
     def get_active_coupons(self):
@@ -158,17 +174,22 @@ class BhojanXpressChatbot:
         try:
             active_coupons = Coupon.query.filter(
                 Coupon.is_active == True,
-                Coupon.expiry_date >= datetime.utcnow()
+                Coupon.valid_until >= datetime.utcnow()
             ).limit(5).all()
-            
+
             if active_coupons:
                 result = "🎉 **Active Coupons & Offers:**\n\n"
                 for coupon in active_coupons:
                     result += f"🏷️ **{coupon.code}**\n"
-                    result += f"💸 {coupon.discount_percentage}% OFF "
+                    if coupon.discount_type == 'percentage':
+                        result += f"💸 {int(coupon.discount_value)}% OFF "
+                    else:
+                        result += f"💸 Flat ₹{coupon.discount_value} OFF "
+
                     if coupon.min_order_amount:
                         result += f"(Min order ₹{coupon.min_order_amount})"
-                    result += f"\n📅 Valid till: {coupon.expiry_date.strftime('%d %b %Y')}\n\n"
+                    if coupon.valid_until:
+                        result += f"\n📅 Valid till: {coupon.valid_until.strftime('%d %b %Y')}\n\n"
                 result += "💡 **Apply at checkout to save money!**"
                 return result
             else:
@@ -233,23 +254,285 @@ def chatbot_interface():
 @chatbot_bp.route('/chat', methods=['POST'])
 @csrf.exempt
 def chat():
-    """Handle chat messages"""
+    """Handle chat messages with advanced intent detection and UI responses"""
     try:
         data = request.get_json()
-        user_message = data.get('message', '').strip()
+        user_message = data.get('message', '').strip().lower()
         session_id = data.get('session_id', 'default')
-        end_chat = data.get('end_chat', False)
+        action = data.get('action')  # For button clicks
         conversation_history = data.get('conversation_history', [])
-        current_order_id = data.get('current_order_id')
 
-        if not user_message and not end_chat:
-            return jsonify({'error': 'Message is required'}), 400
+        if not user_message and not action:
+            return jsonify({'error': 'Message or action is required'}), 400
 
-        # Check for order ID in message
-        order_id_match = re.search(r'\b\d{4,}\b', user_message)
-        response_data = {}
-        
-        # Handle order tracking
+        response_data = {'timestamp': datetime.now().isoformat()}
+        bot_response = ''
+
+        # Handle button actions (Main Menu)
+        if action == 'main_menu' or user_message in ['menu', 'main menu', 'help', 'start']:
+            bot_response = "👋 **Hello! I'm BhojanXpress Assistant 🤖**\n\nHow can I help you today?"
+            response_data['show_main_menu'] = True
+            response_data['quick_actions'] = [
+                {'label': '📦 Order Status', 'action': 'order_status'},
+                {'label': '❌ Cancel Order', 'action': 'cancel_order'},
+                {'label': '⚠️ Report Issue', 'action': 'report_issue'},
+                {'label': '🎉 Active Offers', 'action': 'view_offers'},
+                {'label': '💬 Help & Support', 'action': 'support'}
+            ]
+
+        # ORDER STATUS FLOW
+        elif action == 'order_status' or any(kw in user_message for kw in ['order status', 'track', 'where is my order', 'check order']):
+            if not current_user.is_authenticated:
+                bot_response = "🔐 Please log in to view your orders."
+            else:
+                # Check if user provided specific order ID
+                order_id_match = re.search(r'\b(\d{1,6})\b', user_message)
+                if order_id_match:
+                    # Show specific order
+                    order_id = int(order_id_match.group(1))
+                    order = Order.query.filter_by(id=order_id, user_id=current_user.id).first()
+                    if order:
+                        # Redirect to order detail view
+                        action = f'view_order_{order_id}'
+                        data['action'] = action
+                        # Continue to order detail section below
+                    else:
+                        bot_response = f"❌ Order #{order_id} not found in your account."
+                        response_data['show_main_menu'] = True
+                else:
+                    # Show all recent orders
+                    recent_orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).limit(5).all()
+                    if recent_orders:
+                        bot_response = "📦 **Here are your recent orders:**\n\n"
+                        order_cards = []
+                        for order in recent_orders:
+                            status_emoji = {'pending': '⏳', 'confirmed': '✅', 'preparing': '👨‍🍳', 
+                                          'out_for_delivery': '🚚', 'delivered': '✅', 'cancelled': '❌'}
+                            order_cards.append({
+                                'id': order.id,
+                                'status': order.status,
+                                'total': order.total_amount,
+                                'date': order.created_at.strftime('%d %b %Y'),
+                                'items_count': len(order.order_items),
+                                'status_emoji': status_emoji.get(order.status, '📦')
+                            })
+                        response_data['order_list'] = order_cards
+                        bot_response += "💡 **Click on an order to see detailed status.**"
+                    else:
+                        bot_response = "📭 You don't have any orders yet. Browse our menu and place your first order! 🍽️"
+                        response_data['show_main_menu'] = True
+
+        # ORDER DETAIL VIEW
+        if action and action.startswith('view_order_'):
+            order_id = int(action.replace('view_order_', ''))
+            if current_user.is_authenticated:
+                order = Order.query.filter_by(id=order_id, user_id=current_user.id).first()
+                if order:
+                    # Build timeline
+                    timeline_steps = [
+                        {'status': 'Pending', 'emoji': '⏳', 'completed': False, 'current': False},
+                        {'status': 'Confirmed', 'emoji': '✅', 'completed': False, 'current': False},
+                        {'status': 'Preparing', 'emoji': '👨‍🍳', 'completed': False, 'current': False},
+                        {'status': 'Out for Delivery', 'emoji': '🚚', 'completed': False, 'current': False},
+                        {'status': 'Delivered', 'emoji': '✅', 'completed': False, 'current': False}
+                    ]
+                    
+                    status_order = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered']
+                    if order.status in status_order:
+                        current_index = status_order.index(order.status)
+                        for i, step in enumerate(timeline_steps):
+                            if i < current_index:
+                                step['completed'] = True
+                            elif i == current_index:
+                                step['current'] = True
+                                step['completed'] = True
+                    
+                    bot_response = f"📦 **Order #{order.id} Details**\n\n"
+                    bot_response += f"📍 **Status:** {order.status.replace('_', ' ').title()}\n"
+                    bot_response += f"💰 **Total:** ₹{order.total_amount}\n"
+                    bot_response += f"📞 **Phone:** {order.phone_number}\n"
+                    bot_response += f"🏠 **Address:** {order.delivery_address}\n"
+                    bot_response += f"📅 **Placed:** {order.created_at.strftime('%d %b %Y, %I:%M %p')}\n\n"
+                    
+                    if order.estimated_delivery and order.status not in ['delivered', 'cancelled']:
+                        time_diff = order.estimated_delivery - datetime.utcnow()
+                        if time_diff.total_seconds() > 0:
+                            minutes = int(time_diff.total_seconds() / 60)
+                            bot_response += f"⏰ **Est. Delivery:** {minutes} minutes\n\n"
+                    
+                    response_data['order_detail'] = {
+                        'id': order.id,
+                        'status': order.status.replace('_', ' ').title(),
+                        'total': order.total_amount,
+                        'payment_method': order.payment_method if hasattr(order, 'payment_method') else 'Online',
+                        'delivery_address': order.delivery_address,
+                        'delivery_time': f"{minutes} min" if order.estimated_delivery else 'N/A',
+                        'timeline': timeline_steps,
+                        'items': [{'name': item.food_item.name if item.food_item else 'Item', 
+                                  'quantity': item.quantity, 'price': item.price} 
+                                 for item in order.order_items]
+                    }
+                    
+                    if order.status in ['pending', 'confirmed', 'preparing']:
+                        bot_response += "💡 **You can cancel this order if needed.**"
+                else:
+                    bot_response = "❌ Order not found or doesn't belong to you."
+
+        # CANCEL ORDER FLOW
+        elif action == 'cancel_order' or any(kw in user_message for kw in ['cancel', 'cancel order']):
+            if not current_user.is_authenticated:
+                bot_response = "🔐 Please log in to cancel orders."
+            else:
+                active_orders = Order.query.filter_by(user_id=current_user.id).filter(
+                    Order.status.in_(['pending', 'confirmed', 'preparing'])
+                ).order_by(Order.created_at.desc()).limit(5).all()
+                
+                if active_orders:
+                    bot_response = "❌ **Select the order you want to cancel:**\n\n"
+                    cancel_orders = []
+                    for order in active_orders:
+                        cancel_orders.append({
+                            'order_id': order.id,
+                            'total': order.total_amount,
+                            'date': order.created_at.strftime('%d %b'),
+                            'status': order.status
+                        })
+                    response_data['cancel_order_list'] = cancel_orders
+                    bot_response += "💡 **Tap on an order to proceed with cancellation.**"
+                else:
+                    bot_response = "✅ You don't have any active orders that can be cancelled."
+
+        # SHOW CANCELLATION FORM
+        elif action and action.startswith('show_cancel_form_'):
+            order_id = int(action.replace('show_cancel_form_', ''))
+            if current_user.is_authenticated:
+                order = Order.query.filter_by(id=order_id, user_id=current_user.id).first()
+                if order and order.status in ['pending', 'confirmed', 'preparing']:
+                    # Check existing pending request
+                    existing = CancellationRequest.query.filter_by(order_id=order_id, status='pending').first()
+                    if existing:
+                        bot_response = f"⚠️ You already have a pending cancellation request for Order #{order.id}. Please wait for admin review."
+                    else:
+                        bot_response = f"📝 **Cancellation Request for Order #{order.id}**\n\nPlease fill the form below:"
+                        response_data['show_cancel_form'] = True
+                        response_data['order_id'] = order.id
+                        response_data['cancel_reasons'] = [
+                            {'value': 'wrong_order', 'label': 'Wrong Order Placed'},
+                            {'value': 'late_delivery', 'label': 'Late Delivery Expected'},
+                            {'value': 'changed_mind', 'label': 'Changed My Mind'},
+                            {'value': 'better_price', 'label': 'Found Better Price'},
+                            {'value': 'payment_issue', 'label': 'Payment Issue'},
+                            {'value': 'other', 'label': 'Other Reason'}
+                        ]
+                else:
+                    bot_response = "❌ This order cannot be cancelled (either delivered, cancelled, or not found)."
+
+        # REPORT ISSUE FLOW
+        elif action == 'report_issue' or any(kw in user_message for kw in ['issue', 'problem', 'complaint', 'report']):
+            bot_response = "⚠️ **Report an Issue**\n\nPlease fill out the issue report form below:"
+            response_data['show_issue_form'] = True
+            response_data['issue_types'] = [
+                {'value': 'payment', 'label': 'Payment Issue'},
+                {'value': 'delivery', 'label': 'Delivery Issue'},
+                {'value': 'app', 'label': 'App/Website Issue'},
+                {'value': 'quality', 'label': 'Food Quality Issue'},
+                {'value': 'wrong_order', 'label': 'Wrong Order'},
+                {'value': 'other', 'label': 'Other'}
+            ]
+
+        # VIEW OFFERS & COUPONS
+        elif action == 'view_offers' or any(kw in user_message for kw in ['offer', 'coupon', 'discount', 'promo']):
+            active_coupons = Coupon.query.filter(
+                Coupon.is_active == True,
+                Coupon.valid_until >= datetime.utcnow()
+            ).order_by(Coupon.discount_value.desc()).limit(10).all()
+            
+            if active_coupons:
+                bot_response = "🎉 **Active Offers & Coupons:**\n\n"
+                coupon_cards = []
+                for coupon in active_coupons:
+                    # Check user eligibility
+                    eligible = True
+                    if current_user.is_authenticated:
+                        # Check usage limit per user (simplified - you can enhance)
+                        used_count = 0  # TODO: track per-user usage if needed
+                        if coupon.usage_limit and used_count >= coupon.usage_limit:
+                            eligible = False
+                    
+                    coupon_cards.append({
+                        'code': coupon.code,
+                        'description': coupon.description or 'Special Discount',
+                        'discount_type': coupon.discount_type,
+                        'discount_value': coupon.discount_value,
+                        'min_order': coupon.min_order_amount or 0,
+                        'max_discount': coupon.max_discount_amount,
+                        'expiry': coupon.valid_until.strftime('%d %b %Y'),
+                        'eligible': eligible
+                    })
+                
+                response_data['coupon_list'] = coupon_cards
+                bot_response += "💡 **Copy code and apply at checkout!**"
+            else:
+                bot_response = "📭 No active offers right now. Check back soon for exciting deals! 🎉"
+
+        # HELP & SUPPORT
+        elif action == 'support' or any(kw in user_message for kw in ['help', 'support', 'contact', 'call']):
+            bot_response = "💬 **Help & Support**\n\n"
+            bot_response += "📞 **Call/WhatsApp:** +91 84317 29319\n"
+            bot_response += "📧 **Email:** bhojanaxpress@gmail.com\n\n"
+            bot_response += "**Quick Help:**\n"
+            bot_response += "• Delivery Delay → Track your order\n"
+            bot_response += "• Payment Refund → Check order status\n"
+            bot_response += "• App Usage → Browse our menu\n\n"
+            bot_response += "**Or talk to customer care directly!**"
+            response_data['show_contact_buttons'] = True
+
+        # AUTO-INTENT DETECTION
+        else:
+            # Extract order ID from message
+            order_id_match = re.search(r'\b(\d{1,6})\b', user_message)
+            
+            if order_id_match and current_user.is_authenticated:
+                order_id = int(order_id_match.group(1))
+                order = Order.query.filter_by(id=order_id, user_id=current_user.id).first()
+                if order:
+                    # Auto-redirect to order detail
+                    return chat()  # Simulate view_order action
+            
+            # Fallback to general chatbot response
+            bot_response = chatbot.get_response(user_message)
+            response_data['show_main_menu'] = True
+
+        # Store conversation
+        if session_id not in chat_sessions:
+            chat_sessions[session_id] = []
+        chat_sessions[session_id].append({
+            'user': user_message or action,
+            'bot': bot_response,
+            'timestamp': datetime.now().isoformat()
+        })
+        if len(chat_sessions[session_id]) > 50:
+            chat_sessions[session_id] = chat_sessions[session_id][-50:]
+
+        return jsonify({
+            'response': bot_response,
+            'session_id': session_id,
+            **response_data
+        })
+
+    except Exception as e:
+        current_app.logger.error(f'Chatbot error: {e}')
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({'error': 'An error occurred processing your message', 'show_main_menu': True}), 500
+
+
+# OLD DUPLICATE CODE REMOVED - USING NEW ADVANCED CHATBOT ABOVE
+# The code below is unreachable and kept for reference only
+"""
+def old_chat_handler():
+    # Handle order tracking
+    if False:  # Disabled - using new handler above
         if ('track' in user_message.lower() or 'status' in user_message.lower() or 'where is my order' in user_message.lower()):
             if order_id_match and current_user.is_authenticated:
                 order_id = int(order_id_match.group())
@@ -365,6 +648,8 @@ def chat():
     except Exception as e:
         return jsonify({'error': 'An error occurred processing your message'}), 500
 
+"""
+
 @chatbot_bp.route('/history/<session_id>')
 def get_chat_history(session_id):
     """Get chat history for a session"""
@@ -411,10 +696,10 @@ def track_order(order_id):
             'created_at': order.created_at.strftime('%d %b %Y, %I:%M %p'),
             'items': [
                 {
-                    'name': item.food_item.name if item.food_item else 'Unknown',
+                    'name': item.food_item.name if getattr(item, 'food_item', None) else 'Unknown',
                     'quantity': item.quantity,
                     'price': item.price
-                } for item in order.items
+                } for item in order.order_items
             ]
         }
         
@@ -432,6 +717,7 @@ def cancel_order_request():
         data = request.get_json()
         order_id = data.get('order_id')
         reason = data.get('reason')
+        refund_method = data.get('refund_method', 'wallet')
         details = data.get('details', '')
         
         if not order_id or not reason:
@@ -462,38 +748,43 @@ def cancel_order_request():
             user_id=current_user.id,
             reason=reason,
             details=details,
+            refund_method=refund_method,
             status='pending'
         )
         
         db.session.add(cancellation)
         db.session.commit()
         
-        # Send email notification to admin
+        # Send email notification to admin (render templates server-side and send HTML)
         try:
             admin_users = User.query.filter_by(is_admin=True).all()
             for admin in admin_users:
-                send_email(
-                    to_email=admin.email,
-                    subject=f'New Cancellation Request - Order #{order_id}',
-                    template='emails/cancellation_request_admin.html',
-                    user=current_user,
-                    order=order,
-                    cancellation=cancellation,
-                    admin_url=url_for('admin.manage_cancellations', _external=True)
-                )
+                try:
+                    rendered = render_template('emails/cancellation_request_admin.html',
+                                               user=current_user,
+                                               order=order,
+                                               cancellation=cancellation,
+                                               admin_url=url_for('admin.manage_cancellations', _external=True))
+                    send_email(to_email=admin.email,
+                               subject=f'New Cancellation Request - Order #{order_id}',
+                               html_content=rendered)
+                except Exception as e:
+                    current_app.logger.error(f'Failed sending admin email to {admin.email}: {e}')
         except Exception as e:
-            current_app.logger.error(f'Failed to send admin notification: {e}')
-        
+            current_app.logger.error(f'Failed to query admin users for notification: {e}')
+
         # Send confirmation email to user
         try:
-            send_email(
-                to_email=current_user.email,
-                subject=f'Cancellation Request Received - Order #{order_id}',
-                template='emails/cancellation_request_user.html',
-                user=current_user,
-                order=order,
-                cancellation=cancellation
-            )
+            try:
+                rendered_user = render_template('emails/cancellation_request_user.html',
+                                                 user=current_user,
+                                                 order=order,
+                                                 cancellation=cancellation)
+                send_email(to_email=current_user.email,
+                           subject=f'Cancellation Request Received - Order #{order_id}',
+                           html_content=rendered_user)
+            except Exception as e:
+                current_app.logger.error(f'Failed sending user confirmation email: {e}')
         except Exception as e:
             current_app.logger.error(f'Failed to send user confirmation: {e}')
         
@@ -507,3 +798,71 @@ def cancel_order_request():
         db.session.rollback()
         current_app.logger.error(f'Cancellation request error: {e}')
         return jsonify({'error': 'Failed to submit cancellation request'}), 500
+
+
+@chatbot_bp.route('/submit-issue', methods=['POST'])
+@csrf.exempt
+def submit_issue():
+    """Submit issue report from chatbot"""
+    try:
+        data = request.get_json()
+        issue_type = data.get('issue_type')
+        order_id = data.get('order_id')
+        description = data.get('description')
+        
+        if not issue_type or not description:
+            return jsonify({'error': 'Issue type and description are required'}), 400
+        
+        user_email = current_user.email if current_user.is_authenticated else 'anonymous@user.com'
+        user_name = current_user.username if current_user.is_authenticated else 'Anonymous User'
+        
+        # Send email to admin
+        try:
+            issue_email_html = f"""
+            <html><body style="font-family: Arial, sans-serif; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h2 style="color: #FF5722;">⚠️New Issue Report</h2>
+                <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #FF5722; margin: 20px 0;">
+                    <p><strong>Issue Type:</strong> {issue_type}</p>
+                    <p><strong>Reported By:</strong> {user_name}</p>
+                    <p><strong>Email:</strong> {user_email}</p>
+                    {f'<p><strong>Order ID:</strong> #{order_id}</p>' if order_id else ''}
+                    <p><strong>Timestamp:</strong> {datetime.now().strftime('%d %b %Y, %I:%M %p')}</p>
+                </div>
+                <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                    <p><strong>Description:</strong></p>
+                    <p>{description}</p>
+                </div>
+            </div>
+            </body></html>
+            """
+            send_email('bhojanaxpress@gmail.com', f'Issue Report: {issue_type}', issue_email_html)
+        except Exception as e:
+            current_app.logger.error(f'Failed to send issue email: {e}')
+        
+        # Create notification for admins
+        if current_user.is_authenticated:
+            try:
+                admin_users = User.query.filter_by(is_admin=True).all()
+                for admin in admin_users:
+                    notif = Notification(
+                        user_id=admin.id,
+                        title=f'Issue Report: {issue_type}',
+                        content=f'{user_name} reported: {description[:100]}...',
+                        notification_type='issue_report',
+                        reference_id=current_user.id
+                    )
+                    db.session.add(notif)
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f'Failed to create issue notification: {e}')
+        
+        return jsonify({
+            'success': True,
+            'message': '✅ Thanks! Your issue has been reported. Our team will contact you soon.'
+        })
+    
+    except Exception as e:
+        current_app.logger.error(f'Issue submission error: {e}')
+        return jsonify({'error': 'Failed to submit issue'}), 500
